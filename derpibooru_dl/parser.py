@@ -23,8 +23,8 @@ def download(outdir, data):
 	else:
 		filename=os.path.join(outdir, "{}.{}".format(data["id"],
 			data["original_format"]))
-	print(filename)
 	if not os.path.isfile(filename):
+		print(filename)
 		print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
 		urlstream=urllib.request.urlopen(
 			'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
