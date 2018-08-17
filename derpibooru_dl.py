@@ -5,6 +5,9 @@ import urllib.request, os, sys, json
 import tkinter
 from tkinter import filedialog
 from derpibooru_dl import tagResponse, parser
+import config
+if config.enable_images_optimisations:
+	from derpibooru_dl import imgOptimizer
 
 if len(sys.argv)==1:
 	from derpibooru_dl import gui
@@ -27,3 +30,6 @@ for id in id_list:
 		os.makedirs(outdir)
 
 	parser.download(outdir, data)
+
+if config.enable_images_optimisations:
+	imgOptimizer.printStats()

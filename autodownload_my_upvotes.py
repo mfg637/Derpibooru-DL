@@ -13,6 +13,9 @@ except ImportError as e:
     print('error importing config.py')
     raise(e)
 
+if config.enable_images_optimisations:
+	from derpibooru_dl import imgOptimizer
+
 error_str1 = 'Error: user API key required.'
 error_str1_continue = 'Find you API key in page: "https://derpibooru.org/pages/api"'
 
@@ -66,3 +69,6 @@ while current_page<=pages:
             os.makedirs(outdir)
         parser.download(outdir, item)
     current_page += 1
+
+if config.enable_images_optimisations:
+	imgOptimizer.printStats()

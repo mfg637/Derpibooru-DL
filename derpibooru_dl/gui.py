@@ -47,9 +47,7 @@ class GUI:
 			print('open connection')
 			data=parser.parseJSON(id)
 			parsed_tags=tagResponse.tagIndex(data['tags'])
-			print(parsed_tags)
 			outdir=tagResponse.find_folder(parsed_tags)
-			print(outdir)
 			if not os.path.isdir(outdir):
 				os.makedirs(outdir)
 			parser.download(outdir, data)
