@@ -66,51 +66,59 @@ def transcode(source, path, filename, data):
             tmpimg.save(filename=source)
         img.close()
         ratio=80
-        if lossless:
-            lossless_encoder = subprocess.Popen(
-                ['cwebp', '-lossless', '-quiet', source, '-o', '-'],
-                stdout=subprocess.PIPE
+        if 'vector' in data['art_type']:
+            quality = 100
+            lossless = True
+            lossless_data = subprocess.check_output(
+                ['cwebp', '-lossless', '-quiet', source, '-o', '-']
             )
-            lossy_encoder = subprocess.Popen(
-                ['cwebp', '-q', str(quality), '-quiet', source, '-o', '-'],
-                stdout=subprocess.PIPE
-            )
-            some_data = [b'', b'']
-            lossless_loading_thread = threading.Thread(
-                target = loading_thread,
-                args = (lossless_encoder, some_data, 1)
-            )
-            lossy_loading_thread = threading.Thread(
-                target = loading_thread,
-                args = (lossy_encoder, some_data, 0)
-            )
-            lossy_loading_thread.start()
-            lossless_loading_thread.start()
-            lossy_loading_thread.join()
-            if lossless_loading_thread.isAlive():
-                lossless_loading_thread.join()
-            lossy_data, lossless_data = some_data
-            del some_data
-        else:
-            lossy_data = subprocess.check_output(
-                ['cwebp', '-q', str(quality), '-quiet', source, '-o', '-']
-            )
-        outsize = len(lossy_data)
-        if lossless and len(lossless_data)<outsize:
-            lossless=True
             outsize = len(lossless_data)
-            quality=100
-            lossy_data = None
         else:
-            lossless_data = None
-            lossless=False
-            while ( (outsize/size) > ((100-ratio)*0.01) ) and ( quality >=60 ):
-                quality -= 5
-                lossydata = subprocess.check_output(
+            if lossless:
+                lossless_encoder = subprocess.Popen(
+                    ['cwebp', '-lossless', '-quiet', source, '-o', '-'],
+                    stdout=subprocess.PIPE
+                )
+                lossy_encoder = subprocess.Popen(
+                    ['cwebp', '-q', str(quality), '-quiet', source, '-o', '-'],
+                    stdout=subprocess.PIPE
+                )
+                some_data = [b'', b'']
+                lossless_loading_thread = threading.Thread(
+                    target = loading_thread,
+                    args = (lossless_encoder, some_data, 1)
+                )
+                lossy_loading_thread = threading.Thread(
+                    target = loading_thread,
+                    args = (lossy_encoder, some_data, 0)
+                )
+                lossy_loading_thread.start()
+                lossless_loading_thread.start()
+                lossy_loading_thread.join()
+                if lossless_loading_thread.isAlive():
+                    lossless_loading_thread.join()
+                lossy_data, lossless_data = some_data
+                del some_data
+            else:
+                lossy_data = subprocess.check_output(
                     ['cwebp', '-q', str(quality), '-quiet', source, '-o', '-']
                 )
-                outsize=len(lossydata)
-                ratio=math.ceil(ratio//2)
+            outsize = len(lossy_data)
+            if lossless and len(lossless_data)<outsize:
+                lossless=True
+                outsize = len(lossless_data)
+                quality=100
+                lossy_data = None
+            else:
+                lossless_data = None
+                lossless=False
+                while ( (outsize/size) > ((100-ratio)*0.01) ) and ( quality >=60 ):
+                    quality -= 5
+                    lossydata = subprocess.check_output(
+                        ['cwebp', '-q', str(quality), '-quiet', source, '-o', '-']
+                    )
+                    outsize=len(lossydata)
+                    ratio=math.ceil(ratio//2)
     elif os.path.splitext(source)[1].lower() in set(['.jpg', '.jpeg']):
         quality=100
         img_metadata = json.loads(str(

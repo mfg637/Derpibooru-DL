@@ -67,7 +67,7 @@ while current_page<=pages:
         outdir=tagResponse.find_folder(parsed_tags)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
-        parser.download(outdir, item)
+        parser.download(outdir, item, parsed_tags)
     current_page += 1
 
 if config.enable_images_optimisations:

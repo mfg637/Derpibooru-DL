@@ -29,7 +29,7 @@ for id in id_list:
 	if not os.path.isdir(outdir):
 		os.makedirs(outdir)
 
-	parser.download(outdir, data)
+	parser.download(outdir, data, parsed_tags)
 
 if config.enable_images_optimisations:
 	imgOptimizer.printStats()

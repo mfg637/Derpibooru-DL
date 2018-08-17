@@ -50,7 +50,7 @@ class GUI:
 			outdir=tagResponse.find_folder(parsed_tags)
 			if not os.path.isdir(outdir):
 				os.makedirs(outdir)
-			parser.download(outdir, data)
+			parser.download(outdir, data, parsed_tags)
 			self._progressbar.step()
 		self._dl_btn['state']=NORMAL
 	def au_dl(self):
