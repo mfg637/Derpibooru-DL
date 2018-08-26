@@ -159,23 +159,27 @@ def transcode(source, path, filename, data):
             outfile.close()
             os.utime(outf+'.webp', (atime, mtime))
         elif os.path.splitext(source)[1].lower() in set(['.jpg', '.jpeg']):
-            outfile=open(outf+'.jpg', 'wb')
+            outfile=open(source, 'wb')
             outfile.write(optimized_data)
             outfile.close()
-            os.utime(outf+'.jpg', (atime, mtime))
+            os.utime(source, (atime, mtime))
         elif os.path.splitext(source)[1].lower()=='.gif':
             os.utime(outf+'.png', (atime, mtime))
         sumsize+=size
         sumos+=outsize
         avq+=quality
         items+=1
-        os.remove(source)
+        if os.path.splitext(source)[1].lower() not in set(['.jpg', '.jpeg']):
+            os.remove(source)
     elif os.path.splitext(source)[1].lower() not in set(['.jpg', '.jpeg']):
         print("save "+source)
-        if os.path.splitext(source)[1].lower()=='.png':
-            os.remove(outf+'.webp')
-        elif os.path.splitext(source)[1].lower()=='.gif':
-            os.remove(outf+'.png')
+        try:
+            if os.path.splitext(source)[1].lower()=='.png':
+                os.remove(outf+'.webp')
+            elif os.path.splitext(source)[1].lower()=='.gif':
+                os.remove(outf+'.png')
+        except FileNotFoundError as e:
+            return None
 
 def printStats():
     if items:

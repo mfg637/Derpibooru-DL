@@ -43,32 +43,35 @@ elif len(sys.argv)==3:
     nvalue=int(sys.argv[1])
     period=sys.argv[2]
 
-while current_page<=pages:
-    print('loading page {} of {}'.format(current_page, pages))
-    request={
-        'nvalue': nvalue,
-        'period': period,
-        'page': current_page,
-        'key': config.key,
-        'perpage': items_per_page
-    }
-    request_url = ("https://derpibooru.org/search.json?"
-                    "q=first_seen_at.gt%3A{nvalue}+{period}+ago+"
-                    "%26%26+my%3Aupvotes&key={key}"
-                    "&page={page}&perpage={perpage}").format(**request)
-    urlstream=urllib.request.urlopen(request_url)
-    data = json.loads(str(urlstream.read(), 'utf-8'))
-    urlstream.close()
-    del urlstream
-    if current_page==1:
-        pages = int(math.ceil(data['total']/items_per_page))
-    for item in data['search']:
-        parsed_tags=tagResponse.tagIndex(item['tags'])
-        outdir=tagResponse.find_folder(parsed_tags)
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
-        parser.download(outdir, item, parsed_tags)
-    current_page += 1
-
-if config.enable_images_optimisations:
-	imgOptimizer.printStats()
+try:
+    while current_page<=pages:
+        print('loading page {} of {}'.format(current_page, pages))
+        request={
+            'nvalue': nvalue,
+            'period': period,
+            'page': current_page,
+            'key': config.key,
+            'perpage': items_per_page
+        }
+        request_url = ("https://derpibooru.org/search.json?"
+                        "q=first_seen_at.gt%3A{nvalue}+{period}+ago+"
+                        "%26%26+my%3Aupvotes&key={key}"
+                        "&page={page}&perpage={perpage}").format(**request)
+        urlstream=urllib.request.urlopen(request_url)
+        data = json.loads(str(urlstream.read(), 'utf-8'))
+        urlstream.close()
+        del urlstream
+        if current_page==1:
+            pages = int(math.ceil(data['total']/items_per_page))
+        for item in data['search']:
+            parsed_tags=tagResponse.tagIndex(item['tags'])
+            outdir=tagResponse.find_folder(parsed_tags)
+            if not os.path.isdir(outdir):
+                os.makedirs(outdir)
+            parser.download(outdir, item, parsed_tags)
+        current_page += 1
+except Exception as e:
+    raise e
+finally:
+    if config.enable_images_optimisations:
+        imgOptimizer.printStats()
