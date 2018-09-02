@@ -68,6 +68,7 @@ def transcode(source, path, filename, data):
 				tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
 			infile='/tmp/'+imgcol.files[id]['filename']+'.png'
 			print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
+			#logfile.write("convert to "+infile+' '+str(img.width)+'x'+str(img.height)+'\n')
 			tmpimg.save(infile)
 		img.close()
 		ratio=80
