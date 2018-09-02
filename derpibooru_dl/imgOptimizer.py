@@ -68,7 +68,6 @@ def transcode(source, path, filename, data):
 				tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
 			infile='/tmp/'+imgcol.files[id]['filename']+'.png'
 			print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
-			#logfile.write("convert to "+infile+' '+str(img.width)+'x'+str(img.height)+'\n')
 			tmpimg.save(infile)
 		img.close()
 		ratio=80
@@ -130,14 +129,20 @@ def transcode(source, path, filename, data):
 		img_metadata = json.loads(str(
 			subprocess.check_output(['exiftool', '-j', source]
 		),'utf-8'))
+		if "EncodingProcess" not in img_metadata[0]:
+			print('maybe source isnot jpeg')
+			continue
 		if 'arithmetic coding' in img_metadata[0]["EncodingProcess"]:
 			return None
 		if 'Make' in img_metadata[0] and 'Model' in img_metadata[0]:
 			meta_copy = 'all'
 		else:
 			meta_copy = 'none'
-		optimized_data = subprocess.check_output(
-			['jpegtran', '-copy', meta_copy, '-arithmetic', source])
+		try:
+			optimized_data = subprocess.check_output(
+				['jpegtran', '-copy', meta_copy, '-arithmetic', imgcol.get('abs', id)])
+		except subprocess.CalledProcessError:
+			continue
 		outsize=len(optimized_data)
 	elif os.path.splitext(source)[1].lower()=='.gif':
 		quality=100
