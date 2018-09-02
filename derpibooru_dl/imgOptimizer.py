@@ -131,7 +131,7 @@ def transcode(source, path, filename, data):
 		),'utf-8'))
 		if "EncodingProcess" not in img_metadata[0]:
 			print('maybe source isnot jpeg')
-			continue
+			return None
 		if 'arithmetic coding' in img_metadata[0]["EncodingProcess"]:
 			return None
 		if 'Make' in img_metadata[0] and 'Model' in img_metadata[0]:
@@ -142,7 +142,7 @@ def transcode(source, path, filename, data):
 			optimized_data = subprocess.check_output(
 				['jpegtran', '-copy', meta_copy, '-arithmetic', imgcol.get('abs', id)])
 		except subprocess.CalledProcessError:
-			continue
+			return None
 		outsize=len(optimized_data)
 	elif os.path.splitext(source)[1].lower()=='.gif':
 		quality=100
