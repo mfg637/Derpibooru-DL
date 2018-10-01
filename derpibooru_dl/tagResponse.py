@@ -47,7 +47,8 @@ characters = set(
 		'ocellus',
 		'sandbar',
 		'princess skystar',
-		'limestone pie'
+		'limestone pie',
+		'autumn blaze'
 	]
 )
 
