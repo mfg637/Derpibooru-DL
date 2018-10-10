@@ -145,6 +145,7 @@ class SpoilerImage(Image):
             self.img_obj = PIL.ImageTk.PhotoImage(tiny_thumbnail)
             self.img_obj_hover = PIL.ImageTk.PhotoImage(hover_img)
             self.bind("<Button-1>", self.__show_normal_thumbnail)
+        self.normal_thumbnail = PIL.ImageTk.PhotoImage(normal_thumbnail)
         self.bind("<Leave>", self.__show_spoiler)
         self.width = normal_thumbnail.width
         self.height = normal_thumbnail.height
@@ -162,9 +163,7 @@ class SpoilerImage(Image):
         normal_thubnail_request.close()
 
     def __show_normal_thumbnail(self, event):
-        if self._img_obj is None:
-            self._img_obj = PIL.ImageTk.PhotoImage(self.normal_thumbnail)
-        self["image"] = self._img_obj
+        self["image"] = self.normal_thumbnail
 
     def __mouse_enter(self, event=None):
         if not self.is_playing:

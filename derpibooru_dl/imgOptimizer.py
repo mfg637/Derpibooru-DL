@@ -66,7 +66,7 @@ def transcode(source, path, filename, data):
 				)
 			else:
 				tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-			infile='/tmp/'+imgcol.files[id]['filename']+'.png'
+			infile='/tmp/'+filename+'.png'
 			print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
 			tmpimg.save(infile)
 		img.close()
@@ -140,7 +140,7 @@ def transcode(source, path, filename, data):
 			meta_copy = 'none'
 		try:
 			optimized_data = subprocess.check_output(
-				['jpegtran', '-copy', meta_copy, '-arithmetic', imgcol.get('abs', id)])
+				['jpegtran', '-copy', meta_copy, '-arithmetic', source])
 		except subprocess.CalledProcessError:
 			return None
 		outsize=len(optimized_data)
