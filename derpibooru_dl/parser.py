@@ -7,10 +7,9 @@ import os
 import re
 import urllib.request
 import threading
-from typing import List, Any
 
 downloader_thread = threading.Thread()
-download_queue: List[dict] = []
+download_queue = []
 
 
 if config.enable_images_optimisations:
