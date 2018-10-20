@@ -46,6 +46,8 @@ def async_downloader():
 
 
 def download(outdir, data, tags=None):
+	if not os.path.isdir(outdir):
+		os.makedirs(outdir)
 	if 'file_name' in data and data['file_name'] is not None:
 		filename=os.path.join(outdir, "{} {}.{}".format(data["id"],
 			re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
