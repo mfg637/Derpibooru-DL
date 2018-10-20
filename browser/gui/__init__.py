@@ -2,12 +2,16 @@
 # -*- coding: utf-8 -*- 
 import tkinter
 import tkinter.ttk
+import tkinter.messagebox
 from . import ScrolledFrame, Images
 import PIL.Image
 import PIL.ImageTk
 from derpibooru_dl import parser, tagResponse
 from .. import net
 import config
+import re
+
+unsigned_number_validate = re.compile(r"^\s*\d+\s*$")
 
 
 class CustomCheckbox(tkinter.Checkbutton):
@@ -36,13 +40,18 @@ class GUI:
 		nav_panel = tkinter.Frame(self.root)
 		nav_panel.pack(side="top")
 		tkinter.Label(nav_panel, text="Page: ").pack(side="left")
-		self.page_count_label = tkinter.Label(nav_panel)
-		self.page_count_label.pack(side="left")
+		self.page_count_field = tkinter.Entry(nav_panel, width = 5)
+		self.page_count_field.pack(side="left")
+		self.page_count_field.bind("<Return>", self.__goto)
+		self.page_count_field.bind("<KP_Enter>", self.__goto)
+		goto_btn = tkinter.ttk.Button(nav_panel, text="go to", command=self.__goto)
+		goto_btn.pack(side="left")
 		prev_btn = tkinter.ttk.Button(nav_panel, text="prev", command=self.prev)
 		prev_btn.pack(side="left")
 		next_btn = tkinter.ttk.Button(nav_panel, text="next", command=self.next)
 		next_btn.pack(side='left')
 		self.root.protocol("WM_DELETE_WINDOW", self.on_close)
+		self.checkbox_array = []
 		self.root.mainloop()
 
 	def __search(self):
@@ -50,7 +59,8 @@ class GUI:
 		self.img_gallery_wrapper.to_start()
 		for widget in self.img_gallery_wrapper.interior.winfo_children():
 			widget.destroy()
-		self.page_count_label["text"] = str(net.page)
+		self.page_count_field.delete(0, tkinter.END)
+		self.page_count_field.insert(0, str(net.page))
 		q = self.search_field.get()
 		if len(q):
 			self.data = net.get_page(q, key=config.key)
@@ -96,10 +106,11 @@ class GUI:
 		self.__search()
 
 	def save(self):
-		for item in self.checkbox_array:
-			if item.state.get():
-				out_dir = tagResponse.find_folder(item.tags)
-				parser.append2queue(outdir=out_dir, data=item.data, tags=item.tags)
+		if len(self.checkbox_array):
+			for item in self.checkbox_array:
+				if item.state.get():
+					out_dir = tagResponse.find_folder(item.tags)
+					parser.append2queue(outdir=out_dir, data=item.data, tags=item.tags)
 
 	def prev(self):
 		self.save()
@@ -110,3 +121,14 @@ class GUI:
 		if parser.downloader_thread.isAlive():
 			parser.downloader_thread.join()
 		self.root.destroy()
+	
+	def __goto(self, event = None):
+		self.save()
+		if unsigned_number_validate.search(self.page_count_field.get()) is not None:
+			page = int(re.search(r"\d+", self.page_count_field.get()).group(0))
+			if page != net.page or page==1:
+				net.page = page
+				self.__search()
+		else:
+			tkinter.messagebox.showerror('Browser', "invalid page number")
+
