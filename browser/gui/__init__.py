@@ -12,12 +12,20 @@ import config
 import re
 
 unsigned_number_validate = re.compile(r"^\s*\d+\s*$")
-
+BACKGROUND_COLOR = '#ececec'
 
 class CustomCheckbox(tkinter.Checkbutton):
 	def __init__(self, root, data, tags, **kwargs):
 		self.state = tkinter.BooleanVar()
-		tkinter.Checkbutton.__init__(self, root, variable=self.state, onvalue=True, offvalue=False, **kwargs)
+		tkinter.Checkbutton.__init__(self,
+			root,
+			variable=self.state,
+			onvalue=True,
+			offvalue=False,
+			background=BACKGROUND_COLOR,
+			borderwidth=0,
+			**kwargs
+		)
 		self.data = data
 		self.tags = tags
 
@@ -25,22 +33,32 @@ class CustomCheckbox(tkinter.Checkbutton):
 class GUI:
 	def __init__(self):
 		self.root = tkinter.Tk()
+		self.root['bg']=BACKGROUND_COLOR
 		self.root.title("Derpibooru-browser")
 		self.root.geometry("1050x550")
-		config_panel = tkinter.Frame(self.root)
+		config_panel = tkinter.Frame(self.root, background=BACKGROUND_COLOR)
 		self.search_field = tkinter.Entry(config_panel)
 		self.search_field.pack(side="left")
 		self.search_field.bind("<Return>", self.search)
-		search_btn = tkinter.ttk.Button(config_panel, text="Search", command=self.search)
+		search_btn = tkinter.ttk.Button(
+			config_panel,
+			text="Search",
+			command=self.search
+		)
 		search_btn.pack(side="left")
 		config_panel.pack(side="top")
-		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(self.root, width=1050, height=480)
+		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(
+			self.root,
+			width=1050,
+			height=480,
+			background=BACKGROUND_COLOR
+		)
 		self.img_gallery_wrapper.interior['width'] = 1024
 		self.img_gallery_wrapper.interior['height'] = 480
 		self.img_gallery_wrapper.pack(side="top")
-		nav_panel = tkinter.Frame(self.root)
+		nav_panel = tkinter.Frame(self.root, bg=BACKGROUND_COLOR)
 		nav_panel.pack(side="top")
-		tkinter.Label(nav_panel, text="Page: ").pack(side="left")
+		tkinter.Label(nav_panel, text="Page: ", bg=BACKGROUND_COLOR).pack(side="left")
 		self.page_count_field = tkinter.Entry(nav_panel, width = 5)
 		self.page_count_field.pack(side="left")
 		self.page_count_field.bind("<Return>", self.__goto)
@@ -72,7 +90,13 @@ class GUI:
 		i = 0
 		for elem in self.data:
 			parsed_tags = tagResponse.tagIndex(elem['tags'])
-			self.checkbox_array.append(CustomCheckbox(self.img_gallery_wrapper.interior, elem, parsed_tags))
+			self.checkbox_array.append(
+				CustomCheckbox(
+					self.img_gallery_wrapper.interior,
+					elem,
+					parsed_tags,
+				)
+			)
 			self.checkbox_array[-1].grid(row=i // 4 * 2, column=i % 4)
 			imglabel = None
 			if {"safe", "suggestive"} & parsed_tags["category"]:
@@ -103,6 +127,7 @@ class GUI:
 						elem["representations"]["thumb_tiny"],
 						elem['tags']
 					)
+			imglabel['background']=BACKGROUND_COLOR
 			imglabel.grid(row=i // 4 * 2+1, column=i % 4)
 			imglabel.bind("<Button-3>", self.showTags)
 			imglabel.update_idletasks()
