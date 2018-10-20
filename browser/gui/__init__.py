@@ -76,23 +76,34 @@ class GUI:
 			imglabel = None
 			if {"safe", "suggestive"} & parsed_tags["category"]:
 				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
-					imglabel = Images.Image(self.img_gallery_wrapper.interior, file=elem["representations"]["thumb"])
+					imglabel = Images.Image(
+						self.img_gallery_wrapper.interior,
+						file=elem["representations"]["thumb"],
+						tags = elem['tags']
+					)
 				else:
-					imglabel = Images.Video(self.img_gallery_wrapper.interior, elem["representations"]["thumb"])
+					imglabel = Images.Video(
+						self.img_gallery_wrapper.interior,
+						elem["representations"]["thumb"],
+						elem['tags']
+					)
 			else:
 				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
 					imglabel = Images.SpoilerImage(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb_tiny"],
-						elem["representations"]["thumb"]
+						elem["representations"]["thumb"],
+						elem['tags']
 					)
 				else:
 					imglabel = Images.SpoilerVideo(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb"],
-						elem["representations"]["thumb_tiny"]
+						elem["representations"]["thumb_tiny"],
+						elem['tags']
 					)
 			imglabel.grid(row=i // 4 * 2+1, column=i % 4)
+			imglabel.bind("<Button-3>", self.showTags)
 			imglabel.update_idletasks()
 			i += 1
 
@@ -132,3 +143,25 @@ class GUI:
 		else:
 			tkinter.messagebox.showerror('Browser', "invalid page number")
 
+	def showTags(self, event):
+		TagList(self, event.widget.tags)
+
+class TagList:
+	def __init__(self, parent, tags):
+		self.parent = parent
+		self._root = tkinter.Toplevel(parent.root)
+		vscrollbar = tkinter.Scrollbar(self._root, orient=tkinter.VERTICAL)
+		vscrollbar.pack(fill=tkinter.Y, side=tkinter.RIGHT, expand=tkinter.FALSE)
+		self._taglist = tkinter.Listbox(self._root, yscrollcommand=vscrollbar.set, width = 20, height = 20)
+		self._taglist.pack()
+		vscrollbar.config(command=self._taglist.yview)
+		for tag in tags.split(', '):
+			self._taglist.insert(tkinter.END, tag)
+		self._taglist.bind("<Double-Button-1>", self.search)
+
+	def search(self, event = None):
+		self.parent.search_field.delete(0, tkinter.END)
+		self.parent.search_field.insert(0, 
+			self._taglist.get(tkinter.ACTIVE)
+		)
+		self.parent.search()

@@ -25,8 +25,9 @@ def clear_video():
 
 
 class Image(tkinter.Label):
-    def __init__(self, root, file, **kwargs):
+    def __init__(self, root, file, tags, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
+        self.tags = tags
         self.file = file
         request_obj = net.request(file)
         image = PIL.Image.open(request_obj)
@@ -108,9 +109,10 @@ class Image(tkinter.Label):
 
 
 class SpoilerImage(Image):
-    def __init__(self, root, tiny_thumb_file, file, **kwargs):
+    def __init__(self, root, tiny_thumb_file, file, tags, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
+        self.tags = tags
         tiny_thumbnail_request = net.request(tiny_thumb_file)
         normal_thubnail_request = net.request(file)
         normal_thumbnail = PIL.Image.open(normal_thubnail_request)
@@ -175,9 +177,10 @@ class SpoilerImage(Image):
 
 
 class Video(tkinter.Label):
-    def __init__(self, root, file, **kwargs):
+    def __init__(self, root, file, tags, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
+        self.tags = tags
         ffprocess = ffmpeg.getPPM_Stream(net.request_url(file))
         pil_img = PIL.Image.open(ffprocess.stdout)
         self.width = pil_img.width
@@ -262,9 +265,10 @@ class Video(tkinter.Label):
 
 
 class SpoilerVideo(Video):
-    def __init__(self, root, file, thumb_file, **kwargs):
+    def __init__(self, root, file, thumb_file, tags, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
+        self.tags = tags
         ffprocess = ffmpeg.getPPM_Stream(net.request_url(thumb_file))
         default_image = PIL.Image.open(ffprocess.stdout)
         self.width = None
