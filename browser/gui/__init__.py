@@ -25,6 +25,7 @@ class CustomCheckbox(tkinter.Checkbutton):
 class GUI:
 	def __init__(self):
 		self.root = tkinter.Tk()
+		self.root.title("Derpibooru-browser")
 		self.root.geometry("1050x550")
 		config_panel = tkinter.Frame(self.root)
 		self.search_field = tkinter.Entry(config_panel)
@@ -150,6 +151,7 @@ class TagList:
 	def __init__(self, parent, tags):
 		self.parent = parent
 		self._root = tkinter.Toplevel(parent.root)
+		self._root.title("List of tags")
 		vscrollbar = tkinter.Scrollbar(self._root, orient=tkinter.VERTICAL)
 		vscrollbar.pack(fill=tkinter.Y, side=tkinter.RIGHT, expand=tkinter.FALSE)
 		self._taglist = tkinter.Listbox(self._root, yscrollcommand=vscrollbar.set, width = 20, height = 20)
