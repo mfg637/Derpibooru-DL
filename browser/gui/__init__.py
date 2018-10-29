@@ -104,13 +104,13 @@ class GUI:
 					imglabel = Images.Image(
 						self.img_gallery_wrapper.interior,
 						file=elem["representations"]["thumb"],
-						tags = elem['tags']
+						meta = {"tags": elem['tags'], "id": elem["id"]}
 					)
 				else:
 					imglabel = Images.Video(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb"],
-						elem['tags']
+						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			else:
 				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
@@ -118,18 +118,18 @@ class GUI:
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb_tiny"],
 						elem["representations"]["thumb"],
-						elem['tags']
+						{"tags": elem['tags'], "id": elem["id"]}
 					)
 				else:
 					imglabel = Images.SpoilerVideo(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb"],
 						elem["representations"]["thumb_tiny"],
-						elem['tags']
+						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			imglabel['background']=BACKGROUND_COLOR
 			imglabel.grid(row=i // 4 * 2+1, column=i % 4)
-			imglabel.bind("<Button-3>", self.showTags)
+			imglabel.bind("<Button-3>", self.showMeta)
 			imglabel.update_idletasks()
 			i += 1
 
@@ -169,20 +169,28 @@ class GUI:
 		else:
 			tkinter.messagebox.showerror('Browser', "invalid page number")
 
-	def showTags(self, event):
-		TagList(self, event.widget.tags)
+	def showMeta(self, event):
+		TagList(self, event.widget.getMeta())
 
 class TagList:
-	def __init__(self, parent, tags):
+	def __init__(self, parent, meta):
 		self.parent = parent
 		self._root = tkinter.Toplevel(parent.root)
 		self._root.title("List of tags")
-		vscrollbar = tkinter.Scrollbar(self._root, orient=tkinter.VERTICAL)
+		id_wrapper = tkinter.Frame(self._root)
+		tkinter.Label(id_wrapper, text="Image ID: ").pack(side="left")
+		id_btn = tkinter.ttk.Button(id_wrapper, text=meta['id'])
+		id_btn.pack(side="left")
+		id_btn.bind('<Button-1>', self.__copy_to_clipboard)
+		id_wrapper.pack(side="top")
+		list_wrapper = tkinter.Frame(self._root)
+		vscrollbar = tkinter.Scrollbar(list_wrapper, orient=tkinter.VERTICAL)
 		vscrollbar.pack(fill=tkinter.Y, side=tkinter.RIGHT, expand=tkinter.FALSE)
-		self._taglist = tkinter.Listbox(self._root, yscrollcommand=vscrollbar.set, width = 20, height = 20)
+		self._taglist = tkinter.Listbox(list_wrapper, yscrollcommand=vscrollbar.set, width = 20, height = 20)
 		self._taglist.pack()
+		list_wrapper.pack(side="top")
 		vscrollbar.config(command=self._taglist.yview)
-		for tag in tags.split(', '):
+		for tag in meta['tags'].split(', '):
 			self._taglist.insert(tkinter.END, tag)
 		self._taglist.bind("<Double-Button-1>", self.search)
 
@@ -192,3 +200,9 @@ class TagList:
 			self._taglist.get(tkinter.ACTIVE)
 		)
 		self.parent.search()
+
+	def __copy_to_clipboard(self, event):
+		self._root.clipboard_clear()
+		self._root.clipboard_append(event.widget['text'])
+		self._root.update()
+		tkinter.messagebox.showinfo("Derpiboru-browser", "Image ID now in clipboard")

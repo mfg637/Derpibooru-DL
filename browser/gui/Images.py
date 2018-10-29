@@ -24,10 +24,18 @@ def clear_video():
         playing_instance = None
 
 
-class Image(tkinter.Label):
-    def __init__(self, root, file, tags, **kwargs):
+class BaseImage:
+    def __init__(self):
+        self.meta = {}
+        raise Exception()
+    def getMeta(self):
+        return self.meta
+
+
+class Image(tkinter.Label, BaseImage):
+    def __init__(self, root, file, meta, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
-        self.tags = tags
+        self.meta = meta
         self.file = file
         request_obj = net.request(file)
         image = PIL.Image.open(request_obj)
@@ -108,11 +116,11 @@ class Image(tkinter.Label):
             self.play()
 
 
-class SpoilerImage(Image):
-    def __init__(self, root, tiny_thumb_file, file, tags, **kwargs):
+class SpoilerImage(Image, BaseImage):
+    def __init__(self, root, tiny_thumb_file, file, meta, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
-        self.tags = tags
+        self.meta = meta
         tiny_thumbnail_request = net.request(tiny_thumb_file)
         normal_thubnail_request = net.request(file)
         normal_thumbnail = PIL.Image.open(normal_thubnail_request)
@@ -176,11 +184,18 @@ class SpoilerImage(Image):
             self["image"] = self.img_obj
 
 
-class Video(tkinter.Label):
-    def __init__(self, root, file, tags, **kwargs):
+class BaseVideo:
+    def __init__(self):
+        self.tags_meta = {}
+        raise Exception()
+    def getMeta(self):
+        return self.tags_meta
+
+class Video(tkinter.Label, BaseVideo):
+    def __init__(self, root, file, meta, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
-        self.tags = tags
+        self.tags_meta = meta
         ffprocess = ffmpeg.getPPM_Stream(net.request_url(file))
         pil_img = PIL.Image.open(ffprocess.stdout)
         self.width = pil_img.width
@@ -264,11 +279,11 @@ class Video(tkinter.Label):
             self.play()
 
 
-class SpoilerVideo(Video):
-    def __init__(self, root, file, thumb_file, tags, **kwargs):
+class SpoilerVideo(Video, BaseVideo):
+    def __init__(self, root, file, thumb_file, meta, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
         self.file = file
-        self.tags = tags
+        self.tags_meta = meta
         ffprocess = ffmpeg.getPPM_Stream(net.request_url(thumb_file))
         default_image = PIL.Image.open(ffprocess.stdout)
         self.width = None
