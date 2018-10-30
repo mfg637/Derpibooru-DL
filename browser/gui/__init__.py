@@ -7,7 +7,7 @@ from . import ScrolledFrame, Images
 import PIL.Image
 import PIL.ImageTk
 from derpibooru_dl import parser, tagResponse
-from .. import net
+from .. import net, context
 import config
 import re
 
@@ -71,20 +71,22 @@ class GUI:
 		next_btn.pack(side='left')
 		self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 		self.checkbox_array = []
+		self.context = None
 		self.root.mainloop()
 
-	def __search(self):
+	def __page_rendering(self):
+		if context is None:
+			return None
 		Images.clear_video()
 		self.img_gallery_wrapper.to_start()
 		for widget in self.img_gallery_wrapper.interior.winfo_children():
 			widget.destroy()
 		self.page_count_field.delete(0, tkinter.END)
-		self.page_count_field.insert(0, str(net.page))
-		q = self.search_field.get()
-		if len(q):
-			self.data = net.get_page(q, key=config.key)
+		self.page_count_field.insert(0, str(self.context.getPageNumber()))
+		if (config.key):
+			self.data = self.context.makeRequest(key=config.key)
 		else:
-			self.data = net.get_page(key=config.key)
+			self.data = self.context.makeRequest(key=config.key)
 		self.parsed_tags = []
 		self.checkbox_array = []
 		i = 0
@@ -134,13 +136,18 @@ class GUI:
 			i += 1
 
 	def search(self, event = None):
-		net.page = 1
-		self.__search()
+		q = self.search_field.get()
+		if len(q):
+			self.context = context.Search(q)
+		else:
+			self.context = context.Images()
+		self.__page_rendering()
 
 	def next(self):
-		self.save()
-		net.page += 1
-		self.__search()
+		if isinstance(self.context, context.Context):
+			self.save()
+			self.context.next_page()
+			self.__page_rendering()
 
 	def save(self):
 		if len(self.checkbox_array):
@@ -150,9 +157,10 @@ class GUI:
 					parser.append2queue(outdir=out_dir, data=item.data, tags=item.tags)
 
 	def prev(self):
-		self.save()
-		net.page -= 1
-		self.__search()
+		if isinstance(self.context, context.Context):
+			self.save()
+			self.context.prev_page()
+			self.__page_rendering()
 
 	def on_close(self):
 		if parser.downloader_thread.isAlive():
@@ -163,9 +171,11 @@ class GUI:
 		self.save()
 		if unsigned_number_validate.search(self.page_count_field.get()) is not None:
 			page = int(re.search(r"\d+", self.page_count_field.get()).group(0))
-			if page != net.page or page==1:
-				net.page = page
-				self.__search()
+			if self.context is None or page != self.context.getPageNumber():
+				if not isinstance(self.context, context.Context):
+					self.context = context.Images()
+				self.context.go_to(page)
+				self.__page_rendering()
 		else:
 			tkinter.messagebox.showerror('Browser', "invalid page number")
 
