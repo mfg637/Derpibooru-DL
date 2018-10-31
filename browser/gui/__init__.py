@@ -31,8 +31,11 @@ class CustomCheckbox(tkinter.Checkbutton):
 
 
 class GUI:
-	def __init__(self):
-		self.root = tkinter.Tk()
+	def __init__(self, root=None, query=None):
+		if root is not None:
+			self.root = tkinter.Toplevel(root)
+		else:
+			self.root = tkinter.Tk()
 		self.root['bg']=BACKGROUND_COLOR
 		self.root.title("Derpibooru-browser")
 		self.root.geometry("1050x550")
@@ -46,6 +49,8 @@ class GUI:
 			command=self.search
 		)
 		search_btn.pack(side="left")
+		if root is None:
+			tkinter.ttk.Button(config_panel, text="New Window", command=self.__create_window).pack(side="left")
 		config_panel.pack(side="top")
 		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(
 			self.root,
@@ -72,7 +77,18 @@ class GUI:
 		self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 		self.checkbox_array = []
 		self.context = None
-		self.root.mainloop()
+		if type(query) is str:
+			if len(query):
+				self.context = context.Search(query)
+				self.search_field.delete(0, tkinter.END)
+				self.search_field.insert(0, query)
+				self.__page_rendering()
+			else:
+				self.context = context.Images()
+		self.root.bind("<FocusIn>", self.__focus)
+		self.root.bind("<FocusOut>", self.__unfocus)
+		if root is None:
+			self.root.mainloop()
 
 	def __page_rendering(self):
 		if context is None:
@@ -182,6 +198,15 @@ class GUI:
 	def showMeta(self, event):
 		TagList(self, event.widget.getMeta())
 
+	def __focus(self, event):
+		self.img_gallery_wrapper.rebind()
+	
+	def __unfocus(self, event):
+		self.img_gallery_wrapper.unbind_scroll()
+	
+	def __create_window(self):
+		GUI(self.root)
+
 class TagList:
 	def __init__(self, parent, meta):
 		self.parent = parent
@@ -194,25 +219,35 @@ class TagList:
 		id_btn.bind('<Button-1>', self.__copy_to_clipboard)
 		id_wrapper.pack(side="top")
 		list_wrapper = tkinter.Frame(self._root)
-		vscrollbar = tkinter.Scrollbar(list_wrapper, orient=tkinter.VERTICAL)
-		vscrollbar.pack(fill=tkinter.Y, side=tkinter.RIGHT, expand=tkinter.FALSE)
-		self._taglist = tkinter.Listbox(list_wrapper, yscrollcommand=vscrollbar.set, width = 20, height = 20)
+		self.vscrollbar = tkinter.Scrollbar(list_wrapper, orient=tkinter.VERTICAL)
+		self.vscrollbar.pack(fill=tkinter.Y, side=tkinter.RIGHT, expand=tkinter.FALSE)
+		self._taglist = tkinter.Listbox(
+			list_wrapper,
+			yscrollcommand=self.vscrollbar.set,
+			width = 20,
+			height = 20
+		)
 		self._taglist.pack()
 		list_wrapper.pack(side="top")
-		vscrollbar.config(command=self._taglist.yview)
+		self.vscrollbar.config(command=self._taglist.yview)
 		for tag in meta['tags'].split(', '):
 			self._taglist.insert(tkinter.END, tag)
 		self._taglist.bind("<Double-Button-1>", self.search)
+		self._root.bind("<FocusIn>", self.__focus)
 
 	def search(self, event = None):
-		self.parent.search_field.delete(0, tkinter.END)
-		self.parent.search_field.insert(0, 
-			self._taglist.get(tkinter.ACTIVE)
-		)
-		self.parent.search()
+		#self.parent.search_field.delete(0, tkinter.END)
+		#self.parent.search_field.insert(0, 
+		#	self._taglist.get(tkinter.ACTIVE)
+		#)
+		#self.parent.search()
+		GUI(self.parent.root, self._taglist.get(tkinter.ACTIVE))
 
 	def __copy_to_clipboard(self, event):
 		self._root.clipboard_clear()
 		self._root.clipboard_append(event.widget['text'])
 		self._root.update()
 		tkinter.messagebox.showinfo("Derpiboru-browser", "Image ID now in clipboard")
+	
+	def __focus(self, event):
+		self.vscrollbar.config(command=self._taglist.yview)

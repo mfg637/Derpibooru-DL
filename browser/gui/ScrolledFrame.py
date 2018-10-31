@@ -62,3 +62,16 @@ class VerticalScrolledFrame(Frame):
 		self.canvas.yview_scroll(1, "units")
 	def to_start(self):
 		self.canvas.yview_moveto(0)
+	def rebind(self):
+		if system() == 'Windows':
+			self.canvas.bind_all("<MouseWheel>", self._on_mousewheel)
+		else:
+			self.canvas.bind_all("<Button-4>", self._on_mousewheelb4)
+			self.canvas.bind_all("<Button-5>", self._on_mousewheelb5)
+
+	def unbind_scroll(self):
+		if system() == 'Windows':
+			self.canvas.unbind_all("<MouseWheel>")
+		else:
+			self.canvas.unbind_all("<Button-4>")
+			self.canvas.unbind_all("<Button-5>")
