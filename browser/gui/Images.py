@@ -130,7 +130,7 @@ class SpoilerImage(Image, BaseImage):
         else:
             tiny_thumbnail = tiny_thumbnail.resize((int(IMAGE_SIZE / tiny_thumbnail.height * tiny_thumbnail.width), IMAGE_SIZE))
         tiny_thumbnail = tiny_thumbnail.convert("RGB")
-        if normal_thumbnail.format == "GIF":
+        if normal_thumbnail.format == "GIF" and "duration" in normal_thumbnail.info:
             self.animated = True
             self.delay = normal_thumbnail.info["duration"]
             hover_img = tiny_thumbnail.copy()
