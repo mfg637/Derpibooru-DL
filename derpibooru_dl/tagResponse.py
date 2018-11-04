@@ -49,7 +49,8 @@ characters = set(
 		'princess skystar',
 		'limestone pie',
 		'autumn blaze',
-		'cozy glow'
+		'cozy glow',
+		'arizona cow'
 	]
 )
 
