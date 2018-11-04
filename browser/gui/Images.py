@@ -114,6 +114,10 @@ class Image(tkinter.Label, BaseImage):
             self.stop()
         else:
             self.play()
+    
+    def rebind(self):
+        if self.animated:
+            self.bind("<Button-1>", self.toggle_play_stop)
 
 
 class SpoilerImage(Image, BaseImage):
@@ -126,9 +130,13 @@ class SpoilerImage(Image, BaseImage):
         normal_thumbnail = PIL.Image.open(normal_thubnail_request)
         tiny_thumbnail = PIL.Image.open(tiny_thumbnail_request)
         if IMAGE_SIZE / tiny_thumbnail.width * tiny_thumbnail.height <= IMAGE_SIZE:
-            tiny_thumbnail = tiny_thumbnail.resize((IMAGE_SIZE, int(IMAGE_SIZE / tiny_thumbnail.width * tiny_thumbnail.height)))
+            tiny_thumbnail = tiny_thumbnail.resize(
+                (IMAGE_SIZE, int(IMAGE_SIZE / tiny_thumbnail.width * tiny_thumbnail.height))
+            )
         else:
-            tiny_thumbnail = tiny_thumbnail.resize((int(IMAGE_SIZE / tiny_thumbnail.height * tiny_thumbnail.width), IMAGE_SIZE))
+            tiny_thumbnail = tiny_thumbnail.resize(
+                (int(IMAGE_SIZE / tiny_thumbnail.height * tiny_thumbnail.width), IMAGE_SIZE)
+            )
         tiny_thumbnail = tiny_thumbnail.convert("RGB")
         if normal_thumbnail.format == "GIF" and "duration" in normal_thumbnail.info:
             self.animated = True
@@ -182,6 +190,12 @@ class SpoilerImage(Image, BaseImage):
     def __show_spoiler(self, event):
         if not self.is_playing:
             self["image"] = self.img_obj
+    
+    def rebind(self):
+        if self.animated:
+            self.bind("<Button-1>", self.toggle_play_stop)
+        self.bind("<Leave>", self.__show_spoiler)
+        self.bind("<Enter>", self.__mouse_enter)
 
 
 class BaseVideo:
@@ -277,6 +291,9 @@ class Video(tkinter.Label, BaseVideo):
             self.stop()
         else:
             self.play()
+    
+    def rebind(self):
+        self.bind("<Button-1>", self.toggle_play_stop)
 
 
 class SpoilerVideo(Video, BaseVideo):
@@ -289,9 +306,13 @@ class SpoilerVideo(Video, BaseVideo):
         self.width = None
         self.height = None
         if IMAGE_SIZE / default_image.width * default_image.height <= IMAGE_SIZE:
-            default_image = default_image.resize((IMAGE_SIZE, int(IMAGE_SIZE / default_image.width * default_image.height)))
+            default_image = default_image.resize(
+                (IMAGE_SIZE, int(IMAGE_SIZE / default_image.width * default_image.height))
+            )
         else:
-            default_image = default_image.resize((int(IMAGE_SIZE / default_image.height * default_image.width), IMAGE_SIZE))
+            default_image = default_image.resize(
+                (int(IMAGE_SIZE / default_image.height * default_image.width), IMAGE_SIZE)
+            )
         hover_image = default_image.copy()
         default_image = default_image.filter(PIL.ImageFilter.GaussianBlur(GAUSSIAN_BLUR_RADIUS))
         default_image.paste(
@@ -328,3 +349,7 @@ class SpoilerVideo(Video, BaseVideo):
         if not self.is_playing:
             self["image"] = self.thumb
 
+    def rebind(self):
+        self.bind("<Leave>", self.__show_spoiler)
+        self.bind("<Enter>", self.__mouse_enter)
+        self.bind("<Button-1>", self.toggle_play_stop)

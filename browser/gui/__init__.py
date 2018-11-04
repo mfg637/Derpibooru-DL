@@ -43,14 +43,17 @@ class GUI:
 		self.search_field = tkinter.Entry(config_panel)
 		self.search_field.pack(side="left")
 		self.search_field.bind("<Return>", self.search)
-		search_btn = tkinter.ttk.Button(
+		self.search_btn = tkinter.ttk.Button(
 			config_panel,
 			text="Search",
 			command=self.search
 		)
-		search_btn.pack(side="left")
+		self.search_btn.pack(side="left")
 		if root is None:
-			tkinter.ttk.Button(config_panel, text="New Window", command=self.__create_window).pack(side="left")
+			tkinter.ttk.Button(
+				config_panel,
+				text="New Window",
+				command=self.__create_window).pack(side="left")
 		config_panel.pack(side="top")
 		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(
 			self.root,
@@ -68,12 +71,12 @@ class GUI:
 		self.page_count_field.pack(side="left")
 		self.page_count_field.bind("<Return>", self.__goto)
 		self.page_count_field.bind("<KP_Enter>", self.__goto)
-		goto_btn = tkinter.ttk.Button(nav_panel, text="go to", command=self.__goto)
-		goto_btn.pack(side="left")
-		prev_btn = tkinter.ttk.Button(nav_panel, text="prev", command=self.prev)
-		prev_btn.pack(side="left")
-		next_btn = tkinter.ttk.Button(nav_panel, text="next", command=self.next)
-		next_btn.pack(side='left')
+		self.goto_btn = tkinter.ttk.Button(nav_panel, text="go to", command=self.__goto)
+		self.goto_btn.pack(side="left")
+		self.prev_btn = tkinter.ttk.Button(nav_panel, text="prev", command=self.prev)
+		self.prev_btn.pack(side="left")
+		self.next_btn = tkinter.ttk.Button(nav_panel, text="next", command=self.next)
+		self.next_btn.pack(side='left')
 		self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 		self.checkbox_array = []
 		self.context = None
@@ -179,6 +182,7 @@ class GUI:
 			self.__page_rendering()
 
 	def on_close(self):
+		Images.clear_video()
 		if parser.downloader_thread.isAlive():
 			parser.downloader_thread.join()
 		self.root.destroy()
@@ -200,6 +204,16 @@ class GUI:
 
 	def __focus(self, event):
 		self.img_gallery_wrapper.rebind()
+		self.search_field.bind("<Return>", self.search)
+		self.search_btn['command'] = self.search
+		self.page_count_field.bind("<Return>", self.__goto)
+		self.page_count_field.bind("<KP_Enter>", self.__goto)
+		self.goto_btn['command'] = self.__goto
+		self.prev_btn['command'] = self.prev
+		self.next_btn['command'] = self.next
+		for widget in self.img_gallery_wrapper.interior.winfo_children():
+			if isinstance(widget, (Images.BaseImage, Images.BaseVideo)):
+				widget.rebind()
 	
 	def __unfocus(self, event):
 		self.img_gallery_wrapper.unbind_scroll()
