@@ -151,22 +151,23 @@ def tagIndex(rawtags:str):
 		'content': indexed_content}
 
 def find_folder(parsed_tags:dict):
-	outdir=''
-	if len(parsed_tags['original character']):
-		outdir=os.path.join(initial_dir, 'oc')
-	elif 'cutie mark crusaders' in parsed_tags['characters']:
-		outdir=os.path.join(initial_dir, 'cmc')
-	elif len(parsed_tags['characters'])==1:
-		outdir=os.path.join(initial_dir, list(parsed_tags['characters'])[0])
-	elif 'shipping' in parsed_tags['category']:
-		outdir=os.path.join(initial_dir, 'shipping')
-	else:
-		outdir=initial_dir
+	outdir=initial_dir
+	# rules for /h/* folders
 	if 'suggestive' in parsed_tags['category']:
 		outdir=os.path.join(outdir, 'h')
 	elif set(['questionable', 'explicit']) & parsed_tags['category']:
 		outdir=os.path.join(outdir, 'h', 'c')
-	elif set(['anthro', 'humanisation', 'semi-anthro']) & parsed_tags['art_style']:
+	# rules for characters
+	if len(parsed_tags['original character']):
+		outdir=os.path.join(outdir, 'oc')
+	elif 'cutie mark crusaders' in parsed_tags['characters']:
+		outdir=os.path.join(outdir, 'cmc')
+	elif len(parsed_tags['characters'])==1:
+		outdir=os.path.join(outdir, list(parsed_tags['characters'])[0])
+	elif 'shipping' in parsed_tags['category']:
+		outdir=os.path.join(outdir, 'shipping')
+	# rules for subfolders
+	if set(['anthro', 'humanisation', 'semi-anthro']) & parsed_tags['art_style']:
 		outdir=os.path.join(outdir, 'antro')
 	elif set(['horse', 'hoers', 'realistic anatomy']) & parsed_tags['art_style']:
 		outdir=os.path.join(outdir, 'horse')
