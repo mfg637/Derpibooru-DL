@@ -152,11 +152,9 @@ def tagIndex(rawtags:str):
 
 def find_folder(parsed_tags:dict):
 	outdir=initial_dir
-	# rules for /h/* folders
-	if 'suggestive' in parsed_tags['category']:
+	# rules for /h/ folder
+	if set(['suggestive', 'questionable', 'explicit']) & parsed_tags['category']:
 		outdir=os.path.join(outdir, 'h')
-	elif set(['questionable', 'explicit']) & parsed_tags['category']:
-		outdir=os.path.join(outdir, 'h', 'c')
 	# rules for characters
 	if len(parsed_tags['original character']):
 		outdir=os.path.join(outdir, 'oc')
@@ -167,7 +165,9 @@ def find_folder(parsed_tags:dict):
 	elif 'shipping' in parsed_tags['category']:
 		outdir=os.path.join(outdir, 'shipping')
 	# rules for subfolders
-	if set(['anthro', 'humanisation', 'semi-anthro']) & parsed_tags['art_style']:
+	if set(['questionable', 'explicit']) & parsed_tags['category']:
+		outdir=os.path.join(outdir, 'c')
+	elif set(['anthro', 'humanisation', 'semi-anthro']) & parsed_tags['art_style']:
 		outdir=os.path.join(outdir, 'antro')
 	elif set(['horse', 'hoers', 'realistic anatomy']) & parsed_tags['art_style']:
 		outdir=os.path.join(outdir, 'horse')
