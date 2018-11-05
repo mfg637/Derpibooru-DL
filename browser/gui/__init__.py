@@ -34,8 +34,10 @@ class GUI:
 	def __init__(self, root=None, query=None):
 		if root is not None:
 			self.root = tkinter.Toplevel(root)
+			self._main = False
 		else:
 			self.root = tkinter.Tk()
+			self._main = True
 		self.root['bg']=BACKGROUND_COLOR
 		self.root.title("Derpibooru-browser")
 		self.root.geometry("1050x550")
@@ -185,6 +187,8 @@ class GUI:
 		Images.clear_video()
 		if parser.downloader_thread.isAlive():
 			parser.downloader_thread.join()
+		if self._main:
+			net.clearCache()
 		self.root.destroy()
 	
 	def __goto(self, event = None):

@@ -3,13 +3,37 @@
 import json
 import urllib.request
 import urllib.parse
+import io
+import random
+import os
+import sys
 
 page = 1
 items_per_page = 15
+cache = dict()
 
+def CachedRequest(url, *args, **kwargs):
+    if url not in cache:
+        filename = ""
+        for x in range(16):
+            filename += random.choice("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789")
+        req_t = urllib.request.urlopen(url, *args, **kwargs)
+        cachefile = open(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename), 'bw')
+        cachefile.write(req_t.read())
+        req_t.close()
+        cachefile.close()
+        cache.update([[url, os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename)]])
+    return open(cache[url], 'br')
+
+
+def clearCache():
+    for url in cache:
+        os.remove(cache[url])
 
 def request_url(page_name, **kwargs):
     url = "https:{}".format(page_name)
+    if url[-5:] != ".json":
+        return cache[url]
     if kwargs:
         url += "?"
         url += urllib.parse.urlencode(kwargs)
@@ -18,6 +42,8 @@ def request_url(page_name, **kwargs):
 
 def request(page_name, **kwargs):
     url = "https:{}".format(page_name)
+    if url[-5:] != ".json":
+        return CachedRequest(url)
     if kwargs:
         url += "?"
         url += urllib.parse.urlencode(kwargs)
