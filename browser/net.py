@@ -12,6 +12,9 @@ page = 1
 items_per_page = 15
 cache = dict()
 
+if not os.path.isdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache")):
+    os.mkdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache"))
+
 def CachedRequest(url, *args, **kwargs):
     if url not in cache:
         filename = ""
