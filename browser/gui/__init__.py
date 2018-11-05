@@ -11,6 +11,7 @@ from .. import net, context
 import config
 import re
 
+STATIC_IMAGE_FORMATS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 unsigned_number_validate = re.compile(r"^\s*\d+\s*$")
 BACKGROUND_COLOR = '#ececec'
 
@@ -123,7 +124,7 @@ class GUI:
 			self.checkbox_array[-1].grid(row=i // 4 * 2, column=i % 4)
 			imglabel = None
 			if {"safe", "suggestive"} & parsed_tags["category"]:
-				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+				if elem["original_format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.Image(
 						self.img_gallery_wrapper.interior,
 						file=elem["representations"]["thumb"],
@@ -136,7 +137,7 @@ class GUI:
 						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			else:
-				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+				if elem["original_format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.SpoilerImage(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb_tiny"],
