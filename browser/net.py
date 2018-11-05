@@ -15,8 +15,7 @@ cache = dict()
 if not os.path.isdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache")):
     os.mkdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache"))
 
-def CachedRequest(url, *args, **kwargs):
-    if url not in cache:
+def load_file(url, *args, **kwargs):
         filename = ""
         for x in range(16):
             filename += random.choice("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789")
@@ -26,6 +25,12 @@ def CachedRequest(url, *args, **kwargs):
         req_t.close()
         cachefile.close()
         cache.update([[url, os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename)]])
+        return filename
+
+
+def CachedRequest(url, *args, **kwargs):
+    if url not in cache:
+        load_file(url, *args, **kwargs)
     return open(cache[url], 'br')
 
 
@@ -36,7 +41,11 @@ def clearCache():
 def request_url(page_name, **kwargs):
     url = "https:{}".format(page_name)
     if url[-5:] != ".json":
-        return cache[url]
+        try:
+            return cache[url]
+        except KeyError as e:
+            load_file(url)
+            return cache[url]
     if kwargs:
         url += "?"
         url += urllib.parse.urlencode(kwargs)
