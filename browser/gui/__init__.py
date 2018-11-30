@@ -11,6 +11,7 @@ from .. import net, context
 import config
 import re
 
+STATIC_IMAGE_FORMATS = {'png', 'jpg', 'jpeg', 'gif', 'svg'}
 unsigned_number_validate = re.compile(r"^\s*\d+\s*$")
 BACKGROUND_COLOR = '#ececec'
 
@@ -34,8 +35,10 @@ class GUI:
 	def __init__(self, root=None, query=None):
 		if root is not None:
 			self.root = tkinter.Toplevel(root)
+			self._main = False
 		else:
 			self.root = tkinter.Tk()
+			self._main = True
 		self.root['bg']=BACKGROUND_COLOR
 		self.root.title("Derpibooru-browser")
 		self.root.geometry("1050x550")
@@ -54,7 +57,6 @@ class GUI:
 				config_panel,
 				text="New Window",
 				command=self.__create_window).pack(side="left")
-		self._main_window = root is None
 		config_panel.pack(side="top")
 		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(
 			self.root,
@@ -122,7 +124,7 @@ class GUI:
 			self.checkbox_array[-1].grid(row=i // 4 * 2, column=i % 4)
 			imglabel = None
 			if {"safe", "suggestive"} & parsed_tags["category"]:
-				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+				if elem["original_format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.Image(
 						self.img_gallery_wrapper.interior,
 						file=elem["representations"]["thumb"],
@@ -135,7 +137,7 @@ class GUI:
 						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			else:
-				if elem["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+				if elem["original_format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.SpoilerImage(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb_tiny"],
@@ -185,8 +187,10 @@ class GUI:
 	def on_close(self):
 		Images.clear_video()
 		self.save()
-		if self._main_window and parser.downloader_thread.isAlive():
-			parser.downloader_thread.join()
+		if self._main:
+			net.clearCache()
+			if parser.downloader_thread.isAlive():
+				parser.downloader_thread.join()
 		self.root.destroy()
 	
 	def __goto(self, event = None):
