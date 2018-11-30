@@ -54,6 +54,7 @@ class GUI:
 				config_panel,
 				text="New Window",
 				command=self.__create_window).pack(side="left")
+		self._main_window = root is None
 		config_panel.pack(side="top")
 		self.img_gallery_wrapper = ScrolledFrame.VerticalScrolledFrame(
 			self.root,
@@ -183,7 +184,8 @@ class GUI:
 
 	def on_close(self):
 		Images.clear_video()
-		if parser.downloader_thread.isAlive():
+		self.save()
+		if self._main_window and parser.downloader_thread.isAlive():
 			parser.downloader_thread.join()
 		self.root.destroy()
 	
