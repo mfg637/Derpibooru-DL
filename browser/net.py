@@ -7,6 +7,7 @@ import io
 import random
 import os
 import sys
+import pathlib
 
 page = 1
 items_per_page = 15
@@ -23,11 +24,9 @@ def load_file(url, *args, **kwargs):
         try:
             cachefile = open(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename), 'bw')
         except FileNotFoundError:
-            if os.path.exists(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache")):
-                os.mkdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache"))
-            else:
-                os.mknod(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename))
-                cachefile = open(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename), 'bw')
+            fpath = pathlib.PurePath(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename)
+            print(fpath)
+            cachefile = open(fpath, 'bw')
         cachefile.write(req_t.read())
         req_t.close()
         cachefile.close()
@@ -36,7 +35,7 @@ def load_file(url, *args, **kwargs):
 
 
 def CachedRequest(url, *args, **kwargs):
-    if url not in cache:
+    if url not in cache or not os.path.exists(cache[url]):
         load_file(url, *args, **kwargs)
     return open(cache[url], 'br')
 
