@@ -39,6 +39,7 @@ class Image(tkinter.Label, BaseImage):
         self.file = file
         request_obj = net.request(file)
         image = PIL.Image.open(request_obj)
+        self.animated = False
         if image.format == "GIF" and ("duration" in image.info):
             self.animated = True
             self.delay = image.info["duration"]
@@ -52,7 +53,6 @@ class Image(tkinter.Label, BaseImage):
             img.close()
             self.bind("<Button-1>", self.toggle_play_stop)
         else:
-            self.animated = False
             self.img_obj = PIL.ImageTk.PhotoImage(image)
         self.width = image.width
         self.height = image.height
