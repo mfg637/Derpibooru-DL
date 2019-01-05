@@ -3,34 +3,29 @@
 import json
 import urllib.request
 import urllib.parse
-import io
 import random
 import os
 import sys
-import pathlib
 
 page = 1
 items_per_page = 15
 cache = dict()
+app_dir = os.path.realpath(os.path.dirname(sys.argv[0]))
 
-if not os.path.isdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache")):
-    os.mkdir(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache"))
+if not os.path.isdir(os.path.join(app_dir,"browser", "tmpcache")):
+    os.mkdir(os.path.join(app_dir,"browser", "tmpcache"))
 
 def load_file(url, *args, **kwargs):
+        global cache
         filename = ""
         for x in range(16):
             filename += random.choice("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789")
         req_t = urllib.request.urlopen(url, *args, **kwargs)
-        try:
-            cachefile = open(os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename), 'bw')
-        except FileNotFoundError:
-            fpath = pathlib.PurePath(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename)
-            print(fpath)
-            cachefile = open(fpath, 'bw')
+        cachefile = open(os.path.join(app_dir,"browser", "tmpcache", filename), 'bw')
         cachefile.write(req_t.read())
         req_t.close()
         cachefile.close()
-        cache.update([[url, os.path.join(os.path.dirname(sys.argv[0]),"browser", "tmpcache", filename)]])
+        cache.update([[url, os.path.join(app_dir, "browser", "tmpcache", filename)]])
         return filename
 
 
