@@ -4,8 +4,9 @@
 import browser
 import config
 
-browser.gui.GUI()
-
-if config.enable_images_optimisations:
-    import derpibooru_dl.imgOptimizer
-    derpibooru_dl.imgOptimizer.printStats()
+try:
+    browser.gui.GUI()
+finally:
+    if config.enable_images_optimisations:
+        import derpibooru_dl.imgOptimizer
+        derpibooru_dl.imgOptimizer.printStats()
