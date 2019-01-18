@@ -74,6 +74,10 @@ class GUI:
 		self.page_count_field.pack(side="left")
 		self.page_count_field.bind("<Return>", self.__goto)
 		self.page_count_field.bind("<KP_Enter>", self.__goto)
+		self._of_text_label = tkinter.Label(nav_panel, bg=BACKGROUND_COLOR)
+		self._of_text_label.pack(side="left")
+		self._page_count_label = tkinter.Label(nav_panel, bg=BACKGROUND_COLOR)
+		self._page_count_label.pack(side="left")
 		self.goto_btn = tkinter.ttk.Button(nav_panel, text="go to", command=self.__goto)
 		self.goto_btn.pack(side="left")
 		self.prev_btn = tkinter.ttk.Button(nav_panel, text="prev", command=self.prev)
@@ -156,6 +160,13 @@ class GUI:
 			imglabel.bind("<Button-3>", self.showMeta)
 			imglabel.update_idletasks()
 			i += 1
+		total_pages = self.context.getTotalPages()
+		if total_pages is None:
+			self._of_text_label['text'] = ''
+			self._page_count_label['text'] = ''
+		else:
+			self._of_text_label['text'] = ' of'
+			self._page_count_label['text'] = str(total_pages)
 
 	def search(self, event = None):
 		q = self.search_field.get()

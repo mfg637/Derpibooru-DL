@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*- 
 
 from . import net
+from math import ceil
 
 class Context:
 	def __init__(self):
@@ -20,6 +21,8 @@ class Context:
 		raise NotImplementedError
 	def getPageNumber(self):
 		return self.page
+	def getTotalPages(self):
+		return None
 
 
 class Images(Context):
@@ -33,5 +36,13 @@ class Search(Context):
 	def __init__(self, query):
 		self.page = 1
 		self.query = query
+		self._items_per_page = None
+		self._total_items = 0
 	def makeRequest(self, **kwargs):
-		return net.parse_json("search.json", q=self.query, page=self.page, **kwargs)["search"]
+		data = net.parse_json("search.json", q=self.query, page=self.page, **kwargs)
+		if self._items_per_page is None:
+			self._items_per_page = len(data["search"])
+		self._total_items = data["total"]
+		return data['search']
+	def getTotalPages(self):
+		return ceil(self._total_items/self._items_per_page)
