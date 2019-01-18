@@ -109,10 +109,17 @@ class GUI:
 			widget.destroy()
 		self.page_count_field.delete(0, tkinter.END)
 		self.page_count_field.insert(0, str(self.context.getPageNumber()))
-		if (config.key):
-			self.data = self.context.makeRequest(key=config.key)
-		else:
-			self.data = self.context.makeRequest(key=config.key)
+		try:
+			if (config.key):
+				self.data = self.context.makeRequest(key=config.key)
+			else:
+				self.data = self.context.makeRequest(key=config.key)
+		except EOFError:
+			tkinter.messagebox.showerror('EOFError', "end of images")
+			return None
+		except Exception as e:
+			tkinter.messagebox.showerror('Exception', str(e))
+			return None
 		self.parsed_tags = []
 		self.checkbox_array = []
 		i = 0
