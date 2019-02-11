@@ -64,8 +64,8 @@ class GUI:
 			height=480,
 			background=BACKGROUND_COLOR
 		)
-		self.img_gallery_wrapper.interior['width'] = 1024
-		self.img_gallery_wrapper.interior['height'] = 480
+		#self.img_gallery_wrapper.interior['width'] = 1025
+		#self.img_gallery_wrapper.interior['height'] = 480
 		self.img_gallery_wrapper.pack(side="top")
 		nav_panel = tkinter.Frame(self.root, bg=BACKGROUND_COLOR)
 		nav_panel.pack(side="top")
@@ -87,6 +87,8 @@ class GUI:
 		self.root.protocol("WM_DELETE_WINDOW", self.on_close)
 		self.checkbox_array = []
 		self.context = None
+		self.width = 1050
+		self.height = 550
 		if type(query) is str:
 			if len(query):
 				self.context = context.Search(query)
@@ -97,10 +99,22 @@ class GUI:
 				self.context = context.Images()
 		self.root.bind("<FocusIn>", self.__focus)
 		self.root.bind("<FocusOut>", self.__unfocus)
+		self.root.bind("<Configure>", self.on_resize)
 		if root is None:
 			self.root.mainloop()
+	
+	def on_resize(self, event):
+		if event.widget == self.root and (self.width != event.width or self.height != event.height):
+			self.width  = event.width
+			self.height = event.height
+			self.img_gallery_wrapper['width'] = self.width
+			self.img_gallery_wrapper['height'] = self.height - 70
+			self.img_gallery_wrapper.resize(self.width, self.height - 70)
+			self.img_gallery_wrapper.interior['width'] = self.width - 25
+			self.img_gallery_wrapper.interior['height'] = self.height - 70
+			self.__page_rendering(reflesh=False)
 
-	def __page_rendering(self):
+	def __page_rendering(self, reflesh=True):
 		if context is None:
 			return None
 		Images.clear_video()
@@ -108,21 +122,29 @@ class GUI:
 		for widget in self.img_gallery_wrapper.interior.winfo_children():
 			widget.destroy()
 		self.page_count_field.delete(0, tkinter.END)
-		self.page_count_field.insert(0, str(self.context.getPageNumber()))
 		try:
-			if (config.key):
-				self.data = self.context.makeRequest(key=config.key)
+			self.page_count_field.insert(0, str(self.context.getPageNumber()))
+		except AttributeError as e:
+			if reflesh:
+				raise e
 			else:
-				self.data = self.context.makeRequest(key=config.key)
-		except EOFError:
-			tkinter.messagebox.showerror('EOFError', "end of images")
-			return None
-		except Exception as e:
-			tkinter.messagebox.showerror('Exception', str(e))
-			return None
+				return
+		if reflesh:
+			try:
+				if (config.key):
+					self.data = self.context.makeRequest(key=config.key)
+				else:
+					self.data = self.context.makeRequest(key=config.key)
+			except EOFError:
+				tkinter.messagebox.showerror('EOFError', "end of images")
+				return None
+			except Exception as e:
+				tkinter.messagebox.showerror('Exception', str(e))
+				return None
 		self.parsed_tags = []
 		self.checkbox_array = []
 		i = 0
+		elemWidth = (self.width - 25)//250
 		for elem in self.data:
 			parsed_tags = tagResponse.tagIndex(elem['tags'])
 			self.checkbox_array.append(
@@ -132,7 +154,7 @@ class GUI:
 					parsed_tags,
 				)
 			)
-			self.checkbox_array[-1].grid(row=i // 4 * 2, column=i % 4)
+			self.checkbox_array[-1].grid(row=i // elemWidth * 2, column=i % elemWidth)
 			imglabel = None
 			if {"safe", "suggestive"} & parsed_tags["category"]:
 				if elem["original_format"] in STATIC_IMAGE_FORMATS:
@@ -163,7 +185,7 @@ class GUI:
 						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			imglabel['background']=BACKGROUND_COLOR
-			imglabel.grid(row=i // 4 * 2+1, column=i % 4)
+			imglabel.grid(row=i // elemWidth * 2+1, column=i % elemWidth)
 			imglabel.bind("<Button-3>", self.showMeta)
 			imglabel.update_idletasks()
 			i += 1
