@@ -57,12 +57,16 @@ def download(outdir, data, tags=None):
 			data["original_format"]))
 	if config.enable_images_optimisations and \
 		data["original_format"] in set(['png', 'jpg', 'jpeg', 'gif']):
-		if not os.path.isfile(filename) and \
-			not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
-				data["id"],
-				re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
-				imgOptimizer.getExt[data["original_format"]]
-		))):
+		if not os.path.isfile(filename) and (
+				('file_name' in data and data['file_name'] is not None and \
+					(not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
+						data["id"],
+						re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
+						imgOptimizer.getExt[data["original_format"]])))
+				))
+				or (not os.path.isfile(os.path.join(outdir, "{}.{}".format(
+					data["id"], imgOptimizer.getExt[data["original_format"]]))))
+			):
 			print(filename)
 			print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
 			urlstream=urllib.request.urlopen(
@@ -72,11 +76,11 @@ def download(outdir, data, tags=None):
 			file.write(urlstream.read())
 			urlstream.close()
 			file.close()
-		if not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
+		if ('file_name' in data and data['file_name'] is not None) and \
+				(not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
 				data["id"],
 				re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
-				imgOptimizer.getExt[data["original_format"]]
-		))):
+				imgOptimizer.getExt[data["original_format"]])))):
 			imgOptimizer.transcode(
 				filename,
 				outdir,
@@ -84,6 +88,15 @@ def download(outdir, data, tags=None):
 					data["id"],
 					re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
 				),
+				tags
+			)
+		elif not os.path.isfile(os.path.join(outdir, "{}.{}".format(
+				data["id"],
+				imgOptimizer.getExt[data["original_format"]]))):
+			imgOptimizer.transcode(
+				filename,
+				outdir,
+				str(data["id"]),
 				tags
 			)
 	else:
