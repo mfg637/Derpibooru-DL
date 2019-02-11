@@ -163,7 +163,10 @@ def transcode(source, path, filename, data):
                     ratio=math.ceil(ratio//2)
     elif os.path.splitext(source)[1].lower() in set(['.jpg', '.jpeg']):
         quality=100
-        if is_arithmetic_jpg(source):
+        try:
+            if is_arithmetic_jpg(source):
+                return None
+        except OSError:
             return None
         #if 'Make' in img_metadata[0] and 'Model' in img_metadata[0]:
         meta_copy = 'all'
