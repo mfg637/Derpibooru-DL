@@ -12,7 +12,7 @@ import subprocess
 
 play_watermark = PIL.Image.open(os.path.dirname(sys.argv[0]) + "/browser/images/play_watermark.png").convert("RGBA")
 playing_instance = None
-GAUSSIAN_BLUR_RADIUS = 10
+GAUSSIAN_BLUR_RADIUS = 25
 IMAGE_SIZE =250
 
 
