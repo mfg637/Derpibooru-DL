@@ -90,22 +90,29 @@ def transcode(source, path, filename, data):
                     lossless=False
         else:
             lossless=False
-        if (img.width>MAX_SIZE) | (img.height>MAX_SIZE):
-            if img.width>img.height:
-                tmpimg=img.resize(
-                    (MAX_SIZE, int(round(MAX_SIZE/(img.width/float(img.height)), 0))),
-                    Image.LANCZOS
-                )
-            elif img.width<img.height:
-                tmpimg=img.resize(
-                    (int(round(MAX_SIZE*(img.width/float(img.height)), 0)), MAX_SIZE),
-                    Image.LANCZOS
-                )
+        try:
+            if (img.width>MAX_SIZE) | (img.height>MAX_SIZE):
+                if img.width>img.height:
+                    tmpimg=img.resize(
+                        (MAX_SIZE, int(round(MAX_SIZE/(img.width/float(img.height)), 0))),
+                        Image.LANCZOS
+                    )
+                elif img.width<img.height:
+                    tmpimg=img.resize(
+                        (int(round(MAX_SIZE*(img.width/float(img.height)), 0)), MAX_SIZE),
+                        Image.LANCZOS
+                    )
+                else:
+                    tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
+                infile='/tmp/'+filename+'.png'
+                print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
+                tmpimg.save(infile)
             else:
-                tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-            infile='/tmp/'+filename+'.png'
-            print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
-            tmpimg.save(infile)
+                img.load()
+        except OSError as e:
+            print('invalid file '+source+' ({})'.format(e))
+            os.remove(source)
+            return
         img.close()
         ratio=80
         if 'vector' in data['art_type']:
