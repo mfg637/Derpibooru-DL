@@ -27,7 +27,7 @@ class GUI:
 		self._progressbar.pack()
 
 		self._data=[]
-		self._root.after(60000, self.au_dl)
+		self._autodl_timer = self._root.after(60000, self.au_dl)
 
 		self._root.mainloop()
 	def add(self):
@@ -36,6 +36,7 @@ class GUI:
 		self.dl_process=threading.Thread(target=self.download)
 		self.dl_process.start()
 	def download(self):
+		self._root.after_cancel(self._autodl_timer)
 		self._add_btn['state']=DISABLED
 		self._dl_btn['state']=DISABLED
 		id_list=self._list.get(0, END)
@@ -53,8 +54,8 @@ class GUI:
 			parser.download(outdir, data, parsed_tags)
 			self._progressbar.step()
 		self._dl_btn['state']=NORMAL
+		self._autodl_timer = self._root.after(60000, self.au_dl)
 	def au_dl(self):
 		if self._list.size():
 			self.dl_process=threading.Thread(target=self.download)
 			self.dl_process.start()
-		self._root.after(60000, self.au_dl)
