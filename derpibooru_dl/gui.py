@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 
-import os, threading
+import os, threading, multiprocessing
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
 from . import parser, tagResponse
@@ -51,11 +51,13 @@ class GUI:
 			outdir=tagResponse.find_folder(parsed_tags)
 			if not os.path.isdir(outdir):
 				os.makedirs(outdir)
-			parser.download(outdir, data, parsed_tags)
+			process = multiprocessing.Process(target=parser.download, args=((outdir, data, parsed_tags)))
+			process.start()
+			process.join()
 			self._progressbar.step()
+			self._progressbar.update_idletasks()
 		self._dl_btn['state']=NORMAL
 		self._autodl_timer = self._root.after(60000, self.au_dl)
 	def au_dl(self):
 		if self._list.size():
-			self.dl_process=threading.Thread(target=self.download)
-			self.dl_process.start()
+			self.start_downloader()
