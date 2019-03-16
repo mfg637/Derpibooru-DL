@@ -25,17 +25,17 @@ class GUI:
 		self._dl_btn.pack(side="top")
 
 		self._data=[]
-		self._autodl_timer = self._root.after(60000, self.au_dl)
 		self.dl_process = None
 
 		self._root.mainloop()
 	def add(self):
-		self._list.insert(0, parser.get_ID_by_URL(self._root.clipboard_get()))
+		self._list.insert(END, parser.get_ID_by_URL(self._root.clipboard_get()))
+		if (self.dl_process is None) or (not self.dl_process.is_alive()):
+			self.start_downloader()
 	def start_downloader(self):
 		self.dl_process=threading.Thread(target=self.download)
 		self.dl_process.start()
 	def download(self):
-		self._root.after_cancel(self._autodl_timer)
 		self._dl_btn['state']=DISABLED
 		pipe = multiprocessing.Pipe()
 		while self._list.size()>0:
@@ -50,7 +50,3 @@ class GUI:
 			process.start()
 			process.join()
 		self._dl_btn['state']=NORMAL
-		self._autodl_timer = self._root.after(60000, self.au_dl)
-	def au_dl(self):
-		if self._list.size():
-			self.start_downloader()
