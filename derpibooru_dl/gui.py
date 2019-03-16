@@ -23,11 +23,10 @@ class GUI:
 		self._add_btn.pack(side="top")
 		self._dl_btn = Button(self._root, text="download", command=self.start_downloader)
 		self._dl_btn.pack(side="top")
-		self._progressbar = ttk.Progressbar(self._root, orient="horizontal", length=175)
-		self._progressbar.pack()
 
 		self._data=[]
 		self._autodl_timer = self._root.after(60000, self.au_dl)
+		self.dl_process = None
 
 		self._root.mainloop()
 	def add(self):
@@ -37,15 +36,11 @@ class GUI:
 		self.dl_process.start()
 	def download(self):
 		self._root.after_cancel(self._autodl_timer)
-		self._add_btn['state']=DISABLED
 		self._dl_btn['state']=DISABLED
-		id_list=self._list.get(0, END)
-		self._list.delete(0, END)
-		self._add_btn['state']=NORMAL
-		self._progressbar['maximum']=len(id_list)
-		self._progressbar['value']=0
-		for id in id_list:
-			print('open connection')
+		pipe = multiprocessing.Pipe()
+		while self._list.size()>0:
+			id = self._list.get(0)
+			self._list.delete(0)
 			data=parser.parseJSON(id)
 			parsed_tags=tagResponse.tagIndex(data['tags'])
 			outdir=tagResponse.find_folder(parsed_tags)
@@ -54,8 +49,6 @@ class GUI:
 			process = multiprocessing.Process(target=parser.download, args=((outdir, data, parsed_tags)))
 			process.start()
 			process.join()
-			self._progressbar.step()
-			self._progressbar.update_idletasks()
 		self._dl_btn['state']=NORMAL
 		self._autodl_timer = self._root.after(60000, self.au_dl)
 	def au_dl(self):
