@@ -21,7 +21,7 @@ def get_ID_by_URL(URL:str):
 
 
 def parseJSON(id:str):
-	print('https://derpibooru.org/'+id+'.json')
+	print("parseJSON", 'https://derpibooru.org/'+id+'.json')
 	urlstream=urllib.request.urlopen('https://derpibooru.org/'+id+'.json')
 	rawdata=urlstream.read()
 	urlstream.close()
@@ -67,7 +67,7 @@ def download(outdir, data, tags=None, pipe=None):
 				or (not os.path.isfile(os.path.join(outdir, "{}.{}".format(
 					data["id"], imgOptimizer.getExt[data["original_format"]]))))
 			):
-			print(filename)
+			print("filename", filename)
 			print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
 			urlstream=urllib.request.urlopen(
 				'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
@@ -106,7 +106,7 @@ def download(outdir, data, tags=None, pipe=None):
 			pipe.close()
 	else:
 		if not os.path.isfile(filename):
-			print(filename)
+			print("filename", filename)
 			print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
 			urlstream=urllib.request.urlopen(
 				'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]

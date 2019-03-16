@@ -22,9 +22,9 @@ for id in id_list:
 	data=parser.parseJSON(id)
 
 	parsed_tags=tagResponse.tagIndex(data['tags'])
-	print(parsed_tags)
+	print("parsed tags", parsed_tags)
 	outdir=tagResponse.find_folder(parsed_tags)
-	print(outdir)
+	print("outdir", outdir)
 
 	if not os.path.isdir(outdir):
 		os.makedirs(outdir)
