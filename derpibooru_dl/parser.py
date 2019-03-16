@@ -45,7 +45,7 @@ def async_downloader():
 		download(**current_download)
 
 
-def download(outdir, data, tags=None):
+def download(outdir, data, tags=None, pipe=None):
 	if not os.path.isdir(outdir):
 		os.makedirs(outdir)
 	if 'file_name' in data and data['file_name'] is not None:
@@ -88,7 +88,8 @@ def download(outdir, data, tags=None):
 					data["id"],
 					re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
 				),
-				tags
+				tags,
+				pipe
 			)
 		elif not os.path.isfile(os.path.join(outdir, "{}.{}".format(
 				data["id"],
@@ -97,8 +98,12 @@ def download(outdir, data, tags=None):
 				filename,
 				outdir,
 				str(data["id"]),
-				tags
+				tags,
+				pipe
 			)
+		elif pipe is not None:
+			pipe.send((0,0,0,0))
+			pipe.close()
 	else:
 		if not os.path.isfile(filename):
 			print(filename)

@@ -4,7 +4,7 @@
 import os, threading, multiprocessing
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
-from . import parser, tagResponse
+from . import parser, tagResponse, imgOptimizer
 
 class GUI:
 	def __init__(self):
@@ -46,7 +46,8 @@ class GUI:
 			outdir=tagResponse.find_folder(parsed_tags)
 			if not os.path.isdir(outdir):
 				os.makedirs(outdir)
-			process = multiprocessing.Process(target=parser.download, args=((outdir, data, parsed_tags)))
+			process = multiprocessing.Process(target=parser.download, args=((outdir, data, parsed_tags, pipe[1])))
 			process.start()
+			imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
 			process.join()
 		self._dl_btn['state']=NORMAL

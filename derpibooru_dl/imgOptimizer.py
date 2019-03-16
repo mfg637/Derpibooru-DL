@@ -182,7 +182,7 @@ def is_arithmetic_jpg(file_path):
     file.close()
     return None
 
-def transcode(source, path, filename, data):
+def transcode(source, path, filename, data, pipe):
     global sumos
     global sumsize
     global avq
@@ -212,6 +212,9 @@ def transcode(source, path, filename, data):
         else:
             img = Image.open(source)
             if img.mode in set(['1', 'P']):
+                if pipe is not None:
+                    pipe.send((sumos, sumsize, avq, items))
+                    pipe.close()
                 return None
             if img.mode=='RGBA':
                 alpha_histogram = img.histogram()[768:]
@@ -249,6 +252,9 @@ def transcode(source, path, filename, data):
             except OSError as e:
                 print('invalid file '+source+' ({})'.format(e))
                 os.remove(source)
+                if pipe is not None:
+                    pipe.send((sumos, sumsize, avq, items))
+                    pipe.close()
                 return
             img.close()
             ratio=80
@@ -309,8 +315,14 @@ def transcode(source, path, filename, data):
         quality=100
         try:
             if is_arithmetic_jpg(source):
+                if pipe is not None:
+                    pipe.send((sumos, sumsize, avq, items))
+                    pipe.close()
                 return None
         except OSError:
+            if pipe is not None:
+                pipe.send((sumos, sumsize, avq, items))
+                pipe.close()
             return None
         meta_copy = 'all'
         source_file = open(source, 'br')
@@ -395,7 +407,12 @@ def transcode(source, path, filename, data):
                     os.remove(source)
                 converter.close()
         except FileNotFoundError as e:
+            pipe.send((sumos, sumsize, avq, items))
+            pipe.close()
             return None
+    if pipe is not None:
+        pipe.send((sumos, sumsize, avq, items))
+        pipe.close()
 
 def printStats():
     if items:
