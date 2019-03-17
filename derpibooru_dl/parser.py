@@ -7,6 +7,8 @@ import os
 import re
 import urllib.request
 import threading
+import multiprocessing
+from . import imgOptimizer
 
 downloader_thread = threading.Thread()
 download_queue = []
@@ -42,7 +44,13 @@ def async_downloader():
 	global download_queue
 	while len(download_queue):
 		current_download = download_queue.pop()
-		download(**current_download)
+		pipe=multiprocessing.Pipe()
+		params = current_download
+		params['pipe'] = pipe[1]
+		process = multiprocessing.Process(target=download, kwargs=params)
+		process.start()
+		imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
+		process.join()
 
 
 def download(outdir, data, tags=None, pipe=None):
