@@ -11,3 +11,8 @@ key = ''
 # required modules: Pillow, apng
 # required programs: cwebp, jpegtran, gif2apng, exiftool
 enable_images_optimisations = False
+
+# Max webp image size
+# works if image optimisations is enabled
+# if value is None, set maximum possible for webp size
+MAX_SIZE = None

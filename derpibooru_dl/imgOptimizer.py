@@ -3,8 +3,10 @@
 import os, subprocess, math, apng, threading, time, json, sys, struct
 from PIL import Image
 import abc
+import config
 
-MAX_SIZE = 16383
+if config.MAX_SIZE is not None:
+    MAX_SIZE = min(16383, config.MAX_SIZE)
 
 def loading_thread(encoder, outbuf, i):
     outbuf[i] += encoder.communicate()[0]
