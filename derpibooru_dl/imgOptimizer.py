@@ -269,34 +269,12 @@ def transcode(source, path, filename, data, pipe):
                 outsize = len(lossless_data)
             else:
                 if lossless:
-                    lossless_encoder = subprocess.Popen(
-                        ['cwebp', '-m', '6', '-lossless', '-quiet', source, '-o', '-'],
-                        stdout=subprocess.PIPE
+                    lossless_data = subprocess.check_output(
+                        ['cwebp', '-m', '6', '-lossless', '-quiet', source, '-o', '-']
                     )
-                    lossy_encoder = subprocess.Popen(
-                        ['cwebp', '-m', '6', '-q', str(quality), '-quiet', source, '-o', '-'],
-                        stdout=subprocess.PIPE
-                    )
-                    some_data = [b'', b'']
-                    lossless_loading_thread = threading.Thread(
-                        target = loading_thread,
-                        args = (lossless_encoder, some_data, 1)
-                    )
-                    lossy_loading_thread = threading.Thread(
-                        target = loading_thread,
-                        args = (lossy_encoder, some_data, 0)
-                    )
-                    lossy_loading_thread.start()
-                    lossless_loading_thread.start()
-                    lossy_loading_thread.join()
-                    if lossless_loading_thread.isAlive():
-                        lossless_loading_thread.join()
-                    lossy_data, lossless_data = some_data
-                    del some_data
-                else:
-                    lossy_data = subprocess.check_output(
-                        ['cwebp', '-m', '6', '-q', str(quality), '-quiet', source, '-o', '-']
-                    )
+                lossy_data = subprocess.check_output(
+                    ['cwebp', '-m', '6', '-q', str(quality), '-quiet', source, '-o', '-']
+                )
                 outsize = len(lossy_data)
                 if lossless and len(lossless_data)<outsize:
                     lossless=True
