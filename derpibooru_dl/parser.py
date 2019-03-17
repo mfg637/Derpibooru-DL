@@ -102,7 +102,7 @@ def download(outdir, data, tags=None, pipe=None):
 				pipe
 			)
 		elif pipe is not None:
-			pipe.send((0,0,0,0))
+			pipe.send((imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items))
 			pipe.close()
 	else:
 		if not os.path.isfile(filename):
