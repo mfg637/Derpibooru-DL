@@ -237,34 +237,37 @@ class Video(tkinter.Label, BaseVideo):
             if playing_instance.is_playing:
                 playing_instance.stop()
             playing_instance.clear()
-        playing_instance = self
         if self.frames is None:
             self.frames = []
             self.meta = ffmpeg.probe(net.request_url(self.file))
-            video = None
-            for stream in self.meta["streams"]:
-                if stream['codec_type'] == "video":
-                    video = stream
-            fps = eval(video['r_frame_rate'])
-            self.delay = int(round(1 / fps * 1000))
-            if self.width is None or self.height is None:
-                self.width = video["width"]
-                self.height = video["height"]
-            commandline = ['ffmpeg',
-                       '-i', net.request_url(self.file),
-                       '-f', 'image2pipe',
-                       '-pix_fmt', 'rgb24',
-                       '-r', str(fps), '-an',
-                       '-vcodec', 'rawvideo', '-']
-            ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
-            buffer = ffprocess.stdout.read(self.width * self.height * 3)
-            while len(buffer) == self.width * self.height * 3:
-                self.frames.append(PIL.ImageTk.PhotoImage(PIL.Image.frombuffer("RGB", (self.width, self.height), buffer, "raw", "RGB", 0, 1)))
+            if float(self.meta['format']['duration'])<=30:
+                video = None
+                for stream in self.meta["streams"]:
+                    if stream['codec_type'] == "video":
+                        video = stream
+                fps = eval(video['r_frame_rate'])
+                self.delay = int(round(1 / fps * 1000))
+                if self.width is None or self.height is None:
+                    self.width = video["width"]
+                    self.height = video["height"]
+                commandline = ['ffmpeg',
+                        '-i', net.request_url(self.file),
+                        '-f', 'image2pipe',
+                        '-pix_fmt', 'rgb24',
+                        '-r', str(fps), '-an',
+                        '-vcodec', 'rawvideo', '-']
+                ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
                 buffer = ffprocess.stdout.read(self.width * self.height * 3)
-            ffprocess.stdout.close()
-        self._current_frame = 0
-        self.update_frame_loop = self.after(self.delay, self.update_frame())
-        self.is_playing = True
+                while len(buffer) == self.width * self.height * 3:
+                    self.frames.append(PIL.ImageTk.PhotoImage(PIL.Image.frombuffer("RGB", (self.width, self.height), buffer, "raw", "RGB", 0, 1)))
+                    buffer = ffprocess.stdout.read(self.width * self.height * 3)
+                ffprocess.stdout.close()
+                self._current_frame = 0
+                self.update_frame_loop = self.after(self.delay, self.update_frame())
+                self.is_playing = True
+                playing_instance = self
+            else:
+                subprocess.run(['ffplay', net.request_url(self.file)])
 
     def stop(self):
         self.after_cancel(self.update_frame_loop)
