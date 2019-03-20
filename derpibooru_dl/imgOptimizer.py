@@ -98,6 +98,9 @@ class Converter():
             )
         return os.path.splitext(self._path)[0]+'.webp'
 
+class ImagemagickConverterBug(Exception):
+    pass
+
 class GIFconverter(Converter):
     def __init__(self, gif_path):
         self._path = gif_path
@@ -118,6 +121,8 @@ class GIFconverter(Converter):
         while os.path.isfile('frame'+(str(i).zfill(5))+'.png'):
             self._images.append(Image.open('frame'+(str(i).zfill(5))+'.png'))
             i += 1
+        if len(self._images)==0:
+            raise ImagemagickConverterBug()
     def close(self):
         for frame in self._images:
             frame.close()
@@ -321,7 +326,13 @@ def transcode(source, path, filename, data, pipe):
         quality=95
         animated = True
         ratio=50
-        converter = GIFconverter(source)
+        try:
+            converter = GIFconverter(source)
+        except ImagemagickConverterBug:
+            if pipe is not None:
+                pipe.send((sumos, sumsize, avq, items))
+                pipe.close()
+            return None
         outf=converter.compress(quality)
         outsize = os.path.getsize(outf)
         while (( (outsize/size) > ((100-ratio)*0.01) ) or ( outsize>size )) and quality>60:
