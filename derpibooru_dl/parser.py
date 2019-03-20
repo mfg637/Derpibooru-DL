@@ -123,3 +123,5 @@ def download(outdir, data, tags=None, pipe=None):
 			file.write(urlstream.read())
 			urlstream.close()
 			file.close()
+		pipe.send((imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items))
+		pipe.close()
