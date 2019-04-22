@@ -47,81 +47,55 @@ def async_downloader():
 		pipe=multiprocessing.Pipe()
 		params = current_download
 		params['pipe'] = pipe[1]
-		process = multiprocessing.Process(target=download, kwargs=params)
+		process = multiprocessing.Process(target=save_image, kwargs=params)
 		process.start()
 		imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
 		process.join()
 
 
-def download(outdir, data, tags=None, pipe=None):
-	if not os.path.isdir(outdir):
-		os.makedirs(outdir)
+def download_file(filename: str, src_url:str) -> None:
+	urlstream = urllib.request.urlopen(src_url)
+	file = open(filename, 'wb')
+	file.write(urlstream.read())
+	urlstream.close()
+	file.close()
+
+
+def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None) -> None:
+	if not os.path.isdir(output_directory):
+		os.makedirs(output_directory)
+	name = ''
+	src_url = 'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
 	if 'file_name' in data and data['file_name'] is not None:
-		filename=os.path.join(outdir, "{} {}.{}".format(data["id"],
-			re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
-			data["original_format"]))
+		name = "{} {}".format(
+			data["id"],
+			re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
+		)
 	else:
-		filename=os.path.join(outdir, "{}.{}".format(data["id"],
-			data["original_format"]))
-	if config.enable_images_optimisations and \
-		data["original_format"] in set(['png', 'jpg', 'jpeg', 'gif']):
-		if not os.path.isfile(filename) and (
-				('file_name' in data and data['file_name'] is not None and \
-					(not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
-						data["id"],
-						re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
-						imgOptimizer.getExt[data["original_format"]])))
-				))
-				or (not os.path.isfile(os.path.join(outdir, "{}.{}".format(
-					data["id"], imgOptimizer.getExt[data["original_format"]]))))
-			):
-			print("filename", filename)
-			print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
-			urlstream=urllib.request.urlopen(
-				'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
+		name = str(data["id"])
+	src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
+
+	print("filename", src_filename)
+	print(src_url)
+
+	if config.enable_images_optimisations:
+		if data["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+			if not os.path.isfile(src_filename) and not imgOptimizer.check_exists(src_filename, output_directory, name):
+				download_file(src_filename, src_url)
+			if not imgOptimizer.check_exists(src_filename, output_directory, name):
+				imgOptimizer.transcode(
+					src_filename,
+					output_directory,
+					name,
+					tags,
+					pipe
 				)
-			file = open(filename, 'wb')
-			file.write(urlstream.read())
-			urlstream.close()
-			file.close()
-		if ('file_name' in data and data['file_name'] is not None) and \
-				(not os.path.isfile(os.path.join(outdir, "{} {}.{}".format(
-				data["id"],
-				re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0]),
-				imgOptimizer.getExt[data["original_format"]])))):
-			imgOptimizer.transcode(
-				filename,
-				outdir,
-				"{} {}".format(
-					data["id"],
-					re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
-				),
-				tags,
-				pipe
-			)
-		elif not os.path.isfile(os.path.join(outdir, "{}.{}".format(
-				data["id"],
-				imgOptimizer.getExt[data["original_format"]]))):
-			imgOptimizer.transcode(
-				filename,
-				outdir,
-				str(data["id"]),
-				tags,
-				pipe
-			)
-		elif pipe is not None:
-			pipe.send((imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items))
-			pipe.close()
+			else:
+				imgOptimizer.pipe_send(pipe)
+		else:
+			if not os.path.isfile(src_filename):
+				download_file(src_filename, src_url)
+			imgOptimizer.pipe_send(pipe)
 	else:
-		if not os.path.isfile(filename):
-			print("filename", filename)
-			print('https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"])
-			urlstream=urllib.request.urlopen(
-				'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
-				)
-			file = open(filename, 'wb')
-			file.write(urlstream.read())
-			urlstream.close()
-			file.close()
-		pipe.send((imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items))
-		pipe.close()
+		if not os.path.isfile(src_filename):
+			download_file(src_filename, src_url)

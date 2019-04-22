@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, subprocess, math, apng, threading, time, json, sys, struct
+import os, subprocess, math, apng, struct
 from PIL import Image
 import abc
 import config
@@ -8,20 +8,22 @@ import config
 if config.MAX_SIZE is not None:
     MAX_SIZE = min(16383, config.MAX_SIZE)
 
+
 def loading_thread(encoder, outbuf, i):
     outbuf[i] += encoder.communicate()[0]
+
 
 sumos = 0
 sumsize = 0
 avq = 0
 items = 0
 
-getExt = {
-    'png': 'webp',
-    'jpg': 'jpg',
-    'jpeg': 'jpg',
-    'gif': 'png'
-}
+
+def pipe_send(pipe):
+    if pipe is not None:
+        pipe.send((sumos, sumsize, avq, items))
+        pipe.close()
+
 
 is_arithmetic_SOF = {
     b'\xff\xc0': False,
@@ -48,10 +50,12 @@ class Converter():
         self._images=[]
         self._loop = 0
         self._duration=[]
+
     @abc.abstractclassmethod
     def close(self):
         pass
-    def compress(self, quality=90, fast=True, lossless=False):
+
+    def compress(self, quality: int = 90, fast: bool = True, lossless: bool = False) -> str:
         print('try to convert, quality={}, f={}'.format(quality, fast))
         kwargs = dict()
         if fast and not lossless:
@@ -189,12 +193,23 @@ def is_arithmetic_jpg(file_path):
     file.close()
     return None
 
+
+def check_exists(source, path, filename):
+    if os.path.splitext(source)[1].lower() == '.png':
+        return os.path.isfile(os.path.join(path, filename) + '.webp')
+    elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
+        return False
+    elif os.path.splitext(source)[1].lower()=='.gif':
+        return os.path.isfile(os.path.splitext(source)[0]+'.webp')
+
+
 def transcode(source, path, filename, data, pipe):
     global sumos
     global sumsize
     global avq
     global items
     quality=95
+    tmp_src = None
     size = os.path.getsize(source)
     outf = os.path.join(path, filename)
     if os.path.splitext(source)[1].lower()=='.png':
@@ -219,9 +234,7 @@ def transcode(source, path, filename, data, pipe):
         else:
             img = Image.open(source)
             if img.mode in set(['1', 'P']):
-                if pipe is not None:
-                    pipe.send((sumos, sumsize, avq, items))
-                    pipe.close()
+                pipe_send(pipe)
                 return None
             if img.mode=='RGBA':
                 alpha_histogram = img.histogram()[768:]
@@ -254,14 +267,14 @@ def transcode(source, path, filename, data, pipe):
                     infile='/tmp/'+filename+'.png'
                     print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
                     tmpimg.save(infile)
+                    tmp_src = source
+                    source = infile
                 else:
                     img.load()
             except OSError as e:
                 print('invalid file '+source+' ({})'.format(e))
                 os.remove(source)
-                if pipe is not None:
-                    pipe.send((sumos, sumsize, avq, items))
-                    pipe.close()
+                pipe_send(pipe)
                 return
             img.close()
             ratio=80
@@ -300,14 +313,10 @@ def transcode(source, path, filename, data, pipe):
         quality=100
         try:
             if is_arithmetic_jpg(source):
-                if pipe is not None:
-                    pipe.send((sumos, sumsize, avq, items))
-                    pipe.close()
+                pipe_send(pipe)
                 return None
         except OSError:
-            if pipe is not None:
-                pipe.send((sumos, sumsize, avq, items))
-                pipe.close()
+            pipe_send(pipe)
             return None
         meta_copy = 'all'
         source_file = open(source, 'br')
@@ -329,9 +338,7 @@ def transcode(source, path, filename, data, pipe):
         try:
             converter = GIFconverter(source)
         except ImagemagickConverterBug:
-            if pipe is not None:
-                pipe.send((sumos, sumsize, avq, items))
-                pipe.close()
+            pipe_send(pipe)
             return None
         outf=converter.compress(quality)
         outsize = os.path.getsize(outf)
@@ -340,9 +347,12 @@ def transcode(source, path, filename, data, pipe):
             converter.compress(quality)
             outsize = os.path.getsize(outf)
             ratio=math.ceil(ratio//2)
+    atime = os.path.getatime(source)
+    mtime = os.path.getmtime(source)
+    if tmp_src is not None:
+        os.remove(source)
+        source = tmp_src
     if (size > outsize) and ( outsize > 0 ):
-        atime = os.path.getatime(source)
-        mtime = os.path.getmtime(source)
         if os.path.splitext(source)[1].lower()=='.png':
             if not animated:
                 outfile=open(outf+'.webp', 'wb')
@@ -398,12 +408,9 @@ def transcode(source, path, filename, data, pipe):
                     os.remove(source)
                 converter.close()
         except FileNotFoundError as e:
-            pipe.send((sumos, sumsize, avq, items))
-            pipe.close()
+            pipe_send(pipe)
             return None
-    if pipe is not None:
-        pipe.send((sumos, sumsize, avq, items))
-        pipe.close()
+    pipe_send(pipe)
 
 def printStats():
     if items:

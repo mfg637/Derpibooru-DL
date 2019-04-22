@@ -46,7 +46,7 @@ class GUI:
 			outdir=tagResponse.find_folder(parsed_tags)
 			if not os.path.isdir(outdir):
 				os.makedirs(outdir)
-			process = multiprocessing.Process(target=parser.download, args=((outdir, data, parsed_tags, pipe[1])))
+			process = multiprocessing.Process(target=parser.save_image, args=((outdir, data, parsed_tags, pipe[1])))
 			process.start()
 			imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
 			process.join()

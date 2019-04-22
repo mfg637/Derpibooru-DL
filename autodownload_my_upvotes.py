@@ -68,7 +68,7 @@ try:
             outdir=tagResponse.find_folder(parsed_tags)
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
-            parser.download(outdir, item, parsed_tags)
+            parser.save_image(outdir, item, parsed_tags)
         current_page += 1
 except Exception as e:
     raise e
