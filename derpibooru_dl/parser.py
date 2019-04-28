@@ -81,15 +81,12 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
 	if config.enable_images_optimisations:
 		if data["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
 			if not os.path.isfile(src_filename) and not imgOptimizer.check_exists(src_filename, output_directory, name):
-				download_file(src_filename, src_url)
-			if not imgOptimizer.check_exists(src_filename, output_directory, name):
-				imgOptimizer.transcode(
-					src_filename,
-					output_directory,
-					name,
-					tags,
-					pipe
-				)
+				urlstream = urllib.request.urlopen(src_url)
+				source = bytearray(urlstream.read())
+				urlstream.close()
+				imgOptimizer.inMemoryTranscode(source, output_directory, name, tags, pipe)
+			elif not imgOptimizer.check_exists(src_filename, output_directory, name):
+				imgOptimizer.transcode(src_filename, output_directory, name, tags, pipe)
 			else:
 				imgOptimizer.pipe_send(pipe)
 		else:
