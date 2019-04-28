@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import urllib.request, os, sys, json
-import tkinter
+
 import math
-from tkinter import filedialog
 from derpibooru_dl import tagResponse, parser
 
 try:
