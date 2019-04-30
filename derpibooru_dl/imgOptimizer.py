@@ -590,7 +590,7 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
         items+=1
     elif not isJPEG(source):
         if isPNG(source) and not animated:
-            outfile = open(outf+".png")
+            outfile = open(outf+".png", "bw")
             outfile.write(source)
             outfile.close()
             print("save " + outf + ".png")
@@ -599,12 +599,12 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
             outsize = len(out_data)
             if outsize >= size:
                 if isGIF(source):
-                    outfile = open(outf + ".gif")
+                    outfile = open(outf + ".gif", "bw")
                     outfile.write(source)
                     outfile.close()
                     print("save " + outf + ".gif")
                 elif isPNG(source):
-                    outfile = open(outf + ".png")
+                    outfile = open(outf + ".png", "bw")
                     outfile.write(source)
                     outfile.close()
                     print("save " + outf + ".png")
@@ -625,7 +625,7 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
                 items += 1
             converter.close()
     elif isJPEG(source):
-        outfile = open(outf + ".jpg")
+        outfile = open(outf + ".jpg", "bw")
         outfile.write(source)
         outfile.close()
         print("save " + outf + ".jpg")
