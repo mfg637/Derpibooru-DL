@@ -42,14 +42,16 @@ is_arithmetic_SOF = {
     b'\xff\xcf': True
 }
 
+
 class Converter():
-    __metaclass__=abc.ABCMeta
+    __metaclass__ = abc.ABCMeta
+
     @abc.abstractclassmethod
     def __init__(self, path):
-        self._path=""
-        self._images=[]
+        self._path = ""
+        self._images = []
         self._loop = 0
-        self._duration=[]
+        self._duration = []
 
     @abc.abstractclassmethod
     def close(self):
@@ -68,7 +70,7 @@ class Converter():
             }
         elif fast and lossless:
             kwargs = {
-                'method':3,
+                'method': 3,
                 'loop': self._loop,
                 'duration': self._duration,
             }
@@ -87,7 +89,7 @@ class Converter():
                 'lossless': True,
                 'quality': 100
             }
-        if len(self._images)>1:
+        if len(self._images) > 1:
             self._images[0].save(
                 out_io,
                 'WEBP',
@@ -107,7 +109,7 @@ class Converter():
 class GIFconverter(Converter):
 
     def __init__(self, gif):
-        #self._path = gif_path
+        # self._path = gif_path
         in_io = io.BytesIO()
         img = None
         if type(gif) is str:
@@ -132,26 +134,26 @@ class GIFconverter(Converter):
         ffprocess = None
         tmpfilename = None
         if type(gif) is str:
-            commandline = [ 'ffmpeg',
-                            '-loglevel', 'error',
-                            '-i', gif,
-                            '-f', 'image2pipe',
-                            '-pix_fmt', 'rgba',
-                            '-an',
-                            '-vcodec', 'rawvideo', '-']
+            commandline = ['ffmpeg',
+                           '-loglevel', 'error',
+                           '-i', gif,
+                           '-f', 'image2pipe',
+                           '-pix_fmt', 'rgba',
+                           '-an',
+                           '-vcodec', 'rawvideo', '-']
             ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
         elif isinstance(gif, (bytes, bytearray)):
             tmpfilename = "ffmpeg_processing.gif"
             tmpfile = open(tmpfilename, 'bw')
             tmpfile.write(gif)
             tmpfile.close()
-            commandline = [ 'ffmpeg',
-                            '-loglevel', 'error',
-                            '-i', tmpfilename,
-                            '-f', 'image2pipe',
-                            '-pix_fmt', 'rgba',
-                            '-an',
-                            '-vcodec', 'rawvideo', '-']
+            commandline = ['ffmpeg',
+                           '-loglevel', 'error',
+                           '-i', tmpfilename,
+                           '-f', 'image2pipe',
+                           '-pix_fmt', 'rgba',
+                           '-an',
+                           '-vcodec', 'rawvideo', '-']
             ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
         frame_size = self._width * self._height * 4
         buffer = ffprocess.stdout.read(frame_size)
@@ -179,31 +181,33 @@ class APNGconverter(Converter):
         zeroes_count = 0
         i = 1
         test_zeroes = ''
-        while not os.path.isfile('apngframe'+test_zeroes+str(i)+'.png'):
-            zeroes_count+=1
+        while not os.path.isfile('apngframe' + test_zeroes + str(i) + '.png'):
+            zeroes_count += 1
             test_zeroes += '0'
         file_name = 'apngframe'
-        file_name += str(i).zfill(zeroes_count+1)
+        file_name += str(i).zfill(zeroes_count + 1)
 
-        while os.path.isfile(file_name+'.png'):
+        while os.path.isfile(file_name + '.png'):
             try:
-                info_file = open(file_name+'.txt')
+                info_file = open(file_name + '.txt')
             except FileNotFoundError:
                 break
             info_file.seek(6)
-            self._duration.append(int(round(eval(info_file.read())*1000)))
+            self._duration.append(int(round(eval(info_file.read()) * 1000)))
             info_file.close()
-            self._fname.append(file_name+'.png')
-            self._images.append(Image.open(file_name+'.png'))
-            os.remove(file_name+'.txt')
+            self._fname.append(file_name + '.png')
+            self._images.append(Image.open(file_name + '.png'))
+            os.remove(file_name + '.txt')
             file_name = 'apngframe'
             i += 1
-            file_name += str(i).zfill(zeroes_count+1)
+            file_name += str(i).zfill(zeroes_count + 1)
+
     def close(self):
         for frame in self._fname:
             os.remove(frame)
         for frame in self._images:
             frame.close()
+
 
 def is_arithmetic_jpg(file_path):
     file = open(file_path, 'rb')
@@ -221,21 +225,50 @@ def is_arithmetic_jpg(file_path):
             return arithmetic
         elif len(marker):
             frame_len = struct.unpack('>H', file.read(2))[0]
-            file.seek(frame_len-2, 1)
+            file.seek(frame_len - 2, 1)
     file.close()
     return None
 
 
+def animation2webm(source, out_file, crf=32):
+    fname = ""
+    if type(source) is str:
+        fname = source
+    elif isinstance(source, (bytes, bytearray)):
+        fname = "transcode"
+        file = open(fname, "bw")
+        file.write(source)
+        file.close()
+    subprocess.call(
+        [
+            'ffmpeg',
+            '-loglevel', 'error',
+            '-i', fname,
+            '-pix_fmt', 'yuv420p',
+            '-c:v', 'libvpx-vp9',
+            '-crf', str(crf),
+            '-b:v', '0',
+            '-profile:v', '1',
+            '-pix_fmt', 'yuv422p',
+            '-f', 'webm',
+            out_file
+        ]
+    )
+    if isinstance(source, (bytes, bytearray)):
+        os.remove(fname)
+
+
 def check_exists(source, path, filename):
+    fname = os.path.join(path, filename)
     if os.path.splitext(source)[1].lower() == '.png':
-        return os.path.isfile(os.path.join(path, filename) + '.webp')
+        return os.path.isfile(fname + '.webp') or os.path.isfile(fname + '.webm')
     elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
         return False
-    elif os.path.splitext(source)[1].lower()=='.gif':
-        return os.path.isfile(os.path.splitext(source)[0]+'.webp')
+    elif os.path.splitext(source)[1].lower() == '.gif':
+        return os.path.isfile(fname + '.webp') or os.path.isfile(fname+'.webm')
 
 
-def transparency_check(img:Image.Image) -> bool:
+def transparency_check(img: Image.Image) -> bool:
     alpha_histogram = img.histogram()[768:]
     if alpha_histogram[255] == img.width * img.height:
         return False
@@ -254,55 +287,49 @@ def transcode(source, path, filename, data, pipe):
     global sumsize
     global avq
     global items
-    quality=95
+    quality = 95
     tmp_src = None
     size = os.path.getsize(source)
     outf = os.path.join(path, filename)
-    if os.path.splitext(source)[1].lower()=='.png':
+    if os.path.splitext(source)[1].lower() == '.png':
         animated = False
         lossless = False
         lossless_data = b''
         apngtest = apng.PNG.open(source)
-        isAPNG=False
+        isAPNG = False
         for chunk in apngtest.chunks:
-            if chunk.type=='acTL':
-                isAPNG=True
+            if chunk.type == 'acTL':
+                isAPNG = True
         if isAPNG:
-                animated = True
-                lossless = False
-                ratio=50
-                converter = APNGconverter(source)
-                lossy_data = converter.compress(quality)
-                outsize = len(lossy_data)
-                while (( (outsize/size) > ((100-ratio)*0.01) ) or ( outsize>size )) and quality>60:
-                    quality -= 5
-                    lossy_data = converter.compress(quality)
-                    outsize = len(lossy_data)
-                    ratio=math.ceil(ratio//2)
+            animated = True
+            lossless = False
+            quality = 85
+            animation2webm(source, outf + '.webm')
+            outsize = os.path.getsize(outf + '.webm')
         else:
             img = Image.open(source)
             if img.mode in {'1', 'P'}:
                 pipe_send(pipe)
                 return None
-            if img.mode=='RGBA':
+            if img.mode == 'RGBA':
                 lossless = transparency_check(img)
             else:
-                lossless=False
+                lossless = False
             try:
-                if (img.width>MAX_SIZE) | (img.height>MAX_SIZE):
-                    if img.width>img.height:
-                        tmpimg=img.resize(
-                            (MAX_SIZE, int(round(MAX_SIZE/(img.width/float(img.height)), 0))),
+                if (img.width > MAX_SIZE) | (img.height > MAX_SIZE):
+                    if img.width > img.height:
+                        tmpimg = img.resize(
+                            (MAX_SIZE, int(round(MAX_SIZE / (img.width / float(img.height)), 0))),
                             Image.LANCZOS
                         )
-                    elif img.width<img.height:
-                        tmpimg=img.resize(
-                            (int(round(MAX_SIZE*(img.width/float(img.height)), 0)), MAX_SIZE),
+                    elif img.width < img.height:
+                        tmpimg = img.resize(
+                            (int(round(MAX_SIZE * (img.width / float(img.height)), 0)), MAX_SIZE),
                             Image.LANCZOS
                         )
                     else:
-                        tmpimg=img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-                    infile='/tmp/'+filename+'.png'
+                        tmpimg = img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
+                    infile = '/tmp/' + filename + '.png'
                     print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
                     tmpimg.save(infile)
                     tmp_src = source
@@ -310,12 +337,12 @@ def transcode(source, path, filename, data, pipe):
                 else:
                     img.load()
             except OSError as e:
-                print('invalid file '+source+' ({})'.format(e))
+                print('invalid file ' + source + ' ({})'.format(e))
                 os.remove(source)
                 pipe_send(pipe)
                 return
             img.close()
-            ratio=80
+            ratio = 80
             if 'vector' in data['art_type']:
                 quality = 100
                 lossless = True
@@ -332,23 +359,23 @@ def transcode(source, path, filename, data, pipe):
                     ['cwebp', '-m', '6', '-q', str(quality), '-quiet', source, '-o', '-']
                 )
                 outsize = len(lossy_data)
-                if lossless and len(lossless_data)<outsize:
-                    lossless=True
+                if lossless and len(lossless_data) < outsize:
+                    lossless = True
                     outsize = len(lossless_data)
-                    quality=100
+                    quality = 100
                     lossy_data = None
                 else:
                     lossless_data = None
-                    lossless=False
-                    while ( (outsize/size) > ((100-ratio)*0.01) ) and ( quality >=60 ):
+                    lossless = False
+                    while ((outsize / size) > ((100 - ratio) * 0.01)) and (quality >= 60):
                         quality -= 5
                         lossydata = subprocess.check_output(
                             ['cwebp', '-m', '6', '-q', str(quality), '-quiet', source, '-o', '-']
                         )
-                        outsize=len(lossydata)
-                        ratio=math.ceil(ratio//2)
+                        outsize = len(lossydata)
+                        ratio = math.ceil(ratio // 2)
     elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
-        quality=100
+        quality = 100
         try:
             if is_arithmetic_jpg(source):
                 pipe_send(pipe)
@@ -361,78 +388,74 @@ def transcode(source, path, filename, data, pipe):
         raw_data = source_file.read()
         source_file.close()
         process = subprocess.Popen(['jpegtran', '-copy', meta_copy, '-arithmetic'],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         process.stdin.write(raw_data)
         process.stdin.close()
         raw_data = None
         optimized_data = process.stdout.read()
         process.stdout.close()
         process.terminate()
-        outsize=len(optimized_data)
-    elif os.path.splitext(source)[1].lower()=='.gif':
-        quality=95
-        animated = True
-        ratio=50
-        converter = GIFconverter(source)
-        out_data = converter.compress(quality)
-        outsize = len(out_data)
-        while (( (outsize/size) > ((100-ratio)*0.01) ) or ( outsize>size )) and quality>60:
-            quality -= 5
-            out_data = converter.compress(quality)
-            outsize = len(out_data)
-            ratio=math.ceil(ratio//2)
+        outsize = len(optimized_data)
+    elif os.path.splitext(source)[1].lower() == '.gif':
+        img = Image.open(source)
+        animated = img.is_animated
+        img.close()
+        if not animated:
+            pipe_send(pipe)
+            return
+        quality = 85
+        animation2webm(source, outf + '.webm')
+        outsize = os.path.getsize(outf + '.webm')
     atime = os.path.getatime(source)
     mtime = os.path.getmtime(source)
     if tmp_src is not None:
         os.remove(source)
         source = tmp_src
-    if (size > outsize) and ( outsize > 0 ):
-        if os.path.splitext(source)[1].lower()=='.png':
-            if animated:
-                lossy_data = converter.compress(quality, fast=False)
-                converter.close()
-                outsize = len(lossy_data)
-            outfile = open(outf + '.webp', 'wb')
-            if lossless:
-                outfile.write(lossless_data)
+    if (size > outsize) and (outsize > 0):
+        if os.path.splitext(source)[1].lower() == '.png':
+            if not animated:
+                outfile = open(outf + '.webp', 'wb')
+                if lossless:
+                    outfile.write(lossless_data)
+                else:
+                    outfile.write(lossy_data)
+                outfile.close()
+                os.utime(outf + '.webp', (atime, mtime))
             else:
-                outfile.write(lossy_data)
-            outfile.close()
-            os.utime(outf + '.webp', (atime, mtime))
+                os.utime(outf + '.webp', (atime, mtime))
         elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
-            outfile=open(source, 'wb')
+            outfile = open(source, 'wb')
             outfile.write(optimized_data)
             outfile.close()
             os.utime(source, (atime, mtime))
-        elif os.path.splitext(source)[1].lower()=='.gif':
-            out_data = converter.compress(quality, fast=False)
-            converter.close()
-            outsize = len(out_data)
-            outfile = open(outf + '.webp', 'wb')
-            outfile.write(out_data)
-            outfile.close()
-            os.utime(outf + '.webp', (atime, mtime))
+        elif os.path.splitext(source)[1].lower() == '.gif':
+            os.utime(outf+'.webm', (atime, mtime))
         print(('save {} kbyte ({}%) quality = {}').format(
-            round((size-outsize)/1024,2),
-            round((1-outsize/size)*100,2),
+            round((size - outsize) / 1024, 2),
+            round((1 - outsize / size) * 100, 2),
             quality
         ))
-        sumsize+=size
-        sumos+=outsize
-        avq+=quality
-        items+=1
+        sumsize += size
+        sumos += outsize
+        avq += quality
+        items += 1
         if os.path.splitext(source)[1].lower() not in set(['.jpg', '.jpeg']):
             os.remove(source)
     elif os.path.splitext(source)[1].lower() not in set(['.jpg', '.jpeg']):
         try:
-            if os.path.splitext(source)[1].lower()=='.png' and not animated:
-                print("save "+source)
-                os.remove(outf+'.webp')
+            if os.path.splitext(source)[1].lower() == '.png' and not animated:
+                print("save " + source)
+                os.remove(outf + '.webp')
             elif animated:
+                os.remove(outf+'.webm')
+                if os.path.splitext(source)[1].lower() == '.png':
+                    converter = APNGconverter(source)
+                elif os.path.splitext(source)[1].lower() == '.gif':
+                    converter = GIFconverter(source)
                 out_data = converter.compress(lossless=True)
                 outsize = len(out_data)
-                if outsize>=size:
-                    print("save "+source)
+                if outsize >= size:
+                    print("save " + source)
                     os.remove(outf)
                 else:
                     out_data = converter.compress(lossless=True, fast=False)
@@ -459,24 +482,24 @@ JPEG_HEADER = b'\xff\xd8'
 GIF_HEADERS = {b'GIF87a', b'GIF89a'}
 
 
-def isPNG(data:bytearray) -> bool:
+def isPNG(data: bytearray) -> bool:
     return data[:4] == PNG_HEADER
 
 
-def isJPEG(data:bytearray) -> bool:
+def isJPEG(data: bytearray) -> bool:
     return data[:2] == JPEG_HEADER
 
 
-def isGIF(data:bytearray) -> bool:
+def isGIF(data: bytearray) -> bool:
     return bytes(data[:6]) in GIF_HEADERS
 
 
-def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe = None):
+def inMemoryTranscode(source: bytearray, path: str, filename: str, data: dict, pipe=None):
     global sumos
     global sumsize
     global avq
     global items
-    quality=95
+    quality = 95
     tmp_src = None
     size = len(source)
     outf = os.path.join(path, filename)
@@ -507,7 +530,7 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
             quality = 100
             lossless = True
             lossless_out_io = io.BytesIO()
-            img.save(lossless_out_io, format="WEBP", lossless = True, quality = 100, method=6)
+            img.save(lossless_out_io, format="WEBP", lossless=True, quality=100, method=6)
             lossless_data = lossless_out_io.getbuffer()
             outsize = len(lossless_data)
         else:
@@ -536,31 +559,30 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
                     ratio = math.ceil(ratio // 2)
         img.close()
     elif isJPEG(source):
-        quality=100
+        quality = 100
         process = subprocess.Popen(['jpegtran', '-arithmetic'],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
         process.stdin.write(source)
         process.stdin.close()
         optimized_data = process.stdout.read()
         process.stdout.close()
         process.terminate()
-        outsize=len(optimized_data)
+        outsize = len(optimized_data)
     elif isGIF(source):
-        quality=95
-        animated = True
-        ratio=50
-        converter = GIFconverter(source)
-        out_data = converter.compress(quality)
-        outsize = len(out_data)
-        while (( (outsize/size) > ((100-ratio)*0.01) ) or ( outsize>size )) and quality>60:
-            quality -= 5
-            out_data = converter.compress(quality)
-            outsize = len(out_data)
-            ratio=math.ceil(ratio//2)
+        in_io = io.BytesIO(source)
+        img = Image.open(in_io)
+        animated = img.is_animated
+        img.close()
+        if not animated:
+            pipe_send(pipe)
+            return
+        quality = 85
+        animation2webm(source, outf + '.webm')
+        outsize = os.path.getsize(outf + '.webm')
     else:
         print(source[:16])
         exit()
-    if (size > outsize) and ( outsize > 0 ):
+    if (size > outsize) and (outsize > 0):
         if isPNG(source):
             outfile = open(outf + '.webp', 'wb')
             if lossless:
@@ -569,45 +591,33 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
                 outfile.write(lossy_data.tobytes())
             outfile.close()
         elif isJPEG(source):
-            outfile=open(outf+".jpg", 'wb')
+            outfile = open(outf + ".jpg", 'wb')
             outfile.write(optimized_data)
             outfile.close()
-        elif isGIF(source):
-            out_data = converter.compress(quality, fast=False)
-            converter.close()
-            outsize = len(out_data)
-            outfile = open(outf + '.webp', 'wb')
-            outfile.write(out_data.tobytes())
-            outfile.close()
         print(('save {} kbyte ({}%) quality = {}').format(
-            round((size-outsize)/1024,2),
-            round((1-outsize/size)*100,2),
+            round((size - outsize) / 1024, 2),
+            round((1 - outsize / size) * 100, 2),
             quality
         ))
-        sumsize+=size
-        sumos+=outsize
-        avq+=quality
-        items+=1
+        sumsize += size
+        sumos += outsize
+        avq += quality
+        items += 1
     elif not isJPEG(source):
-        if isPNG(source) and not animated:
-            outfile = open(outf+".png", "bw")
+        if isPNG(source):
+            outfile = open(outf + ".png", "bw")
             outfile.write(source)
             outfile.close()
             print("save " + outf + ".png")
         elif animated:
+            converter = GIFconverter(source)
             out_data = converter.compress(lossless=True)
             outsize = len(out_data)
             if outsize >= size:
-                if isGIF(source):
-                    outfile = open(outf + ".gif", "bw")
-                    outfile.write(source)
-                    outfile.close()
-                    print("save " + outf + ".gif")
-                elif isPNG(source):
-                    outfile = open(outf + ".png", "bw")
-                    outfile.write(source)
-                    outfile.close()
-                    print("save " + outf + ".png")
+                outfile = open(outf + ".gif", "bw")
+                outfile.write(source)
+                outfile.close()
+                print("save " + outf + ".gif")
             else:
                 out_data = converter.compress(lossless=True, fast=False)
                 outsize = len(out_data)
@@ -635,13 +645,13 @@ def inMemoryTranscode(source:bytearray, path:str, filename:str, data:dict, pipe 
 def printStats():
     if items:
         print(('total save: {} MBytes ({}%) from {} total MBytes \n'
-                'final size = {} MByte\n'
-                'average quality={} of {} pictures'
-                ).format(
-            round((sumsize-sumos)/1024/1024, 2),
-            round((1-sumos/sumsize)*100,2),
-            round(sumsize/1024/1024, 2),
-            round(sumos/1024/1024, 2),
-            round(avq/items, 1),
+               'final size = {} MByte\n'
+               'average quality={} of {} pictures'
+               ).format(
+            round((sumsize - sumos) / 1024 / 1024, 2),
+            round((1 - sumos / sumsize) * 100, 2),
+            round(sumsize / 1024 / 1024, 2),
+            round(sumos / 1024 / 1024, 2),
+            round(avq / items, 1),
             items
         ))
