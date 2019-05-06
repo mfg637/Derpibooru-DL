@@ -84,9 +84,15 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
 				urlstream = urllib.request.urlopen(src_url)
 				source = bytearray(urlstream.read())
 				urlstream.close()
-				imgOptimizer.inMemoryTranscode(source, output_directory, name, tags, pipe)
+				transcoder = imgOptimizer.get_memory_transcoder(
+					source, output_directory, name, tags, pipe
+				)
+				transcoder.transcode()
 			elif not imgOptimizer.check_exists(src_filename, output_directory, name):
-				imgOptimizer.transcode(src_filename, output_directory, name, tags, pipe)
+				transcoder = imgOptimizer.get_file_transcoder(
+					src_filename, output_directory, name, tags, pipe
+				)
+				transcoder.transcode()
 			else:
 				imgOptimizer.pipe_send(pipe)
 		else:
