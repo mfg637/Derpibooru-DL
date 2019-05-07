@@ -268,20 +268,6 @@ def check_exists(source, path, filename):
         return os.path.isfile(fname + '.webp') or os.path.isfile(fname+'.webm')
 
 
-def transparency_check(img: Image.Image) -> bool:
-    alpha_histogram = img.histogram()[768:]
-    if alpha_histogram[255] == img.width * img.height:
-        return False
-    else:
-        sum = 0
-        for value in alpha_histogram[:128]:
-            sum += value
-        if sum / (img.width * img.height) >= 0.05:
-            return True
-        else:
-            return False
-
-
 class AlreadyOptimizedSourceException(Exception):
     pass
 
@@ -315,15 +301,24 @@ class BaseTranscoder:
     def _record_timestamps(self):
         pass
 
-    def _remove_temporal_file(self):
-        pass
-
     @abc.abstractmethod
     def _remove_source(self):
         pass
 
     @abc.abstractmethod
-    def _optimisationsFailed(self):
+    def _optimisations_failed(self):
+        pass
+
+    @abc.abstractmethod
+    def _open_image(self) -> Image.Image:
+        pass
+
+    @abc.abstractmethod
+    def _get_source_size(self) -> int:
+        pass
+
+    @abc.abstractmethod
+    def _set_utime(self) -> None:
         pass
 
     def transcode(self):
@@ -331,6 +326,7 @@ class BaseTranscoder:
         global sumos
         global avq
         global items
+        self._size = self._get_source_size()
         try:
             self._encode()
         except (
@@ -340,9 +336,9 @@ class BaseTranscoder:
             pipe_send(self._pipe)
             return
         self._record_timestamps()
-        self._remove_temporal_file()
         if (self._size > self._output_size) and (self._output_size > 0):
             self._save()
+            self._set_utime()
             print(('save {} kbyte ({}%) quality = {}').format(
                 round((self._size - self._output_size) / 1024, 2),
                 round((1 - self._output_size / self._size) * 100, 2),
@@ -354,197 +350,163 @@ class BaseTranscoder:
             items += 1
             self._remove_source()
         else:
-            self._optimisationsFailed()
+            self._optimisations_failed()
         pipe_send(self._pipe)
 
 
 class SourceRemovable(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
+
     def _remove_source(self):
         os.remove(self._source)
 
 
 class UnremovableSource(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
+
     def _remove_source(self):
         pass
 
 
 class FilePathSource(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, source:str, path:str, file_name:str, item_data:dict, pipe):
         BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
-        self._size = os.path.getsize(source)
         self._tmp_src = None
 
     def _record_timestamps(self):
         self._atime = os.path.getatime(self._source)
         self._mtime = os.path.getmtime(self._source)
 
-    def _remove_temporal_file(self):
-        if self._tmp_src is not None:
-            os.remove(self._source)
-            self._source = self._tmp_src
+    def _open_image(self) -> Image.Image:
+        return Image.open(self._source)
+
+    def _get_source_size(self) -> int:
+        return os.path.getsize(self._source)
 
 
 class InMemorySource(UnremovableSource):
+    __metaclass__ = abc.ABCMeta
+
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
-        self._size = len(source)
+
+    def _open_image(self) -> Image.Image:
+        src_io = io.BytesIO(self._source)
+        return Image.open(src_io)
+
+    def _get_source_size(self) -> int:
+        return len(self._source)
+
+    def _set_utime(self) -> None:
+        pass
 
 
-class PNGFileTranscode(FilePathSource, SourceRemovable):
-    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
-        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
+class PNGTranscode(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
+
+    def __init__(self, source, path, file_name, item_data, pipe):
+        BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
         self._animated = False
         self._lossless = False
         self._lossless_data = b''
         self._lossy_data = b''
 
-    def _encode(self):
-        apngtest = apng.PNG.open(self._source)
-        isAPNG = False
-        for chunk in apngtest.chunks:
-            if chunk.type == 'acTL':
-                isAPNG = True
-        if isAPNG:
-            self._animated = True
-            self._lossless = False
-            self._quality = 85
-            animation2webm(self._source, self._output_file + '.webm')
-            self._output_size = os.path.getsize(self._output_file + '.webm')
+    def _transparency_check(self, img: Image.Image) -> bool:
+        alpha_histogram = img.histogram()[768:]
+        if alpha_histogram[255] == img.width * img.height:
+            return False
         else:
-            img = Image.open(self._source)
-            if img.mode in {'1', 'P'}:
-                raise NotOptimizableSourceException()
-            if img.mode == 'RGBA':
-                self._lossless = transparency_check(img)
+            sum = 0
+            for value in alpha_histogram[:128]:
+                sum += value
+            if sum / (img.width * img.height) >= 0.05:
+                return True
             else:
-                self._lossless = False
-            try:
-                if (img.width > MAX_SIZE) | (img.height > MAX_SIZE):
-                    tmp_img = None
-                    if img.width > img.height:
-                        tmpimg = img.resize(
-                            (MAX_SIZE, int(round(MAX_SIZE / (img.width / float(img.height)), 0))),
-                            Image.LANCZOS
-                        )
-                    elif img.width < img.height:
-                        tmpimg = img.resize(
-                            (int(round(MAX_SIZE * (img.width / float(img.height)), 0)), MAX_SIZE),
-                            Image.LANCZOS
-                        )
-                    else:
-                        tmpimg = img.resize((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-                    infile = '/tmp/' + self._file_name + '.png'
-                    print("convert to {} ({}x{})".format(infile, tmpimg.width, tmpimg.height))
-                    tmpimg.save(infile)
-                    self._tmp_src = self._source
-                    self._source = infile
-                else:
-                    img.load()
-            except OSError as e:
-                print('invalid file ' + self._source + ' ({}) has been deleted'.format(e))
-                os.remove(self._source)
-                raise NotOptimizableSourceException()
-            img.close()
-            ratio = 80
-            if 'vector' in self._item_data['art_type']:
-                self._quality = 100
+                return False
+
+    def _lossless_encode(self, img:Image.Image) -> None:
+        lossless_out_io = io.BytesIO()
+        img.save(lossless_out_io, format="WEBP", lossless=True, quality=100, method=6)
+        self._lossless_data = lossless_out_io.getbuffer()
+
+    def _lossy_encode(self, img:Image.Image) -> None:
+        lossy_out_io = io.BytesIO()
+        img.save(lossy_out_io, format="WEBP", lossless=False, quality=self._quality, method=6)
+        self._lossy_data = lossy_out_io.getbuffer()
+
+    @abc.abstractmethod
+    def _invalid_file_exception_handle(self, e):
+        pass
+
+    def _encode(self):
+        img = self._open_image()
+        if img.mode in {'1', 'P'}:
+            raise NotOptimizableSourceException()
+        if img.mode == 'RGBA':
+            self._lossless = self._transparency_check(img)
+        try:
+            if (img.width > MAX_SIZE) | (img.height > MAX_SIZE):
+                img.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
+            else:
+                img.load()
+        except OSError as e:
+            self._invalid_file_exception_handle(e)
+            raise NotOptimizableSourceException()
+        ratio = 80
+        if 'vector' in self._item_data['art_type']:
+            self._quality = 100
+            self._lossless = True
+            self._lossless_encode(img)
+            self._output_size = len(self._lossless_data)
+        else:
+            if self._lossless:
+                self._lossless_encode(img)
+            self._lossy_encode(img)
+            if self._lossless and len(self._lossless_data) < len(self._lossy_data):
                 self._lossless = True
-                self._lossless_data = subprocess.check_output(
-                    ['cwebp', '-m', '6', '-lossless', '-quiet', self._source, '-o', '-']
-                )
+                self._lossy_data = None
                 self._output_size = len(self._lossless_data)
+                self._quality = 100
             else:
-                if self._lossless:
-                    self._lossless_data = subprocess.check_output(
-                        ['cwebp', '-m', '6', '-lossless', '-quiet', self._source, '-o', '-']
-                    )
-                self._lossy_data = subprocess.check_output(
-                    ['cwebp', '-m', '6', '-q', str(self._quality), '-quiet', self._source, '-o', '-']
-                )
+                self._lossless_data = None
+                self._lossless = False
                 self._output_size = len(self._lossy_data)
-                if self._lossless and len(self._lossless_data) < self._output_size:
-                    self._lossless = True
-                    self._output_size = len(self._lossless_data)
-                    self._quality = 100
-                    self._lossy_data = None
-                else:
-                    self._lossless_data = None
-                    self._lossless = False
-                    while ((self._output_size / self._size) > ((100 - ratio) * 0.01)) and (self._quality >= 60):
-                        self._quality -= 5
-                        self._lossy_data = subprocess.check_output(
-                            ['cwebp', '-m', '6', '-q', str(self._quality), '-quiet', self._source, '-o', '-']
-                        )
-                        self._outsize = len(self._lossy_data)
-                        ratio = math.ceil(ratio // 2)
+                while ((self._output_size / self._get_source_size()) > ((100 - ratio) * 0.01)) and (self._quality >= 60):
+                    self._quality -= 5
+                    self._lossy_encode(img)
+                    self._output_size = len(self._lossy_data)
+                    ratio = math.ceil(ratio // 2)
+        img.close()
 
     def _save(self):
-        if not self._animated:
-            outfile = open(self._output_file + '.webp', 'wb')
-            if self._lossless:
-                outfile.write(self._lossless_data)
-            else:
-                outfile.write(self._lossy_data)
-            outfile.close()
-            os.utime(self._output_file + '.webp', (self._atime, self._mtime))
+        outfile = open(self._output_file + '.webp', 'wb')
+        if self._lossless:
+            outfile.write(self._lossless_data)
         else:
-            os.utime(self._output_file + '.webp', (self._atime, self._mtime))
-
-    def _optimisationsFailed(self):
-        global sumsize
-        global sumos
-        global avq
-        global items
-        if self._animated:
-            os.remove(self._output_file + '.webm')
-            converter = APNGconverter(self._source)
-            out_data = converter.compress(lossless=True)
-            self._output_size = len(out_data)
-            if self._output_size >= self._size:
-                print("save " + self._source)
-                os.remove(self._output_file)
-            else:
-                out_data = converter.compress(lossless=True, fast=False)
-                self._output_size = len(out_data)
-                outfile = open(self._output_file + '.webp', 'wb')
-                outfile.write(out_data.tobytes())
-                outfile.close()
-                print(('save {} kbyte ({}%) quality = {}').format(
-                    round((self._size - self._output_size) / 1024, 2),
-                    round((1 - self._output_size / self._size) * 100, 2),
-                    self._quality
-                ))
-                os.utime(self._output_file, (self._atime, self._mtime))
-                os.remove(self._source)
-                sumsize += self._size
-                sumos += self._output_size
-                avq += self._quality
-                items += 1
-            converter.close()
-        else:
-            print("save " + self._source)
-            os.remove(self._output_file + '.webp')
+            outfile.write(self._lossy_data)
+        outfile.close()
 
 
-class JPEGFileTranscode(FilePathSource, UnremovableSource):
-    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
-        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
-        self._quality = 100
-        self._optimized_data = b''
+class JPEGTranscode(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
+
+    @abc.abstractmethod
+    def _arithmetic_check(self):
+        pass
+
+    @abc.abstractmethod
+    def _get_source_data(self):
+        pass
 
     def _encode(self):
-        try:
-            if is_arithmetic_jpg(self._source):
-                raise AlreadyOptimizedSourceException()
-        except OSError:
-            raise NotOptimizableSourceException()
+        self._arithmetic_check()
         meta_copy = 'all'
-        source_file = open(self._source, 'br')
-        raw_data = source_file.read()
-        source_file.close()
+        source_data = self._get_source_data()
         process = subprocess.Popen(['jpegtran', '-copy', meta_copy, '-arithmetic'],
                                    stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        process.stdin.write(raw_data)
+        process.stdin.write(source_data)
         process.stdin.close()
         self._optimized_data = process.stdout.read()
         process.stdout.close()
@@ -552,23 +514,17 @@ class JPEGFileTranscode(FilePathSource, UnremovableSource):
         self._output_size = len(self._optimized_data)
 
     def _save(self):
-        outfile = open(self._source, 'wb')
+        outfile = open(self._output_file + ".jpg", 'wb')
         outfile.write(self._optimized_data)
         outfile.close()
-        os.utime(self._source, (self._atime, self._mtime))
-
-    def _optimisationsFailed(self):
-        pass
 
 
-class GIFFileTranscode(FilePathSource, SourceRemovable):
-    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
-        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
-        img = Image.open(source)
-        self._animated = img.is_animated
-        img.close()
+class GIFTranscode(BaseTranscoder):
+    __metaclass__ = abc.ABCMeta
 
     def _encode(self):
+        img = self._open_image()
+        self._animated = img.is_animated
         if not self._animated:
             raise NotOptimizableSourceException()
         self._quality = 85
@@ -576,9 +532,13 @@ class GIFFileTranscode(FilePathSource, SourceRemovable):
         self._output_size = os.path.getsize(self._output_file + '.webm')
 
     def _save(self):
-        os.utime(self._output_file+'.webm', (self._atime, self._mtime))
+        pass
 
-    def _optimisationsFailed(self):
+    @abc.abstractmethod
+    def _all_optimisations_failed(self):
+        pass
+
+    def _optimisations_failed(self):
         global sumsize
         global sumos
         global avq
@@ -588,8 +548,7 @@ class GIFFileTranscode(FilePathSource, SourceRemovable):
         out_data = converter.compress(lossless=True)
         self._output_size = len(out_data)
         if self._output_size >= self._size:
-            print("save " + self._source)
-            os.remove(self._output_file)
+            self._all_optimisations_failed()
         else:
             out_data = converter.compress(lossless=True, fast=False)
             self._output_size = len(out_data)
@@ -601,13 +560,73 @@ class GIFFileTranscode(FilePathSource, SourceRemovable):
                 round((1 - self._output_size / self._size) * 100, 2),
                 self._quality
             ))
-            os.utime(self._output_file, (self._atime, self._mtime))
-            os.remove(self._source)
+            self._set_utime()
+            self._remove_source()
             sumsize += self._size
             sumos += self._output_size
             avq += self._quality
             items += 1
         converter.close()
+
+
+class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
+    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
+        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
+        PNGTranscode.__init__(self, source, path, file_name, item_data, pipe)
+
+    def _invalid_file_exception_handle(self, e):
+        print('invalid file ' + self._source + ' ({}) has been deleted'.format(e))
+        os.remove(self._source)
+
+    def _set_utime(self) -> None:
+        os.utime(self._output_file + '.webp', (self._atime, self._mtime))
+
+    def _optimisations_failed(self):
+        print("save " + self._source)
+        os.remove(self._output_file + '.webp')
+
+
+class JPEGFileTranscode(FilePathSource, UnremovableSource, JPEGTranscode):
+
+    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
+        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
+        self._quality = 100
+        self._optimized_data = b''
+
+    def _arithmetic_check(self):
+        try:
+            if is_arithmetic_jpg(self._source):
+                raise AlreadyOptimizedSourceException()
+        except OSError:
+            raise NotOptimizableSourceException()
+
+    def _get_source_data(self):
+        source_file = open(self._source, 'br')
+        raw_data = source_file.read()
+        source_file.close()
+        return raw_data
+
+    def _set_utime(self) -> None:
+        os.utime(self._source, (self._atime, self._mtime))
+
+    def _optimisations_failed(self):
+        pass
+
+
+class GIFFileTranscode(FilePathSource, SourceRemovable, GIFTranscode):
+
+    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
+        FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
+        img = Image.open(source)
+        self._animated = img.is_animated
+        img.close()
+
+    def _set_utime(self) -> None:
+        os.utime(self._output_file+'.webm', (self._atime, self._mtime))
+
+    def _all_optimisations_failed(self):
+        print("save " + self._source)
+        os.remove(self._output_file)
 
 
 def get_file_transcoder(source: str, path: str, filename: str, data: dict, pipe=None):
@@ -636,111 +655,43 @@ def isGIF(data: bytearray) -> bool:
     return bytes(data[:6]) in GIF_HEADERS
 
 
-class PNGInMemoryTranscode(InMemorySource):
+class PNGInMemoryTranscode(InMemorySource, PNGTranscode):
+
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         InMemorySource.__init__(self, source, path, file_name, item_data, pipe)
-        self._lossless = False
-        self._lossless_data = b''
-        self._lossy_data = b''
+        PNGTranscode.__init__(self, source, path, file_name, item_data, pipe)
 
-    def _encode(self):
-        src_io = io.BytesIO(self._source)
-        img = Image.open(src_io)
-        if img.mode in {'1', 'P'}:
-            raise NotOptimizableSourceException()
-        if img.mode == 'RGBA':
-            self._lossless = transparency_check(img)
-        else:
-            self._lossless = False
-        try:
-            if (img.width > MAX_SIZE) | (img.height > MAX_SIZE):
-                img.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
-            else:
-                img.load()
-        except OSError as e:
-            print('invalid png data')
-            raise NotOptimizableSourceException()
-        ratio = 80
-        self._lossless_data = None
-        self._lossy_data = None
-        if 'vector' in self._item_data['art_type']:
-            self._quality = 100
-            self._lossless = True
-            lossless_out_io = io.BytesIO()
-            img.save(lossless_out_io, format="WEBP", lossless=True, quality=100, method=6)
-            self._lossless_data = lossless_out_io.getbuffer()
-            self._output_size = len(self._lossless_data)
-        else:
-            lossy_out_io = io.BytesIO()
-            if self._lossless:
-                lossless_out_io = io.BytesIO()
-                img.save(lossless_out_io, format="WEBP", lossless=True, quality=100, method=6)
-                self._lossless_data = lossless_out_io.getbuffer()
-            img.save(lossy_out_io, format="WEBP", lossless=False, quality=self._quality, method=6)
-            self._lossy_data = lossy_out_io.getbuffer()
-            if self._lossless and len(self._lossless_data) < len(self._lossy_data):
-                self._lossless = True
-                self._lossy_data = None
-                self._output_size = len(self._lossless_data)
-                self._quality = 100
-            else:
-                self._lossless_data = None
-                self._lossless = False
-                self._output_size = len(self._lossy_data)
-                while ((self._output_size / self._size) > ((100 - ratio) * 0.01)) and (self._quality >= 60):
-                    self._quality -= 5
-                    lossy_out_io = io.BytesIO()
-                    img.save(lossy_out_io, format="WEBP", lossless=False, quality=self._quality, method=6)
-                    self._lossy_data = lossy_out_io.getbuffer()
-                    self._output_size = len(self._lossy_data)
-                    ratio = math.ceil(ratio // 2)
-        img.close()
+    def _invalid_file_exception_handle(self, e):
+        print('invalid png data')
 
-    def _save(self):
-        outfile = open(self._output_file + '.webp', 'wb')
-        if self._lossless:
-            outfile.write(self._lossless_data)
-        else:
-            outfile.write(self._lossy_data)
-        outfile.close()
-
-    def _optimisationsFailed(self):
-        outfile = open(self._output_size + ".png", "bw")
+    def _optimisations_failed(self):
+        outfile = open(self._output_file + ".png", "bw")
         outfile.write(self._source)
         outfile.close()
         print("save " + self._output_file + ".png")
 
 
-class JPEGInMemoryTranscode(InMemorySource):
+class JPEGInMemoryTranscode(InMemorySource, JPEGTranscode):
 
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         InMemorySource.__init__(self, source, path, file_name, item_data, pipe)
         self._quality = 100
         self._optimized_data = b''
 
-    def _encode(self):
-        process = subprocess.Popen(['jpegtran', '-arithmetic'],
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        process.stdin.write(self._source)
-        process.stdin.close()
-        self._optimized_data = process.stdout.read()
-        process.stdout.close()
-        process.terminate()
-        self._output_size = len(self._optimized_data)
-
-    def _save(self):
-        outfile = open(self._output_file + ".jpg", 'wb')
-        outfile.write(self._optimized_data)
-        outfile.close()
-
-    def _optimisationsFailed(self):
+    def _optimisations_failed(self):
         outfile = open(self._output_file + ".jpg", "bw")
         outfile.write(self._source)
         outfile.close()
         print("save " + self._output_file + ".jpg")
 
+    def _arithmetic_check(self):
+        pass
 
-class GIFInMemoryTranscode(InMemorySource):
+    def _get_source_data(self):
+        return self._source
+
+
+class GIFInMemoryTranscode(InMemorySource, GIFTranscode):
 
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         InMemorySource.__init__(self, source, path, file_name, item_data, pipe)
@@ -750,44 +701,11 @@ class GIFInMemoryTranscode(InMemorySource):
         img.close()
         self._quality = 85
 
-    def _encode(self):
-        if not self._animated:
-            raise NotOptimizableSourceException()
-        animation2webm(self._source, self._output_file + '.webm')
-        self._output_size = os.path.getsize(self._output_file + '.webm')
-
-    def _save(self):
-        pass
-
-    def _optimisationsFailed(self):
-        global sumsize
-        global sumos
-        global avq
-        global items
-        converter = GIFconverter(self._source)
-        out_data = converter.compress(lossless=True)
-        self._output_size = len(out_data)
-        if self._output_size >= self._size:
-            outfile = open(self._output_file + ".gif", "bw")
-            outfile.write(self._source)
-            outfile.close()
-            print("save " + self._output_file + ".gif")
-        else:
-            out_data = converter.compress(lossless=True, fast=False)
-            self._output_size = len(out_data)
-            outfile = open(self._output_file + '.webp', 'wb')
-            outfile.write(out_data.tobytes())
-            outfile.close()
-            print(('save {} kbyte ({}%) quality = {}').format(
-                round((self._size - self._output_size) / 1024, 2),
-                round((1 - self._output_size / self._size) * 100, 2),
-                self._quality
-            ))
-            sumsize += self._size
-            sumos += self._output_size
-            avq += self._quality
-            items += 1
-        converter.close()
+    def _all_optimisations_failed(self):
+        outfile = open(self._output_file + ".gif", "bw")
+        outfile.write(self._source)
+        outfile.close()
+        print("save " + self._output_file + ".gif")
 
 
 def get_memory_transcoder(source: bytearray, path: str, filename: str, data: dict, pipe=None):
@@ -795,10 +713,6 @@ def get_memory_transcoder(source: bytearray, path: str, filename: str, data: dic
     global sumsize
     global avq
     global items
-    quality = 95
-    tmp_src = None
-    size = len(source)
-    outf = os.path.join(path, filename)
     if isPNG(source):
         return PNGInMemoryTranscode(source, path, filename, data, pipe)
     elif isJPEG(source):
