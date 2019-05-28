@@ -16,3 +16,6 @@ enable_images_optimisations = False
 # works if image optimisations is enabled
 # if value is None, set maximum possible for webp size
 MAX_SIZE = None
+
+# derpibooru-dl.py gui on/off
+gui = True
