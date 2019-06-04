@@ -8,8 +8,9 @@ import re
 import urllib.request
 import threading
 import multiprocessing
-from . import imgOptimizer
-from PIL.Image import DecompressionBombError
+if config.enable_images_optimisations:
+    from . import imgOptimizer
+    from PIL.Image import DecompressionBombError
 
 downloader_thread = threading.Thread()
 download_queue = []

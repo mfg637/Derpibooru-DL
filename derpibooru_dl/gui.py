@@ -4,7 +4,10 @@
 import os, threading, multiprocessing
 from tkinter import *
 from tkinter import ttk, filedialog
-from . import parser, tagResponse, imgOptimizer
+from . import parser, tagResponse
+import config
+if config.enable_images_optimisations:
+    from . import imgOptimizer
 
 
 class GUI:
@@ -57,7 +60,8 @@ class GUI:
                 os.makedirs(outdir)
             process = multiprocessing.Process(target=parser.save_image, args=(outdir, data, parsed_tags, pipe[1]))
             process.start()
-            imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
+            if config.enable_images_optimisations:
+                imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
             process.join()
         self._current_item = None
         self._dl_btn['state'] = NORMAL
