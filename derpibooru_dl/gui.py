@@ -3,7 +3,7 @@
 
 import os, threading, multiprocessing
 from tkinter import *
-from tkinter import ttk, filedialog, messagebox
+from tkinter import ttk, filedialog
 from . import parser, tagResponse, imgOptimizer
 
 
@@ -26,8 +26,11 @@ class GUI:
         self._add_btn.pack(side="top")
         self._dl_btn = Button(self._root, text="download", command=self.start_downloader)
         self._dl_btn.pack(side="top")
+        self._save_list_btn = Button(self._root, text="save list", command=self.save_list)
+        self._save_list_btn.pack(side="top")
 
         self._data=[]
+        self._current_item = None
         self.dl_process = None
 
         self._root.mainloop()
@@ -38,22 +41,33 @@ class GUI:
             self.start_downloader()
 
     def start_downloader(self):
-        self.dl_process=threading.Thread(target=self.download)
+        self.dl_process = threading.Thread(target=self.download)
         self.dl_process.start()
 
     def download(self):
         self._dl_btn['state']=DISABLED
         pipe = multiprocessing.Pipe()
         while self._list.size()>0:
-            id = self._list.get(0)
+            self._current_item = self._list.get(0)
             self._list.delete(0)
-            data=parser.parseJSON(id)
-            parsed_tags=tagResponse.tagIndex(data['tags'])
-            outdir=tagResponse.find_folder(parsed_tags)
+            data = parser.parseJSON(self._current_item)
+            parsed_tags = tagResponse.tagIndex(data['tags'])
+            outdir = tagResponse.find_folder(parsed_tags)
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
-            process = multiprocessing.Process(target=parser.save_image, args=((outdir, data, parsed_tags, pipe[1])))
+            process = multiprocessing.Process(target=parser.save_image, args=(outdir, data, parsed_tags, pipe[1]))
             process.start()
             imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
             process.join()
-        self._dl_btn['state']=NORMAL
+        self._current_item = None
+        self._dl_btn['state'] = NORMAL
+
+    def save_list(self):
+        list_copy = []
+        if self._current_item is not None:
+            list_copy.append(self._current_item)
+        list_copy += self._list.get(0, END)
+        file = filedialog.asksaveasfile(defaultextension=".txt")
+        for list_item in list_copy:
+            file.write(list_item+'\n')
+        file.close()
