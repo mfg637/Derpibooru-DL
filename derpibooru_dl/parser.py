@@ -30,7 +30,10 @@ def parseJSON(id:str):
     rawdata=urlstream.read()
     urlstream.close()
     del urlstream
-    return json.loads(str(rawdata, 'utf-8'))
+    data = json.loads(str(rawdata, 'utf-8'))
+    while "duplicate_of" in data:
+        data = parseJSON(str(data["duplicate_of"]))
+    return data
 
 
 def append2queue(**kwargs):
