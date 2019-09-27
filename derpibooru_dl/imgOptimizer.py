@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
-import os, subprocess, math, apng, struct, io
+import os, subprocess, math, struct, io
 from PIL import Image
 import abc
 import config
