@@ -44,8 +44,11 @@ class GUI:
 		self.root.geometry("1050x550")
 		config_panel = tkinter.Frame(self.root, background=BACKGROUND_COLOR)
 		self.search_field = tkinter.Entry(config_panel)
+		self.hide_search_query()
 		self.search_field.pack(side="left")
 		self.search_field.bind("<Return>", self.search)
+		self.search_field.bind("<FocusIn>", self.show_search_query)
+		self.search_field.bind("<FocusOut>", self.hide_search_query)
 		self.search_btn = tkinter.ttk.Button(
 			config_panel,
 			text="Search",
@@ -102,6 +105,12 @@ class GUI:
 		self.root.bind("<Configure>", self.on_resize)
 		if root is None:
 			self.root.mainloop()
+
+	def show_search_query(self, event = None):
+		self.search_field['show'] = ''
+
+	def hide_search_query(self, event = None):
+		self.search_field['show'] = '�'
 	
 	def on_resize(self, event):
 		if event.widget == self.root and (self.width != event.width or self.height != event.height):
