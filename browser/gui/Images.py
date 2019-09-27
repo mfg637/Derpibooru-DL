@@ -43,6 +43,7 @@ class Image(tkinter.Label, BaseImage):
         if image.format == "GIF" and ("duration" in image.info):
             self.animated = True
             self.delay = image.info["duration"]
+            #print(self.delay)
             img = image.copy().convert("RGB")
             img.paste(
                 play_watermark,
@@ -78,6 +79,7 @@ class Image(tkinter.Label, BaseImage):
                        '-f', 'image2pipe',
                        '-pix_fmt', 'rgb24',
                         '-an',
+                        '-r', '60',
                        '-vcodec', 'rawvideo', '-']
             ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
             buffer = ffprocess.stdout.read(self.width * self.height * 3)
@@ -102,7 +104,8 @@ class Image(tkinter.Label, BaseImage):
         self._current_frame += 1
         if self._current_frame == len(self.frames):
             self._current_frame = 0
-        self.update_frame_loop = self.after(self.delay, self.update_frame)
+        #self.update_frame_loop = self.after(self.delay, self.update_frame)
+        self.update_frame_loop = self.after(17, self.update_frame)
 
     def __del__(self):
         if self.is_playing:
