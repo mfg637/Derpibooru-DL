@@ -40,10 +40,9 @@ class Image(tkinter.Label, BaseImage):
         request_obj = net.request(file)
         image = PIL.Image.open(request_obj)
         self.animated = False
+        self.delay = None
         if image.format == "GIF" and ("duration" in image.info):
             self.animated = True
-            self.delay = image.info["duration"]
-            #print(self.delay)
             img = image.copy().convert("RGB")
             img.paste(
                 play_watermark,
@@ -74,12 +73,20 @@ class Image(tkinter.Label, BaseImage):
         playing_instance = self
         if self.frames is None:
             self.frames = []
+            if self.delay is None:
+                self.meta = ffmpeg.probe(net.request_url(self.file))
+                video = None
+                for stream in self.meta["streams"]:
+                    if stream['codec_type'] == "video":
+                        video = stream
+                fps = eval(video['r_frame_rate'])
+                self.delay = int(round(1000/fps))
             commandline = ['ffmpeg',
                        '-i', net.request_url(self.file),
                        '-f', 'image2pipe',
                        '-pix_fmt', 'rgb24',
                         '-an',
-                        '-r', '60',
+                        '-r', str(fps),
                        '-vcodec', 'rawvideo', '-']
             ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
             buffer = ffprocess.stdout.read(self.width * self.height * 3)
@@ -104,8 +111,7 @@ class Image(tkinter.Label, BaseImage):
         self._current_frame += 1
         if self._current_frame == len(self.frames):
             self._current_frame = 0
-        #self.update_frame_loop = self.after(self.delay, self.update_frame)
-        self.update_frame_loop = self.after(17, self.update_frame)
+        self.update_frame_loop = self.after(self.delay, self.update_frame)
 
     def __del__(self):
         if self.is_playing:
