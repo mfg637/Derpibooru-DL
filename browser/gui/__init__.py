@@ -134,7 +134,7 @@ class GUI:
 				if (config.key):
 					self.data = self.context.makeRequest(key=config.key)
 				else:
-					self.data = self.context.makeRequest(key=config.key)
+					self.data = self.context.makeRequest()
 			except EOFError:
 				tkinter.messagebox.showerror('EOFError', "end of images")
 				return None
@@ -216,7 +216,7 @@ class GUI:
 			for item in self.checkbox_array:
 				if item.state.get():
 					out_dir = tagResponse.find_folder(item.tags)
-					parser.append2queue(outdir=out_dir, data=item.data, tags=item.tags)
+					parser.append2queue(output_directory=out_dir, data=item.data, tags=item.tags)
 
 	def prev(self):
 		if isinstance(self.context, context.Context):
