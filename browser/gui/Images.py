@@ -41,6 +41,7 @@ class Image(tkinter.Label, BaseImage):
         image = PIL.Image.open(request_obj)
         self.animated = False
         self.delay = None
+        self.fps = None
         if image.format == "GIF" and ("duration" in image.info):
             self.animated = True
             img = image.copy().convert("RGB")
@@ -73,20 +74,20 @@ class Image(tkinter.Label, BaseImage):
         playing_instance = self
         if self.frames is None:
             self.frames = []
-            if self.delay is None:
+            if self.fps is None:
                 self.meta = ffmpeg.probe(net.request_url(self.file))
                 video = None
                 for stream in self.meta["streams"]:
                     if stream['codec_type'] == "video":
                         video = stream
-                fps = eval(video['r_frame_rate'])
-                self.delay = int(round(1000/fps))
+                self.fps = eval(video['r_frame_rate'])
+                self.delay = int(round(1000/self.fps))
             commandline = ['ffmpeg',
                        '-i', net.request_url(self.file),
                        '-f', 'image2pipe',
                        '-pix_fmt', 'rgb24',
                         '-an',
-                        '-r', str(fps),
+                        '-r', str(self.fps),
                        '-vcodec', 'rawvideo', '-']
             ffprocess = subprocess.Popen(commandline, stdout=subprocess.PIPE)
             buffer = ffprocess.stdout.read(self.width * self.height * 3)
@@ -132,6 +133,7 @@ class Image(tkinter.Label, BaseImage):
 class SpoilerImage(Image, BaseImage):
     def __init__(self, root, tiny_thumb_file, file, meta, **kwargs):
         tkinter.Label.__init__(self, root, **kwargs)
+        self.fps = None
         self.file = file
         self.meta = meta
         tiny_thumbnail_request = net.request(tiny_thumb_file)
