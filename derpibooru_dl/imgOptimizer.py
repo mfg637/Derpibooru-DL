@@ -244,12 +244,11 @@ def animation2webm(source, out_file, crf=32):
             'ffmpeg',
             '-loglevel', 'error',
             '-i', fname,
-            '-pix_fmt', 'yuv420p',
+            '-pix_fmt', 'yuv422p',
             '-c:v', 'libvpx-vp9',
             '-crf', str(crf),
             '-b:v', '0',
             '-profile:v', '1',
-            '-pix_fmt', 'yuv422p',
             '-f', 'webm',
             out_file
         ]
@@ -289,6 +288,7 @@ class BaseTranscoder:
         self._output_file = os.path.join(path, file_name)
         self._output_size = 0
         self._quality = 95
+        self._fext = 'webp'
 
     @abc.abstractmethod
     def _encode(self):
@@ -403,7 +403,53 @@ class InMemorySource(UnremovableSource):
         pass
 
 
-class PNGTranscode(BaseTranscoder):
+class WEBM_VideoOutputFormat(BaseTranscoder):
+    def animation_encode(self):
+        self._quality = 85
+        animation2webm(self._source, self._output_file + '.webm')
+        self._output_size = os.path.getsize(self._output_file + '.webm')
+
+    @abc.abstractmethod
+    def _all_optimisations_failed(self):
+        pass
+
+    @abc.abstractmethod
+    def get_converter_type(self):
+        pass
+
+    def gif_optimisations_failed(self):
+        print("optimisations_failed")
+        global sumsize
+        global sumos
+        global avq
+        global items
+        os.remove(self._output_file + '.webm')
+        self._fext = 'webp'
+        converter = self.get_converter_type(self._source)
+        out_data = converter.compress(lossless=True)
+        self._output_size = len(out_data)
+        if self._output_size >= self._size:
+            self._all_optimisations_failed()
+        else:
+            out_data = converter.compress(lossless=True, fast=False)
+            self._output_size = len(out_data)
+            outfile = open(self._output_file + '.webp', 'wb')
+            outfile.write(out_data.tobytes())
+            outfile.close()
+            print(('save {} kbyte ({}%) quality = {}').format(
+                round((self._size - self._output_size) / 1024, 2),
+                round((1 - self._output_size / self._size) * 100, 2),
+                self._quality
+            ))
+            self._set_utime()
+            self._remove_source()
+            sumsize += self._size
+            sumos += self._output_size
+            avq += self._quality
+            items += 1
+        converter.close()
+
+class PNGTranscode(WEBM_VideoOutputFormat):
     __metaclass__ = abc.ABCMeta
 
     def __init__(self, source, path, file_name, item_data, pipe):
@@ -412,6 +458,9 @@ class PNGTranscode(BaseTranscoder):
         self._lossless = False
         self._lossless_data = b''
         self._lossy_data = b''
+
+    def get_converter_type(self):
+        return APNGconverter
 
     def _transparency_check(self, img: Image.Image) -> bool:
         alpha_histogram = img.histogram()[768:]
@@ -442,6 +491,13 @@ class PNGTranscode(BaseTranscoder):
 
     def _encode(self):
         img = self._open_image()
+        if img.custom_mimetype == "image/apng":
+            self._animated = True
+            self._fext = 'webm'
+            self._lossless = False
+            self.animation_encode()
+            img.close()
+            return None
         if img.mode in {'1', 'P'}:
             raise NotOptimizableSourceException()
         if img.mode == 'RGBA':
@@ -481,12 +537,13 @@ class PNGTranscode(BaseTranscoder):
         img.close()
 
     def _save(self):
-        outfile = open(self._output_file + '.webp', 'wb')
-        if self._lossless:
-            outfile.write(self._lossless_data)
-        else:
-            outfile.write(self._lossy_data)
-        outfile.close()
+        if not self._animated:
+            outfile = open(self._output_file + '.webp', 'wb')
+            if self._lossless:
+                outfile.write(self._lossless_data)
+            else:
+                outfile.write(self._lossy_data)
+            outfile.close()
 
 
 class JPEGTranscode(BaseTranscoder):
@@ -519,7 +576,7 @@ class JPEGTranscode(BaseTranscoder):
         outfile.close()
 
 
-class GIFTranscode(BaseTranscoder):
+class GIFTranscode(WEBM_VideoOutputFormat):
     __metaclass__ = abc.ABCMeta
 
     def _encode(self):
@@ -538,36 +595,11 @@ class GIFTranscode(BaseTranscoder):
     def _all_optimisations_failed(self):
         pass
 
-    def _optimisations_failed(self):
-        global sumsize
-        global sumos
-        global avq
-        global items
-        os.remove(self._output_file + '.webm')
-        converter = GIFconverter(self._source)
-        out_data = converter.compress(lossless=True)
-        self._output_size = len(out_data)
-        if self._output_size >= self._size:
-            self._all_optimisations_failed()
-        else:
-            out_data = converter.compress(lossless=True, fast=False)
-            self._output_size = len(out_data)
-            outfile = open(self._output_file + '.webp', 'wb')
-            outfile.write(out_data.tobytes())
-            outfile.close()
-            print(('save {} kbyte ({}%) quality = {}').format(
-                round((self._size - self._output_size) / 1024, 2),
-                round((1 - self._output_size / self._size) * 100, 2),
-                self._quality
-            ))
-            self._set_utime()
-            self._remove_source()
-            sumsize += self._size
-            sumos += self._output_size
-            avq += self._quality
-            items += 1
-        converter.close()
+    def get_converter_type(self):
+        return GIFconverter
 
+    def _optimisations_failed(self):
+        self.gif_optimisations_failed()
 
 class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
     def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
@@ -579,11 +611,17 @@ class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
         os.remove(self._source)
 
     def _set_utime(self) -> None:
-        os.utime(self._output_file + '.webp', (self._atime, self._mtime))
+        os.utime(self._output_file + '.' + self._fext, (self._atime, self._mtime))
 
     def _optimisations_failed(self):
+        if self._animated:
+            self.gif_optimisations_failed()
         print("save " + self._source)
         os.remove(self._output_file + '.webp')
+
+    def _all_optimisations_failed(self):
+        print("save " + self._source)
+        os.remove(self._output_file)
 
 
 class JPEGFileTranscode(FilePathSource, UnremovableSource, JPEGTranscode):
@@ -665,10 +703,17 @@ class PNGInMemoryTranscode(InMemorySource, PNGTranscode):
         print('invalid png data')
 
     def _optimisations_failed(self):
-        outfile = open(self._output_file + ".png", "bw")
-        outfile.write(self._source)
-        outfile.close()
-        print("save " + self._output_file + ".png")
+        if self._animated:
+            self.gif_optimisations_failed()
+        else:
+            outfile = open(self._output_file + ".png", "bw")
+            outfile.write(self._source)
+            outfile.close()
+            print("save " + self._output_file + ".png")
+
+    def _all_optimisations_failed(self):
+        self._animated = False
+        self._optimisations_failed()
 
 
 class JPEGInMemoryTranscode(InMemorySource, JPEGTranscode):
