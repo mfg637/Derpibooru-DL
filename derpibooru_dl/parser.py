@@ -81,6 +81,7 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
         os.makedirs(output_directory)
     name = ''
     src_url = 'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
+    src_url = re.sub(r'\%', '', src_url)
     if 'file_name' in data and data['file_name'] is not None:
         name = "{} {}".format(
             data["id"],
