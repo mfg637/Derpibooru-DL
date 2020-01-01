@@ -262,7 +262,7 @@ def check_exists(source, path, filename):
     if os.path.splitext(source)[1].lower() == '.png':
         return os.path.isfile(fname + '.webp') or os.path.isfile(fname + '.webm')
     elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
-        return False
+        return os.path.isfile(fname + '.webp')
     elif os.path.splitext(source)[1].lower() == '.gif':
         return os.path.isfile(fname + '.webp') or os.path.isfile(fname+'.webm')
 
@@ -289,6 +289,7 @@ class BaseTranscoder:
         self._output_size = 0
         self._quality = 95
         self._fext = 'webp'
+        self._webp_output = False
 
     @abc.abstractmethod
     def _encode(self):
@@ -449,31 +450,21 @@ class WEBM_VideoOutputFormat(BaseTranscoder):
             items += 1
         converter.close()
 
-class PNGTranscode(WEBM_VideoOutputFormat):
+
+class WEBP_output(WEBM_VideoOutputFormat):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, source, path, file_name, item_data, pipe):
-        BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
-        self._animated = False
-        self._lossless = False
-        self._lossless_data = b''
-        self._lossy_data = b''
+    @abc.abstractmethod
+    def _apng_test_convert(self, img):
+        pass
 
-    def get_converter_type(self):
-        return APNGconverter
-
+    @abc.abstractmethod
     def _transparency_check(self, img: Image.Image) -> bool:
-        alpha_histogram = img.histogram()[768:]
-        if alpha_histogram[255] == img.width * img.height:
-            return False
-        else:
-            sum = 0
-            for value in alpha_histogram[:128]:
-                sum += value
-            if sum / (img.width * img.height) >= 0.05:
-                return True
-            else:
-                return False
+        pass
+
+    @abc.abstractmethod
+    def _invalid_file_exception_handle(self, e):
+        pass
 
     def _lossless_encode(self, img:Image.Image) -> None:
         lossless_out_io = io.BytesIO()
@@ -485,19 +476,10 @@ class PNGTranscode(WEBM_VideoOutputFormat):
         img.save(lossy_out_io, format="WEBP", lossless=False, quality=self._quality, method=6)
         self._lossy_data = lossy_out_io.getbuffer()
 
-    @abc.abstractmethod
-    def _invalid_file_exception_handle(self, e):
-        pass
-
-    def _encode(self):
-        img = self._open_image()
-        if img.custom_mimetype == "image/apng":
-            self._animated = True
-            self._fext = 'webm'
-            self._lossless = False
-            self.animation_encode()
-            img.close()
-            return None
+    def _webp_encode(self, img):
+        self._lossless = False
+        self._animated = False
+        self._apng_test_convert(img)
         if img.mode in {'1', 'P'}:
             raise NotOptimizableSourceException()
         if img.mode == 'RGBA':
@@ -536,7 +518,7 @@ class PNGTranscode(WEBM_VideoOutputFormat):
                     ratio = math.ceil(ratio // 2)
         img.close()
 
-    def _save(self):
+    def _save_webp(self):
         if not self._animated:
             outfile = open(self._output_file + '.webp', 'wb')
             if self._lossless:
@@ -546,7 +528,49 @@ class PNGTranscode(WEBM_VideoOutputFormat):
             outfile.close()
 
 
-class JPEGTranscode(BaseTranscoder):
+class PNGTranscode(WEBP_output):
+    __metaclass__ = abc.ABCMeta
+
+    def _apng_test_convert(self, img):
+        if img.custom_mimetype == "image/apng":
+            self._animated = True
+            self._fext = 'webm'
+            self.animation_encode()
+            img.close()
+            return None
+
+    def __init__(self, source, path, file_name, item_data, pipe):
+        BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
+        self._animated = False
+        self._lossless = False
+        self._lossless_data = b''
+        self._lossy_data = b''
+
+    def get_converter_type(self):
+        return APNGconverter
+
+    def _transparency_check(self, img: Image.Image) -> bool:
+        alpha_histogram = img.histogram()[768:]
+        if alpha_histogram[255] == img.width * img.height:
+            return False
+        else:
+            sum = 0
+            for value in alpha_histogram[:128]:
+                sum += value
+            if sum / (img.width * img.height) >= 0.05:
+                return True
+            else:
+                return False
+
+    def _encode(self):
+        img = self._open_image()
+        self._webp_encode(img)
+
+    def _save(self):
+        self._save_webp()
+
+
+class JPEGTranscode(WEBP_output):
     __metaclass__ = abc.ABCMeta
 
     @abc.abstractmethod
@@ -557,23 +581,44 @@ class JPEGTranscode(BaseTranscoder):
     def _get_source_data(self):
         pass
 
+    def _transparency_check(self, img: Image.Image) -> bool:
+        return False
+
+    def _apng_test_convert(self, img):
+        pass
+
+    def _all_optimisations_failed(self):
+        pass
+
+    def get_converter_type(self):
+        return None
+
     def _encode(self):
         self._arithmetic_check()
-        meta_copy = 'all'
-        source_data = self._get_source_data()
-        process = subprocess.Popen(['jpegtran', '-copy', meta_copy, '-arithmetic'],
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE)
-        process.stdin.write(source_data)
-        process.stdin.close()
-        self._optimized_data = process.stdout.read()
-        process.stdout.close()
-        process.terminate()
-        self._output_size = len(self._optimized_data)
+        img = self._open_image()
+        if (img.width>1024) or (img.height>1024):
+            self._webp_output = True
+            self._webp_encode(img)
+        else:
+            img.close()
+            meta_copy = 'all'
+            source_data = self._get_source_data()
+            process = subprocess.Popen(['jpegtran', '-copy', meta_copy, '-arithmetic'],
+                                       stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+            process.stdin.write(source_data)
+            process.stdin.close()
+            self._optimized_data = process.stdout.read()
+            process.stdout.close()
+            process.terminate()
+            self._output_size = len(self._optimized_data)
 
     def _save(self):
-        outfile = open(self._output_file + ".jpg", 'wb')
-        outfile.write(self._optimized_data)
-        outfile.close()
+        if self._webp_output:
+            self._save_webp()
+        else:
+            outfile = open(self._output_file + ".jpg", 'wb')
+            outfile.write(self._optimized_data)
+            outfile.close()
 
 
 class GIFTranscode(WEBM_VideoOutputFormat):
@@ -601,6 +646,7 @@ class GIFTranscode(WEBM_VideoOutputFormat):
     def _optimisations_failed(self):
         self.gif_optimisations_failed()
 
+
 class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
     def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
         FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
@@ -625,7 +671,6 @@ class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
 
 
 class JPEGFileTranscode(FilePathSource, UnremovableSource, JPEGTranscode):
-
     def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
         FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
         self._quality = 100
@@ -649,6 +694,10 @@ class JPEGFileTranscode(FilePathSource, UnremovableSource, JPEGTranscode):
 
     def _optimisations_failed(self):
         pass
+
+    def _invalid_file_exception_handle(self, e):
+        print('invalid file ' + self._source + ' ({}) has been deleted'.format(e))
+        os.remove(self._source)
 
 
 class GIFFileTranscode(FilePathSource, SourceRemovable, GIFTranscode):
@@ -717,7 +766,6 @@ class PNGInMemoryTranscode(InMemorySource, PNGTranscode):
 
 
 class JPEGInMemoryTranscode(InMemorySource, JPEGTranscode):
-
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         InMemorySource.__init__(self, source, path, file_name, item_data, pipe)
         self._quality = 100
@@ -734,6 +782,9 @@ class JPEGInMemoryTranscode(InMemorySource, JPEGTranscode):
 
     def _get_source_data(self):
         return self._source
+
+    def _invalid_file_exception_handle(self, e):
+        print('invalid jpeg data')
 
 
 class GIFInMemoryTranscode(InMemorySource, GIFTranscode):
