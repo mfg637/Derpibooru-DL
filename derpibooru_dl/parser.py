@@ -77,6 +77,10 @@ def in_memory_transcode(src_url, name, tags, output_directory, pipe):
 
 
 def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None) -> None:
+    if 'deletion_reason' in data:
+        if config.enable_images_optimisations:
+            imgOptimizer.pipe_send(pipe)
+        return
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
     name = ''
