@@ -426,7 +426,7 @@ class WEBM_VideoOutputFormat(BaseTranscoder):
         global items
         os.remove(self._output_file + '.webm')
         self._fext = 'webp'
-        converter = self.get_converter_type(self._source)
+        converter = self.get_converter_type()(self._source)
         out_data = converter.compress(lossless=True)
         self._output_size = len(out_data)
         if self._output_size >= self._size:
