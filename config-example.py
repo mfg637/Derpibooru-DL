@@ -19,3 +19,5 @@ MAX_SIZE = None
 
 # derpibooru-dl.py gui on/off
 gui = True
+
+enable_multiprocessing = False

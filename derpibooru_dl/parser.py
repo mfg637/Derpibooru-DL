@@ -78,7 +78,7 @@ def in_memory_transcode(src_url, name, tags, output_directory, pipe):
 
 def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None) -> None:
     if 'deletion_reason' in data:
-        if config.enable_images_optimisations:
+        if config.enable_images_optimisations and config.enable_multiprocessing:
             imgOptimizer.pipe_send(pipe)
         return
     if not os.path.isdir(output_directory):
@@ -113,12 +113,13 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
                     src_filename, output_directory, name, tags, pipe
                 )
                 transcoder.transcode()
-            else:
+            elif config.enable_multiprocessing:
                 imgOptimizer.pipe_send(pipe)
         else:
             if not os.path.isfile(src_filename):
                 download_file(src_filename, src_url)
-            imgOptimizer.pipe_send(pipe)
+            if config.enable_multiprocessing:
+                imgOptimizer.pipe_send(pipe)
     else:
         if not os.path.isfile(src_filename):
             download_file(src_filename, src_url)

@@ -352,7 +352,8 @@ class BaseTranscoder:
             self._remove_source()
         else:
             self._optimisations_failed()
-        pipe_send(self._pipe)
+        if config.enable_multiprocessing:
+            pipe_send(self._pipe)
 
 
 class SourceRemovable(BaseTranscoder):
