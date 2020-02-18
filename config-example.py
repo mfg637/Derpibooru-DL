@@ -7,8 +7,8 @@ initial_dir = '/home/mfg637/Изображения/f/collections/drawings/ff/mlp
 # user API key here
 key = ''
 
-# transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, APNG formats
-# required modules: Pillow, apng
+# transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, WEBM formats
+# required modules: Pillow
 # required programs: cwebp, jpegtran, ffmpeg
 enable_images_optimisations = False
 
