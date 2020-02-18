@@ -5,6 +5,8 @@ from PIL import Image
 import abc
 import config
 
+MAX_SIZE = 16383
+
 if config.MAX_SIZE is not None:
     MAX_SIZE = min(16383, config.MAX_SIZE)
 
