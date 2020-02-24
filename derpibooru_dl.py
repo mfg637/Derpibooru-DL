@@ -24,25 +24,35 @@ while i < len(sys.argv):
         id_list.append(parser.get_ID_by_URL(sys.argv[i]))
     i += 1
 
+def download(id):
+    print('open connection')
 
-if config.gui:
-    from derpibooru_dl import gui
-    GUI = gui.GUI(id_list)
-else:
-    for id in id_list:
-        print('open connection')
+    data = parser.parseJSON(id)
 
-        data = parser.parseJSON(id)
+    parsed_tags = tagResponse.tagIndex(data['tags'])
+    print("parsed tags", parsed_tags)
+    outdir = tagResponse.find_folder(parsed_tags)
+    print("outdir", outdir)
 
-        parsed_tags = tagResponse.tagIndex(data['tags'])
-        print("parsed tags", parsed_tags)
-        outdir = tagResponse.find_folder(parsed_tags)
-        print("outdir", outdir)
+    if not os.path.isdir(outdir):
+        os.makedirs(outdir)
 
-        if not os.path.isdir(outdir):
-            os.makedirs(outdir)
+    parser.save_image(outdir, data, parsed_tags)
+try:
+    if config.gui:
+        import tkinter
+        try:
+            from derpibooru_dl import gui
+            GUI = gui.GUI(id_list)
+        except tkinter.TclError:
+            config.gui = False
 
-        parser.save_image(outdir, data, parsed_tags)
+    if not config.gui:
+        for id in id_list:
+            download(id)
 
-if config.enable_images_optimisations:
-    imgOptimizer.printStats()
+        while True:
+            download(parser.get_ID_by_URL(input()))
+finally:
+    if config.enable_images_optimisations:
+        imgOptimizer.printStats()
