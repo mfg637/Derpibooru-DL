@@ -52,6 +52,7 @@ try:
             download(id)
 
         while True:
+            print("id||url>", end="")
             download(parser.get_ID_by_URL(input()))
 finally:
     if config.enable_images_optimisations:
