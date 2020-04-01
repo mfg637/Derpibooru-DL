@@ -496,7 +496,7 @@ class WEBP_output(WEBM_VideoOutputFormat):
             self._invalid_file_exception_handle(e)
             raise NotOptimizableSourceException()
         ratio = 80
-        if 'vector' in self._item_data['art_type']:
+        if 'vector' in self._item_data['content']:
             self._quality = 100
             self._lossless = True
             self._lossless_encode(img)

@@ -6,6 +6,7 @@ import config
 import os
 import re
 import urllib.request
+import urllib.parse
 import threading
 import multiprocessing
 if config.enable_images_optimisations:
@@ -24,9 +25,10 @@ def get_ID_by_URL(URL:str):
     return URL.split('?')[0].split('/')[-1]
 
 
-def parseJSON(id:str):
-    print("parseJSON", 'https://derpibooru.org/api/v1/json/images/'+id)
-    urlstream=urllib.request.urlopen('https://derpibooru.org/api/v1/json/images/'+id)
+def parseJSON(id:str, type="images"):
+    url = 'https://derpibooru.org/api/v1/json/{}/{}'.format(type, urllib.parse.quote(id))
+    print("parseJSON", url)
+    urlstream=urllib.request.urlopen(url)
     rawdata=urlstream.read()
     urlstream.close()
     del urlstream
