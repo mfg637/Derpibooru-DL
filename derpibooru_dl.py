@@ -29,7 +29,7 @@ def download(id):
 
     data = parser.parseJSON(id)
 
-    parsed_tags = tagResponse.tagIndex(data['tags'])
+    parsed_tags = tagResponse.tagIndex(data['image']['tags'])
     print("parsed tags", parsed_tags)
     outdir = tagResponse.find_folder(parsed_tags)
     print("outdir", outdir)
@@ -37,7 +37,7 @@ def download(id):
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
-    parser.save_image(outdir, data, parsed_tags)
+    parser.save_image(outdir, data['image'], parsed_tags)
 try:
     if config.gui:
         import tkinter
@@ -53,7 +53,7 @@ try:
 
         while True:
             print("id||url>", end="")
-            download(parser.get_ID_by_URL(input()))
+            download(parser.get_ID_by_URL(input())['image'])
 finally:
     if config.enable_images_optimisations:
         imgOptimizer.printStats()

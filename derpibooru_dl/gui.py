@@ -54,18 +54,20 @@ class GUI:
             self._current_item = self._list.get(0)
             self._list.delete(0)
             data = parser.parseJSON(self._current_item)
-            parsed_tags = tagResponse.tagIndex(data['tags'])
+            parsed_tags = tagResponse.tagIndex(data['image']['tags'])
             outdir = tagResponse.find_folder(parsed_tags)
             if not os.path.isdir(outdir):
                 os.makedirs(outdir)
             if config.enable_multiprocessing:
-                process = multiprocessing.Process(target=parser.save_image, args=(outdir, data, parsed_tags, pipe[1]))
+                process = multiprocessing.Process(target=parser.save_image, args=(
+                    outdir, data['image'], parsed_tags, pipe[1]
+                ))
                 process.start()
                 if config.enable_images_optimisations:
                     imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
                 process.join()
             else:
-                parser.save_image(outdir, data, parsed_tags, None)
+                parser.save_image(outdir, data['image'], parsed_tags, None)
         self._current_item = None
         self._dl_btn['state'] = NORMAL
 

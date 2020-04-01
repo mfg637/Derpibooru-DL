@@ -25,8 +25,8 @@ def get_ID_by_URL(URL:str):
 
 
 def parseJSON(id:str):
-    print("parseJSON", 'https://derpibooru.org/'+id+'.json')
-    urlstream=urllib.request.urlopen('https://derpibooru.org/'+id+'.json')
+    print("parseJSON", 'https://derpibooru.org/api/v1/json/images/'+id)
+    urlstream=urllib.request.urlopen('https://derpibooru.org/api/v1/json/images/'+id)
     rawdata=urlstream.read()
     urlstream.close()
     del urlstream
@@ -77,36 +77,36 @@ def in_memory_transcode(src_url, name, tags, output_directory, pipe):
 
 
 def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None) -> None:
-    if 'deletion_reason' in data:
+    if data['deletion_reason'] is not None:
+        print('DELETED')
         if config.enable_images_optimisations and config.enable_multiprocessing:
             imgOptimizer.pipe_send(pipe)
         return
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
     name = ''
-    src_url = 'https:'+os.path.splitext(data['image'])[0]+'.'+data["original_format"]
-    src_url = re.sub(r'\%', '', src_url)
-    if 'file_name' in data and data['file_name'] is not None:
+    src_url = os.path.splitext(data['representations']['full'])[0]+'.'+data["format"]
+    if 'name' in data and data['name'] is not None:
         name = "{} {}".format(
             data["id"],
-            re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
+            re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["name"])[0])
         )
     else:
         name = str(data["id"])
-    src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
+    src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"]))
 
     print("filename", src_filename)
-    print(src_url)
+    print("image_url", src_url)
 
     if config.enable_images_optimisations:
-        if data["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+        if data["format"] in {'png', 'jpg', 'jpeg', 'gif'}:
             if not os.path.isfile(src_filename) and not imgOptimizer.check_exists(src_filename, output_directory, name):
                 try:
                     in_memory_transcode(src_url, name, tags, output_directory, pipe)
                 except DecompressionBombError:
                     src_url = \
                         'https:' + os.path.splitext(data['representations']["large"])[0] + '.' + \
-                        data["original_format"]
+                        data["format"]
                     in_memory_transcode(src_url, name, tags, output_directory, pipe)
             elif not imgOptimizer.check_exists(src_filename, output_directory, name):
                 transcoder = imgOptimizer.get_file_transcoder(
