@@ -87,7 +87,7 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
     if not os.path.isdir(output_directory):
         os.makedirs(output_directory)
     name = ''
-    src_url = os.path.splitext(data['representations']['full'])[0]+'.'+data["format"]
+    src_url = os.path.splitext(data['representations']['full'])[0]+'.'+data["format"].lower()
     if 'name' in data and data['name'] is not None:
         name = "{} {}".format(
             data["id"],
@@ -95,7 +95,7 @@ def save_image(output_directory: str, data: dict, tags: dict = None, pipe = None
         )
     else:
         name = str(data["id"])
-    src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"]))
+    src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
 
     print("filename", src_filename)
     print("image_url", src_url)
