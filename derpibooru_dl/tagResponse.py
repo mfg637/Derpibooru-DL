@@ -6,16 +6,20 @@ import os
 from derpibooru_dl import parser
 from config import initial_dir
 import mysql.connector
+import config
 
-mysql_connection = mysql.connector.connect(
-	host="localhost",
-	user="derpibooru_dl_user",
-	passwd="derpi_passwd",
-	database="derpibooru_dl_app"
-)
+mysql_connection = None
+mysql_cursor = None
+if config.use_mysql:
+	mysql_connection = mysql.connector.connect(
+		host=config.mysql_host,
+		user=config.mysql_user,
+		passwd=config.mysql_password,
+		database=config.mysql_database
+	)
+	mysql_cursor = mysql_connection.cursor()
 
-mysql_cursor = mysql_connection.cursor()
-
+indexed_tags = dict()
 
 characters = set()
 
@@ -40,7 +44,7 @@ def tagIndex(taglist):
 			artist.add(tag.split(':')[1])
 		elif ":" in tag or '.' in tag or '-' in tag:
 			continue
-		else:
+		elif config.use_mysql:
 			query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(tag)
 			mysql_cursor.execute(query)
 			result = mysql_cursor.fetchone()
@@ -73,6 +77,30 @@ def tagIndex(taglist):
 					indexed_content.add(tag)
 				else:
 					print(result)
+		else:
+			if tag not in indexed_tags:
+				indexed_tags[tag] = parser.parseJSON(tag, 'tags')['tag']
+				if indexed_tags[tag]['category'] == "character":
+					characters.add(tag)
+					indexed_characters.add(tag)
+				elif indexed_tags[tag]['category'] == "rating":
+					rating.add(tag)
+					indexed_rating.add(tag)
+				elif indexed_tags[tag]['category'] == "species":
+					species.add(tag)
+					indexed_species.add(tag)
+				else:
+					content.add(tag)
+					indexed_content.add(tag)
+			else:
+				if tag in rating:
+					indexed_rating.add(tag)
+				elif tag in characters:
+					indexed_characters.add(tag)
+				elif tag in species:
+					indexed_species.add(tag)
+				elif tag in content:
+					indexed_content.add(tag)
 	return {'artist': artist, 'original character':originalCharacter,
 		'characters': indexed_characters, 'rating': indexed_rating,
 		'species': indexed_species, 'content': indexed_content}

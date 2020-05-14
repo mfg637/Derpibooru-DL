@@ -58,5 +58,6 @@ try:
 finally:
     if config.enable_images_optimisations:
         imgOptimizer.printStats()
-    import derpibooru_dl.tagResponse
-    tagResponse.mysql_connection.close()
+    if config.use_mysql:
+        import derpibooru_dl.tagResponse
+        tagResponse.mysql_connection.close()
