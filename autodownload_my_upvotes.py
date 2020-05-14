@@ -74,3 +74,6 @@ except Exception as e:
 finally:
     if config.enable_images_optimisations:
         imgOptimizer.printStats()
+    if config.use_mysql:
+        from derpibooru_dl import tagResponse
+        tagResponse.mysql_connection.close()
