@@ -35,3 +35,5 @@ mysql_user=""
 mysql_password=""
 mysql_database=""
 
+browser_tmpcache_directory = None
+

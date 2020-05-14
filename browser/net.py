@@ -6,13 +6,14 @@ import urllib.parse
 import random
 import os
 import sys
+import config
 
 page = 1
 items_per_page = 15
 cache = dict()
 app_dir = os.path.realpath(os.path.dirname(sys.argv[0]))
 
-if not os.path.isdir(os.path.join(app_dir,"browser", "tmpcache")):
+if config.browser_tmpcache_directory is None and not os.path.isdir(os.path.join(app_dir,"browser", "tmpcache")):
     os.mkdir(os.path.join(app_dir,"browser", "tmpcache"))
 
 def load_file(url, *args, **kwargs):
@@ -21,11 +22,16 @@ def load_file(url, *args, **kwargs):
         for x in range(16):
             filename += random.choice("qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM0123456789")
         req_t = urllib.request.urlopen(url, *args, **kwargs)
-        cachefile = open(os.path.join(app_dir,"browser", "tmpcache", filename), 'bw')
+        cache_filename = ''
+        if config.browser_tmpcache_directory is None:
+            cache_filename = os.path.join(app_dir,"browser", "tmpcache", filename)
+        else:
+            cache_filename = os.path.join(config.browser_tmpcache_directory, filename)
+        cachefile = open(cache_filename, 'bw')
         cachefile.write(req_t.read())
         req_t.close()
         cachefile.close()
-        cache.update([[url, os.path.join(app_dir, "browser", "tmpcache", filename)]])
+        cache.update([[url, cache_filename]])
         return filename
 
 
