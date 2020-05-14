@@ -40,7 +40,7 @@ def clearCache():
         os.remove(cache[url])
 
 def request_url(page_name, **kwargs):
-    url = "https:{}".format(page_name)
+    url = "{}".format(page_name)
     if url[-5:] != ".json":
         try:
             return cache[url]
@@ -53,9 +53,9 @@ def request_url(page_name, **kwargs):
     return url
 
 
-def request(page_name, **kwargs):
-    url = "https:{}".format(page_name)
-    if url[-5:] != ".json":
+def request(page_name, json=False,  **kwargs):
+    url = "{}".format(page_name)
+    if not json:
         return CachedRequest(url)
     if kwargs:
         url += "?"
@@ -64,8 +64,8 @@ def request(page_name, **kwargs):
 
 
 def parse_json(page_name, **kwargs):
-    url = "//derpibooru.org/{}".format(page_name)
-    connection = request(url, **kwargs)
+    url = "https://derpibooru.org/{}".format(page_name)
+    connection = request(url, True, **kwargs)
     raw_data = connection.read()
     connection.close()
     return json.loads(str(raw_data, "utf-8"))

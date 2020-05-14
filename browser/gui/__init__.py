@@ -132,7 +132,7 @@ class GUI:
 			widget.destroy()
 		self.page_count_field.delete(0, tkinter.END)
 		try:
-			self.page_count_field.insert(0, str(self.context.getPageNumber()))
+			self.page_count_field.insert(0, str(self.context.get_page_number()))
 		except AttributeError as e:
 			if reflesh:
 				raise e
@@ -141,9 +141,9 @@ class GUI:
 		if reflesh:
 			try:
 				if (config.key):
-					self.data = self.context.makeRequest(key=config.key)
+					self.data = self.context.make_request(key=config.key)
 				else:
-					self.data = self.context.makeRequest()
+					self.data = self.context.make_request()
 			except EOFError:
 				tkinter.messagebox.showerror('EOFError', "end of images")
 				return None
@@ -165,8 +165,8 @@ class GUI:
 			)
 			self.checkbox_array[-1].grid(row=i // elemWidth * 2, column=i % elemWidth)
 			imglabel = None
-			if {"safe", "suggestive"} & parsed_tags["category"]:
-				if elem["original_format"] in STATIC_IMAGE_FORMATS:
+			if {"safe", "suggestive"} & parsed_tags["rating"]:
+				if elem["format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.Image(
 						self.img_gallery_wrapper.interior,
 						file=elem["representations"]["thumb"],
@@ -179,7 +179,7 @@ class GUI:
 						{"tags": elem['tags'], "id": elem["id"]}
 					)
 			else:
-				if elem["original_format"] in STATIC_IMAGE_FORMATS:
+				if elem["format"] in STATIC_IMAGE_FORMATS:
 					imglabel = Images.SpoilerImage(
 						self.img_gallery_wrapper.interior,
 						elem["representations"]["thumb_tiny"],
@@ -198,7 +198,7 @@ class GUI:
 			imglabel.bind("<Button-3>", self.showMeta)
 			imglabel.update_idletasks()
 			i += 1
-		total_pages = self.context.getTotalPages()
+		total_pages = self.context.get_total_pages()
 		if total_pages is None:
 			self._of_text_label['text'] = ''
 			self._page_count_label['text'] = ''
@@ -211,7 +211,7 @@ class GUI:
 		if len(q):
 			self.context = context.Search(q)
 		else:
-			self.context = context.Images()
+			self.context = context.Search("*")
 		self.__page_rendering()
 
 	def next(self):
@@ -246,7 +246,7 @@ class GUI:
 		self.save()
 		if unsigned_number_validate.search(self.page_count_field.get()) is not None:
 			page = int(re.search(r"\d+", self.page_count_field.get()).group(0))
-			if self.context is None or page != self.context.getPageNumber():
+			if self.context is None or page != self.context.get_page_number():
 				if not isinstance(self.context, context.Context):
 					self.context = context.Images()
 				self.context.go_to(page)
@@ -299,7 +299,7 @@ class TagList:
 		self._taglist.pack()
 		list_wrapper.pack(side="top")
 		self.vscrollbar.config(command=self._taglist.yview)
-		for tag in meta['tags'].split(', '):
+		for tag in meta['tags']:
 			self._taglist.insert(tkinter.END, tag)
 		self._taglist.bind("<Double-Button-1>", self.search)
 		self._root.bind("<FocusIn>", self.__focus)
