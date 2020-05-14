@@ -5,6 +5,7 @@ import os, sys
 from derpibooru_dl import tagResponse, parser
 import config
 
+
 if config.enable_images_optimisations:
     from derpibooru_dl import imgOptimizer
 
@@ -57,3 +58,5 @@ try:
 finally:
     if config.enable_images_optimisations:
         imgOptimizer.printStats()
+    import derpibooru_dl.tagResponse
+    tagResponse.mysql_connection.close()

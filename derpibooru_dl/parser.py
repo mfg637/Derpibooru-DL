@@ -7,6 +7,8 @@ import os
 import re
 import urllib.request
 import urllib.parse
+import urllib.error
+import requests
 import threading
 import multiprocessing
 if config.enable_images_optimisations:
@@ -28,11 +30,7 @@ def get_ID_by_URL(URL:str):
 def parseJSON(id:str, type="images"):
     url = 'https://derpibooru.org/api/v1/json/{}/{}'.format(type, urllib.parse.quote(id))
     print("parseJSON", url)
-    urlstream=urllib.request.urlopen(url)
-    rawdata=urlstream.read()
-    urlstream.close()
-    del urlstream
-    data = json.loads(str(rawdata, 'utf-8'))
+    data = json.loads(requests.get(url).text)
     while "duplicate_of" in data:
         data = parseJSON(str(data["duplicate_of"]))
     return data
