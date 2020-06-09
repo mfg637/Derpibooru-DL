@@ -126,6 +126,15 @@ def find_folder(parsed_tags:dict):
 		outdir=os.path.join(outdir, 'shipping')
 	elif len(parsed_tags['characters'])==1:
 		outdir=os.path.join(outdir, list(parsed_tags['characters'])[0])
+	elif "cinder glow" in parsed_tags['characters'] and\
+		"summer flare" in parsed_tags['characters']:
+		outdir = os.path.join(outdir, "cinder glow, summer flare")
+	elif "bon bon" in parsed_tags['characters'] and\
+		"sweetie drops" in parsed_tags['characters']:
+		outdir = os.path.join(outdir, "bon bon, sweetie drops")
+	elif "golden harvest" in parsed_tags['characters'] and\
+		"carrot top" in parsed_tags['characters']:
+		outdir = os.path.join(outdir, "carrot top, golden harvest")
 	# rules for subfolders
 	if {'questionable', 'explicit'} & parsed_tags['rating']:
 		outdir=os.path.join(outdir, 'c')
