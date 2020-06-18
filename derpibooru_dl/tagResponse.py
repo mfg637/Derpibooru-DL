@@ -7,6 +7,7 @@ from derpibooru_dl import parser
 from config import initial_dir
 import mysql.connector
 import config
+import re
 
 mysql_connection = None
 mysql_cursor = None
@@ -31,6 +32,10 @@ content = set()
 
 
 def tagIndex(taglist):
+
+	def get_JSON_Data(tag):
+		return parser.parseJSON(re.sub("/", "-fwslash-", tag), 'tags')['tag']
+
 	artist=set()
 	originalCharacter=set()
 	indexed_characters = set()
@@ -50,7 +55,7 @@ def tagIndex(taglist):
 			result = mysql_cursor.fetchone()
 			if result is None:
 				category_name = ""
-				indexed_tag = parser.parseJSON(tag, 'tags')['tag']
+				indexed_tag = get_JSON_Data(tag)
 				if indexed_tag['category'] == "character":
 					category_name = "character"
 					indexed_characters.add(tag)
@@ -79,7 +84,7 @@ def tagIndex(taglist):
 					print(result)
 		else:
 			if tag not in indexed_tags:
-				indexed_tags[tag] = parser.parseJSON(tag, 'tags')['tag']
+				indexed_tags[tag] = get_JSON_Data(tag)
 				if indexed_tags[tag]['category'] == "character":
 					characters.add(tag)
 					indexed_characters.add(tag)
