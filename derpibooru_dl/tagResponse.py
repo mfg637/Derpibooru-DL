@@ -34,7 +34,9 @@ content = set()
 def tagIndex(taglist):
 
 	def get_JSON_Data(tag):
-		return parser.parseJSON(re.sub("/", "-fwslash-", tag), 'tags')['tag']
+		tag = re.sub("/", "-fwslash-", tag)
+		tag = re.sub(":", "-colon-", tag)
+		return parser.parseJSON(tag, 'tags')['tag']
 
 	artist=set()
 	originalCharacter=set()
@@ -47,7 +49,7 @@ def tagIndex(taglist):
 			originalCharacter.add(tag.split(':')[1])
 		elif "artist:" in tag:
 			artist.add(tag.split(':')[1])
-		elif ":" in tag or '.' in tag or '-' in tag:
+		elif '.' in tag or '-' in tag:
 			continue
 		elif config.use_mysql:
 			query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(tag)
@@ -143,6 +145,8 @@ def find_folder(parsed_tags:dict):
 	# rules for subfolders
 	if {'questionable', 'explicit'} & parsed_tags['rating']:
 		outdir=os.path.join(outdir, 'c')
+	elif 'my little pony: pony life' in parsed_tags['content']:
+		outdir=os.path.join(outdir, "pony life")
 	elif {'anthro', 'human'} & parsed_tags['species']:
 		outdir=os.path.join(outdir, 'antro')
 	elif {'horse'} & parsed_tags['species']:
