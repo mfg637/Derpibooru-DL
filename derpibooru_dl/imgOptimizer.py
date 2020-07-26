@@ -246,11 +246,11 @@ def animation2webm(source, out_file, crf=32):
             'ffmpeg',
             '-loglevel', 'error',
             '-i', fname,
-            '-pix_fmt', 'yuv422p',
+            '-pix_fmt', 'yuva420p',
             '-c:v', 'libvpx-vp9',
             '-crf', str(crf),
             '-b:v', '0',
-            '-profile:v', '1',
+            '-profile:v', '0',
             '-f', 'webm',
             out_file
         ]
