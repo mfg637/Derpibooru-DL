@@ -1,4 +1,4 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 
-from . import tagResponse, parser
+from . import tagResponse

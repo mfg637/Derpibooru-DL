@@ -6,7 +6,8 @@ import tkinter.messagebox
 from . import ScrolledFrame, Images
 import PIL.Image
 import PIL.ImageTk
-from derpibooru_dl import parser, tagResponse
+from derpibooru_dl import tagResponse
+import parser
 from .. import net, context
 import config
 import re
@@ -155,7 +156,8 @@ class GUI:
 		i = 0
 		elemWidth = (self.width - 25)//250
 		for elem in self.data:
-			parsed_tags = tagResponse.tagIndex(elem['tags'])
+			_parser = parser.derpibooru.DerpibooruParser(None, {'image': elem})
+			parsed_tags = _parser.tagIndex()
 			self.checkbox_array.append(
 				CustomCheckbox(
 					self.img_gallery_wrapper.interior,
@@ -224,8 +226,9 @@ class GUI:
 		if len(self.checkbox_array):
 			for item in self.checkbox_array:
 				if item.state.get():
+					_parser = parser.derpibooru.DerpibooruParser(None, {"image": item.data})
 					out_dir = tagResponse.find_folder(item.tags)
-					parser.append2queue(output_directory=out_dir, data=item.data, tags=item.tags)
+					_parser.append2queue(output_directory=out_dir, data={"image": item.data}, tags=item.tags)
 
 	def prev(self):
 		if isinstance(self.context, context.Context):
@@ -238,8 +241,8 @@ class GUI:
 		self.save()
 		if self._main:
 			net.clearCache()
-			if parser.downloader_thread.isAlive():
-				parser.downloader_thread.join()
+			if parser.Parser.downloader_thread.isAlive():
+				parser.Parser.downloader_thread.join()
 		self.root.destroy()
 	
 	def __goto(self, event = None):

@@ -6,6 +6,8 @@ initial_dir = '/home/mfg637/Изображения/f/collections/drawings/ff/mlp
 
 # user API key here
 key = ''
+twibooru_key = ''
+ponybooru_key = ''
 
 # transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, WEBM formats
 # required modules: Pillow

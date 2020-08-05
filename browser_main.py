@@ -3,6 +3,7 @@
 
 import browser
 import config
+import parser
 
 try:
     browser.gui.GUI()
@@ -12,4 +13,4 @@ finally:
         derpibooru_dl.imgOptimizer.printStats()
     if config.use_mysql:
         from derpibooru_dl import tagResponse
-        tagResponse.mysql_connection.close()
+        parser.derpibooru.mysql_connection.close()
