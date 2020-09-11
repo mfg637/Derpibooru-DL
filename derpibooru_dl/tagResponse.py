@@ -4,8 +4,6 @@
 
 import os
 from config import initial_dir
-import config
-import re
 
 
 def find_folder(parsed_tags:dict):
