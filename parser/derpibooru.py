@@ -123,6 +123,8 @@ class DerpibooruParser(Parser.Parser):
             tag = re.sub("/", "-fwslash-", tag)
             tag = re.sub(":", "-colon-", tag)
             tag = re.sub("'", "%27", tag)
+            tag = re.sub("\(", "%28", tag)
+            tag = re.sub("\)", "%29", tag)
             tag = re.sub(" ", "+", tag)
             return self.parseJSON(tag, 'tags')['tag']
 
