@@ -5,6 +5,7 @@ import config
 import os
 import re
 import mysql.connector
+import requests
 
 from . import Parser
 
@@ -52,11 +53,12 @@ class DerpibooruParser(Parser.Parser):
             id = self.get_id_by_url(self._url)
         request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name(), type, urllib.parse.quote(id))
         print("parseJSON", request_url)
-        urlstream = urllib.request.urlopen(request_url)
-        rawdata = urlstream.read()
-        urlstream.close()
-        del urlstream
-        data = json.loads(str(rawdata, 'utf-8'))
+        try:
+            request_data = requests.get(request_url)
+        except Exception as e:
+            print(e)
+            return
+        data = request_data.json()
         while "duplicate_of" in data:
             data = self.parseJSON(str(data["duplicate_of"]))
         self._parsed_data = data

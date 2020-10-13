@@ -123,10 +123,3 @@ class TwibooruParser(Parser.Parser):
                 'art_type': indexed_art_types, 'species': indexed_species,
                 'content': indexed_content}
 
-
-    @staticmethod
-    def do_binary_request(url):
-        request_data = requests.get(url)
-        source = bytearray(request_data.content)
-        return source
-

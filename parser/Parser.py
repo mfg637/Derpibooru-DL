@@ -4,6 +4,7 @@ import urllib.parse
 import threading
 import multiprocessing
 import abc
+import requests
 
 if config.enable_images_optimisations:
     from derpibooru_dl import imgOptimizer
@@ -44,10 +45,9 @@ class Parser(abc.ABC):
 
     @staticmethod
     def download_file(filename: str, src_url: str) -> None:
-        urlstream = urllib.request.urlopen(src_url)
+        request_data = requests.get(src_url)
         file = open(filename, 'wb')
-        file.write(urlstream.read())
-        urlstream.close()
+        file.write(request_data.content)
         file.close()
 
     def in_memory_transcode(self, src_url, name, tags, output_directory, pipe):
@@ -59,9 +59,8 @@ class Parser(abc.ABC):
 
     @staticmethod
     def do_binary_request(url):
-        urlstream = urllib.request.urlopen(url)
-        source = bytearray(urlstream.read())
-        urlstream.close()
+        request_data = requests.get(url)
+        source = bytearray(request_data.content)
         return source
 
     @abc.abstractmethod
