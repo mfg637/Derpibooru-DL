@@ -3,7 +3,7 @@
 
 import os, threading, multiprocessing
 from tkinter import *
-from tkinter import ttk, filedialog
+from tkinter import ttk, filedialog, messagebox
 from . import tagResponse
 import parser
 import config
@@ -51,25 +51,29 @@ class GUI:
     def download(self):
         self._dl_btn['state']=DISABLED
         pipe = multiprocessing.Pipe()
-        while self._list.size()>0:
-            self._current_item = self._list.get(0)
-            self._list.delete(0)
-            _parser = parser.get_parser(self._current_item)
-            data = _parser.parseJSON()
-            parsed_tags = _parser.tagIndex()
-            outdir = tagResponse.find_folder(parsed_tags)
-            if not os.path.isdir(outdir):
-                os.makedirs(outdir)
-            if config.enable_multiprocessing:
-                process = multiprocessing.Process(target=_parser.save_image, args=(
-                    outdir, data, parsed_tags, pipe[1]
-                ))
-                process.start()
-                if config.enable_images_optimisations:
-                    imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
-                process.join()
-            else:
-                _parser.save_image(outdir, data, parsed_tags, None)
+        try:
+            while self._list.size()>0:
+                self._current_item = self._list.get(0)
+                self._list.delete(0)
+                _parser = parser.get_parser(self._current_item)
+                data = _parser.parseJSON()
+                parsed_tags = _parser.tagIndex()
+                outdir = tagResponse.find_folder(parsed_tags)
+                if not os.path.isdir(outdir):
+                    os.makedirs(outdir)
+                if config.enable_multiprocessing:
+                    process = multiprocessing.Process(target=_parser.save_image, args=(
+                        outdir, data, parsed_tags, pipe[1]
+                    ))
+                    process.start()
+                    if config.enable_images_optimisations:
+                        imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
+                    process.join()
+                else:
+                    _parser.save_image(outdir, data, parsed_tags, None)
+        except Exception as e:
+            self._add_btn['state'] = DISABLED
+            messagebox.showerror(e.__class__.__name__, str(e))
         self._current_item = None
         self._dl_btn['state'] = NORMAL
 
