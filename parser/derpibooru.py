@@ -128,6 +128,7 @@ class DerpibooruParser(Parser.Parser):
             tag = re.sub("\(", "%28", tag)
             tag = re.sub("\)", "%29", tag)
             tag = re.sub("\^", "%5E", tag)
+            tag = re.sub("\%", "%25", tag)
             tag = re.sub(" ", "+", tag)
             return self.parseJSON(tag, 'tags')['tag']
 
