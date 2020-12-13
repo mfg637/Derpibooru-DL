@@ -121,14 +121,19 @@ class DerpibooruParser(Parser.Parser):
 
     def tagIndex(self):
         taglist = self._parsed_data['image']['tags']
+
+        def mysql_escafe_quotes(_string):
+            return re.sub("\"", "\\\"", _string)
+
         def get_JSON_Data(tag):
             tag = re.sub("/", "-fwslash-", tag)
             tag = re.sub(":", "-colon-", tag)
+            tag = re.sub("\%", "%25", tag)
             tag = re.sub("'", "%27", tag)
+            tag = re.sub("\"", "%22", tag)
             tag = re.sub("\(", "%28", tag)
             tag = re.sub("\)", "%29", tag)
             tag = re.sub("\^", "%5E", tag)
-            tag = re.sub("\%", "%25", tag)
             tag = re.sub(" ", "+", tag)
             return self.parseJSON(tag, 'tags')['tag']
 
@@ -146,7 +151,9 @@ class DerpibooruParser(Parser.Parser):
             elif '.' in tag or '-' in tag:
                 continue
             elif config.use_mysql:
-                query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(tag)
+                query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(
+                    mysql_escafe_quotes(tag)
+                )
                 mysql_cursor.execute(query)
                 result = mysql_cursor.fetchone()
                 if result is None:
@@ -164,7 +171,9 @@ class DerpibooruParser(Parser.Parser):
                     else:
                         category_name = "content"
                         indexed_content.add(tag)
-                    insert_query = "INSERT INTO tag_categories VALUES (\"{}\", \"{}\");".format(tag, category_name)
+                    insert_query = "INSERT INTO tag_categories VALUES (\"{}\", \"{}\");".format(
+                        mysql_escafe_quotes(tag), category_name
+                    )
                     mysql_cursor.execute(insert_query)
                     mysql_connection.commit()
                 else:
