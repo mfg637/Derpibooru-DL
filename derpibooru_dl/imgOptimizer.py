@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, subprocess, math, struct, io
-from PIL import Image
+from PIL import Image, ImageFilter
 import abc
 import config
+import enum
 
 MAX_SIZE = 16383
 
@@ -13,6 +14,29 @@ if config.MAX_SIZE is not None:
 
 def loading_thread(encoder, outbuf, i):
     outbuf[i] += encoder.communicate()[0]
+
+
+class NoisyImageEnum(enum.Enum):
+    NOISELESS = enum.auto()
+    NOISY = enum.auto()
+
+
+def noise_detection(img:Image.Image) -> NoisyImageEnum:
+    img1 = img.filter(
+        ImageFilter.Kernel(
+            (3, 3),
+            (
+                0, -1, 0,
+                -1, 4, -1,
+                0, -1, 0
+            ),
+            1
+        )
+    )
+    pixels = img.size[0] * img.size[1]
+    noise_ratio = 1 - (img1.convert('L').histogram()[0] / pixels)
+    print("noise ratio", noise_ratio)
+    return NoisyImageEnum.NOISELESS if noise_ratio < 0.2 else NoisyImageEnum.NOISY
 
 
 sumos = 0
@@ -375,7 +399,7 @@ class UnremovableSource(BaseTranscoder):
 class FilePathSource(BaseTranscoder):
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, source:str, path:str, file_name:str, item_data:dict, pipe):
+    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
         BaseTranscoder.__init__(self, source, path, file_name, item_data, pipe)
         self._tmp_src = None
 
@@ -485,8 +509,7 @@ class WEBP_output(WEBM_VideoOutputFormat):
         self._apng_test_convert(img)
         if img.mode in {'1', 'P'}:
             raise NotOptimizableSourceException()
-        if img.mode == 'RGBA':
-            self._lossless = self._transparency_check(img)
+        self._lossless = True if noise_detection(img) == NoisyImageEnum.NOISELESS else False
         try:
             if (img.width > MAX_SIZE) | (img.height > MAX_SIZE):
                 img.thumbnail((MAX_SIZE, MAX_SIZE), Image.LANCZOS)
@@ -503,8 +526,12 @@ class WEBP_output(WEBM_VideoOutputFormat):
             self._output_size = len(self._lossless_data)
         else:
             if self._lossless:
+                ratio = 40
                 self._lossless_encode(img)
+                print("lossless size", len(self._lossless_data))
             self._lossy_encode(img)
+            if self._lossless:
+                print("lossy size", len(self._lossy_data), "quality", self._quality)
             if self._lossless and len(self._lossless_data) < len(self._lossy_data):
                 self._lossless = True
                 self._lossy_data = None
@@ -551,19 +578,6 @@ class PNGTranscode(WEBP_output):
 
     def get_converter_type(self):
         return APNGconverter
-
-    def _transparency_check(self, img: Image.Image) -> bool:
-        alpha_histogram = img.histogram()[768:]
-        if alpha_histogram[255] == img.width * img.height:
-            return False
-        else:
-            sum = 0
-            for value in alpha_histogram[:128]:
-                sum += value
-            if sum / (img.width * img.height) >= 0.05:
-                return True
-            else:
-                return False
 
     def _encode(self):
         img = self._open_image()
