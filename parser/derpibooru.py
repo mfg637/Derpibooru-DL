@@ -128,8 +128,8 @@ class DerpibooruParser(Parser.Parser):
         def get_JSON_Data(tag):
             tag = re.sub("/", "-fwslash-", tag)
             tag = re.sub(":", "-colon-", tag)
-            tag = re.sub(" ", "+", tag)
             tag = urllib.parse.quote(tag)
+            tag = re.sub("%20", "+", tag)
             return self.parseJSON(tag, 'tags')['tag']
 
         artist = set()
