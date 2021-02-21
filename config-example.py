@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 
+import enum
+
 # root of download directory (your collection)
 initial_dir = '/home/mfg637/Изображения/f/collections/drawings/ff/mlp/'
 
@@ -11,8 +13,16 @@ ponybooru_key = ''
 
 # transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, WEBM formats
 # required modules: Pillow
-# required programs: cwebp, jpegtran, ffmpeg
+# required programs: cwebp, jpegtran, ffmpeg, cavif
 enable_images_optimisations = False
+
+
+class PREFERRED_CODEC(enum):
+    WEBP = enum.auto()
+    AVIF = enum.auto()
+
+
+preferred_codec = PREFERRED_CODEC.WEBP
 
 # Max webp image size
 # works if image optimisations is enabled

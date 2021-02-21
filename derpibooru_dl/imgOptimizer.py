@@ -1,10 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import os, subprocess, math, struct, io
+from abc import ABCMeta
+
 from PIL import Image, ImageFilter
 import abc
 import config
 import enum
+import tempfile
 
 MAX_SIZE = 16383
 
@@ -286,7 +289,9 @@ def animation2webm(source, out_file, crf=32):
 def check_exists(source, path, filename):
     fname = os.path.join(path, filename)
     if os.path.splitext(source)[1].lower() == '.png':
-        return os.path.isfile(fname + '.webp') or os.path.isfile(fname + '.webm')
+        return os.path.isfile(fname + '.webp') \
+               or os.path.isfile(fname + '.webm') \
+               or os.path.isfile(fname + '.avif')
     elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
         return os.path.isfile(fname + '.webp')
     elif os.path.splitext(source)[1].lower() == '.gif':
@@ -481,13 +486,20 @@ class WEBM_VideoOutputFormat(BaseTranscoder):
 class WEBP_output(WEBM_VideoOutputFormat):
     __metaclass__ = abc.ABCMeta
 
+    def __init__(self, source, path: str, file_name: str, item_data: dict, pipe):
+        super().__init__(source, path, file_name, item_data, pipe)
+        self.file_suffix = '.webp'
+
     @abc.abstractmethod
     def _apng_test_convert(self, img):
         pass
 
-    @abc.abstractmethod
     def _transparency_check(self, img: Image.Image) -> bool:
-        pass
+        if img.mode in {'RGBA', 'LA'}:
+            alpha_histogram = img.histogram()[768:]
+            return alpha_histogram[255] != img.width * img.height
+        else:
+            return False
 
     @abc.abstractmethod
     def _invalid_file_exception_handle(self, e):
@@ -507,7 +519,7 @@ class WEBP_output(WEBM_VideoOutputFormat):
         self._lossless = False
         self._animated = False
         self._apng_test_convert(img)
-        if img.mode in {'1', 'P'}:
+        if img.mode in {'1', 'P', 'PA'}:
             raise NotOptimizableSourceException()
         self._lossless = True if noise_detection(img) == NoisyImageEnum.NOISELESS else False
         try:
@@ -550,12 +562,64 @@ class WEBP_output(WEBM_VideoOutputFormat):
 
     def _save_webp(self):
         if not self._animated:
-            outfile = open(self._output_file + '.webp', 'wb')
+            outfile = open(self._output_file + self.file_suffix, 'wb')
             if self._lossless:
                 outfile.write(self._lossless_data)
             else:
                 outfile.write(self._lossy_data)
             outfile.close()
+
+
+class AVIF_WEBP_output(WEBP_output, metaclass=ABCMeta):
+
+    def _lossy_encode(self, img:Image.Image) -> None:
+        src_tmp_file = None
+        src_tmp_file_name = None
+        if type(self._source) is str:
+            src_tmp_file_name = self._source
+        else:
+            src_tmp_file = tempfile.NamedTemporaryFile(mode='wb', suffix=".png", delete=True)
+            src_tmp_file_name = src_tmp_file.name
+            img.save(src_tmp_file, format="PNG")
+        alpha_tmp_file = None
+        output_tmp_file = tempfile.NamedTemporaryFile(mode='rb', suffix=".avif", delete=True)
+        if self._transparency_check(img):
+            alpha_tmp_file = tempfile.NamedTemporaryFile(suffix=".avif", delete=True)
+            subprocess.run([
+                'cavif',
+                '-i', src_tmp_file_name,
+                '-o', alpha_tmp_file.name,
+                '--encode-target', 'alpha',
+                '--monochrome',
+                '--lossless',
+                '--cpu-used', '0'
+            ])
+        commandline = [
+            'cavif',
+            '-i', src_tmp_file_name,
+            '-o', output_tmp_file.name,
+            '--encode-target', 'image'
+        ]
+        if alpha_tmp_file is not None:
+            commandline += ['--attach-alpha', alpha_tmp_file.name]
+        commandline += [
+            '--crf', str(100 - self._quality),
+            '--cpu-used', '0',
+            '--profile', '1',
+            '--pix-fmt', 'yuv444'
+        ]
+        subprocess.run(commandline)
+        if alpha_tmp_file is not None:
+            alpha_tmp_file.close()
+        if src_tmp_file is not None:
+            src_tmp_file.close()
+        self._lossy_data = output_tmp_file.read()
+        output_tmp_file.close()
+
+    def _save_webp(self):
+        if not self._lossless:
+            self.file_suffix = ".avif"
+        WEBP_output._save_webp(self)
 
 
 class PNGTranscode(WEBP_output):
@@ -585,6 +649,19 @@ class PNGTranscode(WEBP_output):
 
     def _save(self):
         self._save_webp()
+
+
+class PNG_AVIF_Transcode(PNGTranscode, AVIF_WEBP_output, metaclass=ABCMeta):
+    def __init__(self, source, path: str, file_name: str, item_data: dict, pipe):
+        PNGTranscode.__init__(self, source, path, file_name, item_data, pipe)
+        AVIF_WEBP_output.__init__(self, source, path, file_name, item_data, pipe)
+
+    def _encode(self):
+        img = self._open_image()
+        AVIF_WEBP_output._webp_encode(self, img)
+
+    def _save(self):
+        AVIF_WEBP_output._save_webp(self)
 
 
 class JPEGTranscode(WEBP_output):
@@ -687,9 +764,17 @@ class PNGFileTranscode(FilePathSource, SourceRemovable, PNGTranscode):
         os.remove(self._output_file)
 
 
+class AVIF_PNGFileTranscode(PNGFileTranscode, PNG_AVIF_Transcode):
+    def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
+        PNGFileTranscode.__init__(self, source, path, file_name, item_data, pipe)
+        PNG_AVIF_Transcode.__init__(self, source, path, file_name, item_data, pipe)
+
+
 class JPEGFileTranscode(FilePathSource, UnremovableSource, JPEGTranscode):
     def __init__(self, source: str, path: str, file_name: str, item_data: dict, pipe):
         FilePathSource.__init__(self, source, path, file_name, item_data, pipe)
+        UnremovableSource.__init__(self, source, path, file_name, item_data, pipe)
+        JPEGTranscode.__init__(self, source, path, file_name, item_data, pipe)
         self._quality = 100
         self._optimized_data = b''
 
@@ -735,7 +820,12 @@ class GIFFileTranscode(FilePathSource, SourceRemovable, GIFTranscode):
 
 def get_file_transcoder(source: str, path: str, filename: str, data: dict, pipe=None):
     if os.path.splitext(source)[1].lower() == '.png':
-        return PNGFileTranscode(source, path, filename, data, pipe)
+        if config.preferred_codec == config.PREFERRED_CODEC.AVIF:
+            return AVIF_PNGFileTranscode(source, path, filename, data, pipe)
+        elif config.PREFERRED_CODEC.WEBP:
+            return PNGFileTranscode(source, path, filename, data, pipe)
+        else:
+            return PNGFileTranscode(source, path, filename, data, pipe)
     elif os.path.splitext(source)[1].lower() in {'.jpg', '.jpeg'}:
         return JPEGFileTranscode(source, path, filename, data, pipe)
     elif os.path.splitext(source)[1].lower() == '.gif':
@@ -782,9 +872,16 @@ class PNGInMemoryTranscode(InMemorySource, PNGTranscode):
         self._optimisations_failed()
 
 
+class AVIF_PNGInMemoryTranscode(PNGInMemoryTranscode, PNG_AVIF_Transcode):
+    def __init__(self, source, path, file_name, item_data, pipe):
+        PNGInMemoryTranscode.__init__(self, source, path, file_name, item_data, pipe)
+        PNG_AVIF_Transcode.__init__(self, source, path, file_name, item_data, pipe)
+
+
 class JPEGInMemoryTranscode(InMemorySource, JPEGTranscode):
     def __init__(self, source:bytearray, path:str, file_name:str, item_data:dict, pipe):
         InMemorySource.__init__(self, source, path, file_name, item_data, pipe)
+        JPEGTranscode.__init__(self, source, path, file_name, item_data, pipe)
         self._quality = 100
         self._optimized_data = b''
 
@@ -827,7 +924,12 @@ def get_memory_transcoder(source: bytearray, path: str, filename: str, data: dic
     global avq
     global items
     if isPNG(source):
-        return PNGInMemoryTranscode(source, path, filename, data, pipe)
+        if config.preferred_codec == config.PREFERRED_CODEC.AVIF:
+            return AVIF_PNGInMemoryTranscode(source, path, filename, data, pipe)
+        elif config.PREFERRED_CODEC.WEBP:
+            return PNGInMemoryTranscode(source, path, filename, data, pipe)
+        else:
+            return PNGInMemoryTranscode(source, path, filename, data, pipe)
     elif isJPEG(source):
         return JPEGInMemoryTranscode(source, path, filename, data, pipe)
     elif isGIF(source):
