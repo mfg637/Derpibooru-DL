@@ -581,6 +581,14 @@ class AVIF_WEBP_output(WEBP_output, metaclass=ABCMeta):
             src_tmp_file = tempfile.NamedTemporaryFile(mode='wb', suffix=".png", delete=True)
             src_tmp_file_name = src_tmp_file.name
             img.save(src_tmp_file, format="PNG")
+        #fix ICPP profiles error
+        check_error = subprocess.run(['pngcrush', '-n', '-q', src_tmp_file_name], stderr=subprocess.PIPE)
+        if b'pngcrush: iCCP: Not recognizing known sRGB profile that has been edited' in check_error.stderr:
+            buf = io.BytesIO()
+            img.save(buf, format="PNG")
+            proc = subprocess.Popen(['convert', '-', src_tmp_file_name], stdin=subprocess.PIPE)
+            proc.communicate(buf.getbuffer())
+            proc.wait()
         alpha_tmp_file = None
         output_tmp_file = tempfile.NamedTemporaryFile(mode='rb', suffix=".avif", delete=True)
         if self._transparency_check(img):
