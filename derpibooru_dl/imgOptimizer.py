@@ -600,7 +600,8 @@ class AVIF_WEBP_output(WEBP_output, metaclass=ABCMeta):
                 '--encode-target', 'alpha',
                 '--monochrome',
                 '--lossless',
-                '--cpu-used', '0'
+                '--cpu-used', '0',
+                '--enable-full-color-range'
             ])
         commandline = [
             'cavif',
@@ -614,7 +615,8 @@ class AVIF_WEBP_output(WEBP_output, metaclass=ABCMeta):
             '--crf', str(100 - self._quality),
             '--cpu-used', '0',
             '--profile', '1',
-            '--pix-fmt', 'yuv444'
+            '--pix-fmt', 'yuv444',
+            '--enable-full-color-range'
         ]
         subprocess.run(commandline)
         if alpha_tmp_file is not None:
