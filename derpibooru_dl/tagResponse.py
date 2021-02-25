@@ -8,16 +8,18 @@ from config import initial_dir
 
 def find_folder(parsed_tags:dict):
 	outdir=initial_dir
-	# rules for /h/ folder
-	if {'suggestive', 'questionable', 'explicit'} & parsed_tags['rating']:
-		outdir=os.path.join(outdir, 'h')
-
 	if 'g1' in parsed_tags['content']:
 		outdir=os.path.join(outdir, 'g1')
 	elif 'g2' in parsed_tags['content']:
 		outdir=os.path.join(outdir, 'g2')
 	elif 'g3' in parsed_tags['content']:
 		outdir=os.path.join(outdir, 'g3')
+	elif 'g5' in parsed_tags['content']:
+		outdir = os.path.join(outdir, 'g5')
+		
+	# rules for /h/ folder
+	if {'suggestive', 'questionable', 'explicit'} & parsed_tags['rating']:
+		outdir=os.path.join(outdir, 'h')
 	# rules for characters
 	if len(parsed_tags['original character']):
 		outdir=os.path.join(outdir, 'oc')
@@ -37,12 +39,13 @@ def find_folder(parsed_tags:dict):
 		"carrot top" in parsed_tags['characters']:
 		outdir = os.path.join(outdir, "carrot top, golden harvest")
 	# rules for subfolders
-	if {'questionable', 'explicit'} & parsed_tags['rating']:
-		outdir=os.path.join(outdir, 'c')
-	elif 'my little pony: pony life' in parsed_tags['content']:
+	if 'my little pony: pony life' in parsed_tags['content']:
 		outdir=os.path.join(outdir, "pony life")
 	elif {'anthro', 'human'} & parsed_tags['species']:
 		outdir=os.path.join(outdir, 'antro')
+
+	if {'questionable', 'explicit'} & parsed_tags['rating']:
+		outdir=os.path.join(outdir, 'c')
 	elif {'horse'} & parsed_tags['species']:
 		outdir=os.path.join(outdir, 'horse')
 	elif 'vector' in parsed_tags['content']:
