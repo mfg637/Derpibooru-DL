@@ -34,6 +34,7 @@ class Parser(abc.ABC):
     def async_downloader(self):
         global download_queue
         while len(download_queue):
+            print("Queue: lost {} images".format(len(download_queue)))
             current_download = download_queue.pop()
             pipe=multiprocessing.Pipe()
             params = current_download
@@ -42,6 +43,7 @@ class Parser(abc.ABC):
             process.start()
             imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
             process.join()
+            print("Queue: lost {} images".format(len(download_queue)))
 
     @staticmethod
     def download_file(filename: str, src_url: str) -> None:
