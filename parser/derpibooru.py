@@ -130,6 +130,7 @@ class DerpibooruParser(Parser.Parser):
             tag = re.sub(":", "-colon-", tag)
             tag = urllib.parse.quote(tag)
             tag = re.sub("%20", "+", tag)
+            tag = re.sub("%27", '\'', tag)
             return self.parseJSON(tag, 'tags')['tag']
 
         artist = set()
