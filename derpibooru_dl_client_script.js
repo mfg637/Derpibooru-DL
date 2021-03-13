@@ -8,6 +8,7 @@
 // @match       https://twibooru.org/
 // @match       https://twibooru.org/posts
 // @match       https://twibooru.org/search
+// @match       https://twibooru.org/search/index
 // @match       https://twibooru.org/tags/*
 // @match       https://ponybooru.org/
 // @match       https://ponybooru.org/images
@@ -15,7 +16,7 @@
 // @match       https://ponybooru.org/tags/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.1.0
+// @version     1.1.1
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
