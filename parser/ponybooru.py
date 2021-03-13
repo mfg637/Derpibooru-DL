@@ -14,8 +14,7 @@ class PonybooruParser(derpibooru.DerpibooruParser):
     def get_domain_name_s():
         return 'ponybooru.org'
 
-    @staticmethod
-    def get_filename_prefix():
+    def get_filename_prefix(self):
         return 'pb'
 
     def get_domain_name(self) -> str:

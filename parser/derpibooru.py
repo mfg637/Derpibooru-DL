@@ -31,8 +31,7 @@ class DerpibooruParser(Parser.Parser):
     def get_domain_name_s():
         return 'derpibooru.org'
 
-    @staticmethod
-    def get_filename_prefix():
+    def get_filename_prefix(self):
         return 'db'
 
     def parseJSON(self, url=None, type="images"):
@@ -68,8 +67,26 @@ class DerpibooruParser(Parser.Parser):
             raise KeyError("data has no \'representations\'")
         if 'full' not in data['representations']:
             raise KeyError("not found full representation")
+        if type(data['representations']['full']) is not str:
+            raise TypeError(
+                "data['representations']['full'] is not str: "+data['representations']['full'].__class__.__name__
+            )
+        if type(os.path.splitext(data['representations']['full'])) is not tuple:
+            raise TypeError(
+                "os.path.splitext(data['representations']['full']) is not tuple: " + \
+                os.path.splitext(data['representations']['full']).__class__.__name__
+            )
+        if type(os.path.splitext(data['representations']['full'])[0]) is not str:
+            raise TypeError(
+                "os.path.splitext(data['representations']['full'])[0] is not str: " + \
+                os.path.splitext(data['representations']['full'])[0].__class__.__name__
+            )
         if 'format' not in data:
             raise KeyError("data has no format property")
+        if type(data["format"]) is not str:
+            raise TypeError(
+                "data[\"format\"] is not str: "+data["format"].__class__.__name__
+            )
         if 'large' not in data['representations']:
             raise KeyError("not found large representation")
 

@@ -120,6 +120,10 @@ class Parser(abc.ABC):
     def dataValidator(self, data):
         pass
 
+    @abc.abstractmethod
+    def get_filename_prefix(self):
+        pass
+
     def tagIndex(self):
         global indexed_tags
         taglist = self.getTagList()

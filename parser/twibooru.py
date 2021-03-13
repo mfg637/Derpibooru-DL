@@ -10,8 +10,11 @@ if config.enable_images_optimisations:
 
 
 class TwibooruParser(Parser.Parser):
+    def get_filename_prefix(self):
+        return 'tb'
+
     def getID(self) -> str:
-        return  str(self._parsed_data["id"])
+        return str(self._parsed_data["id"])
 
     def getTagList(self) -> list:
         return self._parsed_data['tags'].split(', ')
