@@ -6,6 +6,7 @@ import os
 import re
 import mysql.connector
 import requests
+from html.parser import HTMLParser
 
 from . import Parser
 
@@ -58,7 +59,12 @@ class DerpibooruParser(Parser.Parser):
         except Exception as e:
             print(e)
             return
-        data = request_data.json()
+        data = None
+        try:
+            data = request_data.json()
+        except json.JSONDecodeError as e:
+            print("JSON decoode error. Raw data:"+request_data.text)
+            raise e
         while "duplicate_of" in data:
             data = self.parseJSON(str(data["duplicate_of"]))
         self._parsed_data = data
@@ -121,17 +127,34 @@ class DerpibooruParser(Parser.Parser):
 
     def tagIndex(self):
         taglist = self._parsed_data['image']['tags']
-
+        tags_parsed_data = None
         def mysql_escafe_quotes(_string):
             return re.sub("\"", "\\\"", _string)
 
-        def get_JSON_Data(tag):
-            tag = re.sub("/", "-fwslash-", tag)
-            tag = re.sub(":", "-colon-", tag)
-            tag = urllib.parse.quote(tag)
-            tag = re.sub("%20", "+", tag)
-            tag = re.sub("%27", '\'', tag)
-            return self.parseJSON(tag, 'tags')['tag']
+        def parseHTML(image_id):
+            global tags_parsed_data
+            # derpibooru's API didn't provide method to get tag slug
+            # image route also didn't contain that data
+            tags_parsed_data = dict()
+            request_url = 'https://{}/images/{}'.format(self.get_domain_name(), image_id)
+            print("parseHTML", request_url)
+            try:
+                request_data = requests.get(request_url)
+            except Exception as e:
+                print(e)
+                return
+            raw_html = request_data.text
+
+            class TagsParser(HTMLParser):
+                def handle_starttag(self, tag, attrs):
+                    if tag == 'span':
+                        attributes = dict(attrs)
+                        if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
+                            tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
+            parser = TagsParser()
+            parser.feed(raw_html)
+            return tags_parsed_data
+
 
         artist = set()
         originalCharacter = set()
@@ -153,15 +176,15 @@ class DerpibooruParser(Parser.Parser):
                 mysql_cursor.execute(query)
                 result = mysql_cursor.fetchone()
                 if result is None:
-                    category_name = ""
-                    indexed_tag = get_JSON_Data(tag)
-                    if indexed_tag['category'] == "character":
+                    if tags_parsed_data is None:
+                        tags_parsed_data = parseHTML(self._parsed_data['image']["id"])
+                    if tags_parsed_data[tag] == "character":
                         category_name = "character"
                         indexed_characters.add(tag)
-                    elif indexed_tag['category'] == "rating":
+                    elif tags_parsed_data[tag] == "rating":
                         category_name = "rating"
                         indexed_rating.add(tag)
-                    elif indexed_tag['category'] == "species":
+                    elif tags_parsed_data[tag] == "species":
                         category_name = "species"
                         indexed_species.add(tag)
                     else:
@@ -185,7 +208,8 @@ class DerpibooruParser(Parser.Parser):
                         print(result)
             else:
                 if tag not in indexed_tags:
-                    indexed_tags[tag] = get_JSON_Data(tag)
+                    if tags_parsed_data is None:
+                        tags_parsed_data = parseHTML(self._parsed_data['image']["id"])
                     if indexed_tags[tag]['category'] == "character":
                         characters.add(tag)
                         indexed_characters.add(tag)
