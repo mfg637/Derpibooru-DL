@@ -2,38 +2,36 @@ from . import Parser
 import config
 import os
 import re
-import urllib.request
-import urllib.error
-import json
 import requests
 
 if config.enable_images_optimisations:
     from derpibooru_dl import imgOptimizer
     from PIL.Image import DecompressionBombError
 
-characters = {'applejack', 'fluttershy', 'twilight sparkle', 'rainbow dash', 'pinkie pie', 'rarity', 'derpy hooves',
-              'lyra heartstrings', 'zecora', 'apple bloom', 'sweetie belle', 'scootaloo', 'princess cadance',
-              'princess celestia', 'princess luna', 'maud pie', 'octavia', 'gilda', 'gabby', 'princess flurry heart',
-              'sunset shimmer', 'starlight glimmer', 'trixie', 'coco pomel', 'spitfire', 'princess ember', 'fleetfoot',
-              'cutie mark crusaders', 'spike', 'moondancer', 'dj pon3', 'tempest shadow', 'silverstream', 'yona',
-              'smolder', 'gallus', 'ocellus', 'sandbar', 'princess skystar', 'limestone pie', 'autumn blaze',
-              'cozy glow', 'arizona cow'}
-
-rating = {'safe', 'suggestive', 'questionable', 'explicit', 'semi-grimdark', 'grimdark', 'guro', 'shipping',
-                'portrait'}
-
-art_type = {'traditional art', 'digital art', 'sketch', 'vector', 'simple background', 'animated', 'wallpaper',
-            'screencap', 'photo', '3d', 'transparent background', 'equestria girls'}
-
-species = {'pony', 'anthro', 'humanisation', 'horse', 'hoers', 'pegasus', 'mare', 'unicorn', 'bipedal', 'earth pony',
-             'semi-anthro', 'g1', 'g2', 'g3', 'realistic anatomy'}
-
-content = {'plot', 'lided paper', 'pencil drawing', 'solo', 'flying', 'younger', 'source filmmaker', 'snow', 'cuddling',
-           'duo', 'text', 'wings', 'magic', 'prone', 'looking at you', 'socks', 'bust', 'lesbian', 'bed', 'selfie',
-           'window', 'sitting', 'nudity', 'looking at each other', 'pillow', 'fat', 'blood', 'diaper'}
-
 
 class TwibooruParser(Parser.Parser):
+    def getID(self) -> str:
+        return  str(self._parsed_data["id"])
+
+    def getTagList(self) -> list:
+        return self._parsed_data['tags'].split(', ')
+
+    def parsehtml_get_image_route_name(self) -> str:
+        return 'posts'
+
+    def get_domain_name(self) -> str:
+        return 'twibooru.org'
+
+    def dataValidator(self, data):
+        if 'image' not in data:
+            raise KeyError("data has no \'image\'")
+        if "original_format" not in data:
+            raise KeyError("data has no original_format property")
+        if 'representations' not in data:
+            raise KeyError("data has no \'representations\'")
+        if 'large' not in data['representations']:
+            raise KeyError("not found large representation")
+
     def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe=None):
         if 'deletion_reason' in data:
             if config.enable_images_optimisations and config.enable_multiprocessing:
@@ -97,29 +95,4 @@ class TwibooruParser(Parser.Parser):
             data = self.parseJSON(str(data["duplicate_of"]))
         self._parsed_data = data
         return data
-
-    def tagIndex(self):
-        rawtags = self._parsed_data['tags']
-        taglist = rawtags.split(', ')
-        artist = ''
-        originalCharacter = []
-        tagset = set()
-        for tag in taglist:
-            if ':' in set(tag):
-                parsebuf = tag.split(':')
-                if parsebuf[0] == 'artist':
-                    artist = parsebuf[1]
-                elif parsebuf[0] == 'oc':
-                    originalCharacter.append(parsebuf[1])
-            else:
-                tagset.add(tag)
-        indexed_characters = characters & tagset
-        indexed_rating = rating & tagset
-        indexed_art_types = art_type & tagset
-        indexed_species = species & tagset
-        indexed_content = content & tagset
-        return {'artist': artist, 'original character': originalCharacter,
-                'characters': indexed_characters, 'rating': indexed_rating,
-                'art_type': indexed_art_types, 'species': indexed_species,
-                'content': indexed_content}
 

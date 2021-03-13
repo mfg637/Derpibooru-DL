@@ -4,9 +4,7 @@ import urllib.request
 import config
 import os
 import re
-import mysql.connector
 import requests
-from html.parser import HTMLParser
 
 from . import Parser
 
@@ -15,31 +13,22 @@ if config.enable_images_optimisations:
     from PIL.Image import DecompressionBombError
 
 
-mysql_connection = None
-mysql_cursor = None
-if config.use_mysql:
-    mysql_connection = mysql.connector.connect(
-        host=config.mysql_host,
-        user=config.mysql_user,
-        passwd=config.mysql_password,
-        database=config.mysql_database
-    )
-mysql_cursor = mysql_connection.cursor()
-
-indexed_tags = dict()
-
-characters = set()
-
-rating = set()
-
-species = set()
-
-content = set()
-
-
 class DerpibooruParser(Parser.Parser):
+
+    def getID(self) -> str:
+        return str(self._parsed_data['image']["id"])
+
+    def getTagList(self) -> list:
+        return self._parsed_data['image']['tags']
+
+    def parsehtml_get_image_route_name(self) -> str:
+        return 'images'
+
+    def get_domain_name(self) -> str:
+        return DerpibooruParser.get_domain_name_s()
+
     @staticmethod
-    def get_domain_name():
+    def get_domain_name_s():
         return 'derpibooru.org'
 
     @staticmethod
@@ -52,7 +41,7 @@ class DerpibooruParser(Parser.Parser):
             id = url
         else:
             id = self.get_id_by_url(self._url)
-        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name(), type, urllib.parse.quote(id))
+        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), type, urllib.parse.quote(id))
         print("parseJSON", request_url)
         try:
             request_data = requests.get(request_url)
@@ -63,12 +52,26 @@ class DerpibooruParser(Parser.Parser):
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
-            print("JSON decoode error. Raw data:"+request_data.text)
+            print("JSON decode error. HTTP status code:{} Raw data: {}".format(
+                request_data.status_code, request_data.text))
             raise e
         while "duplicate_of" in data:
             data = self.parseJSON(str(data["duplicate_of"]))
         self._parsed_data = data
         return data
+
+    def dataValidator(self, data):
+        if 'image' not in data:
+            raise KeyError("data has no \'image\'")
+        data = data['image']
+        if 'representations' not in data:
+            raise KeyError("data has no \'representations\'")
+        if 'full' not in data['representations']:
+            raise KeyError("not found full representation")
+        if 'format' not in data:
+            raise KeyError("data has no format property")
+        if 'large' not in data['representations']:
+            raise KeyError("not found large representation")
 
     def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
         if 'deletion_reason' in data and data['deletion_reason'] is not None:
@@ -124,113 +127,3 @@ class DerpibooruParser(Parser.Parser):
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
-
-    def tagIndex(self):
-        taglist = self._parsed_data['image']['tags']
-        tags_parsed_data = None
-        def mysql_escafe_quotes(_string):
-            return re.sub("\"", "\\\"", _string)
-
-        def parseHTML(image_id):
-            global tags_parsed_data
-            # derpibooru's API didn't provide method to get tag slug
-            # image route also didn't contain that data
-            tags_parsed_data = dict()
-            request_url = 'https://{}/images/{}'.format(self.get_domain_name(), image_id)
-            print("parseHTML", request_url)
-            try:
-                request_data = requests.get(request_url)
-            except Exception as e:
-                print(e)
-                return
-            raw_html = request_data.text
-
-            class TagsParser(HTMLParser):
-                def handle_starttag(self, tag, attrs):
-                    if tag == 'span':
-                        attributes = dict(attrs)
-                        if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
-                            tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
-            parser = TagsParser()
-            parser.feed(raw_html)
-            return tags_parsed_data
-
-
-        artist = set()
-        originalCharacter = set()
-        indexed_characters = set()
-        indexed_rating = set()
-        indexed_species = set()
-        indexed_content = set()
-        for tag in taglist:
-            if "oc:" in tag:
-                originalCharacter.add(tag.split(':')[1])
-            elif "artist:" in tag:
-                artist.add(tag.split(':')[1])
-            elif '.' in tag or '-' in tag:
-                continue
-            elif config.use_mysql:
-                query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(
-                    mysql_escafe_quotes(tag)
-                )
-                mysql_cursor.execute(query)
-                result = mysql_cursor.fetchone()
-                if result is None:
-                    if tags_parsed_data is None:
-                        tags_parsed_data = parseHTML(self._parsed_data['image']["id"])
-                    if tags_parsed_data[tag] == "character":
-                        category_name = "character"
-                        indexed_characters.add(tag)
-                    elif tags_parsed_data[tag] == "rating":
-                        category_name = "rating"
-                        indexed_rating.add(tag)
-                    elif tags_parsed_data[tag] == "species":
-                        category_name = "species"
-                        indexed_species.add(tag)
-                    else:
-                        category_name = "content"
-                        indexed_content.add(tag)
-                    insert_query = "INSERT INTO tag_categories VALUES (\"{}\", \"{}\");".format(
-                        mysql_escafe_quotes(tag), category_name
-                    )
-                    mysql_cursor.execute(insert_query)
-                    mysql_connection.commit()
-                else:
-                    if result[0] == "rating":
-                        indexed_rating.add(tag)
-                    elif result[0] == "character":
-                        indexed_characters.add(tag)
-                    elif result[0] == "species":
-                        indexed_species.add(tag)
-                    elif result[0] == "content":
-                        indexed_content.add(tag)
-                    else:
-                        print(result)
-            else:
-                if tag not in indexed_tags:
-                    if tags_parsed_data is None:
-                        tags_parsed_data = parseHTML(self._parsed_data['image']["id"])
-                    if indexed_tags[tag]['category'] == "character":
-                        characters.add(tag)
-                        indexed_characters.add(tag)
-                    elif indexed_tags[tag]['category'] == "rating":
-                        rating.add(tag)
-                        indexed_rating.add(tag)
-                    elif indexed_tags[tag]['category'] == "species":
-                        species.add(tag)
-                        indexed_species.add(tag)
-                    else:
-                        content.add(tag)
-                        indexed_content.add(tag)
-                else:
-                    if tag in rating:
-                        indexed_rating.add(tag)
-                    elif tag in characters:
-                        indexed_characters.add(tag)
-                    elif tag in species:
-                        indexed_species.add(tag)
-                    elif tag in content:
-                        indexed_content.add(tag)
-        return {'artist': artist, 'original character': originalCharacter,
-                'characters': indexed_characters, 'rating': indexed_rating,
-                'species': indexed_species, 'content': indexed_content}
