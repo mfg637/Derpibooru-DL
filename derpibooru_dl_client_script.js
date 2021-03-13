@@ -4,9 +4,10 @@
 // @match       https://derpibooru.org/
 // @match       https://derpibooru.org/images
 // @match       https://derpibooru.org/search
+// @match       https://derpibooru.org/tags/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.0
+// @version     1.0.1
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
