@@ -616,8 +616,11 @@ class AVIF_WEBP_output(WEBP_output, metaclass=ABCMeta):
             '--cpu-used', '0',
             '--profile', '1',
             '--pix-fmt', 'yuv444',
-            '--enable-full-color-range'
+            '--enable-full-color-range',
+            '--enable-cdef'
         ]
+        if config.avif_encoding_threads is not None and config.avif_encoding_threads > 0:
+            commandline += ['--enable-row-mt', '--threads', str(config.avif_encoding_threads)]
         subprocess.run(commandline)
         if alpha_tmp_file is not None:
             alpha_tmp_file.close()

@@ -24,6 +24,10 @@ class PREFERRED_CODEC(enum):
 
 preferred_codec = PREFERRED_CODEC.WEBP
 
+# if 0 or None, multithreading is off
+# else, it's enables row-mt
+avif_encoding_threads = 0
+
 # Max webp image size
 # works if image optimisations is enabled
 # if value is None, set maximum possible for webp size
