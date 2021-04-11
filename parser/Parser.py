@@ -12,7 +12,7 @@ import re
 from html.parser import HTMLParser
 
 if config.enable_images_optimisations:
-    from derpibooru_dl import imgOptimizer
+    import pyimglib_transcoding
 
 
 downloader_thread = threading.Thread()
@@ -68,7 +68,8 @@ class Parser(abc.ABC):
             params['pipe'] = pipe[1]
             process = multiprocessing.Process(target=self.save_image, kwargs=params)
             process.start()
-            imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
+            import pyimglib_transcoding.statistics as stats
+            stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
             process.join()
             print("Queue: lost {} images".format(len(download_queue)))
 
@@ -81,7 +82,7 @@ class Parser(abc.ABC):
 
     def in_memory_transcode(self, src_url, name, tags, output_directory, pipe):
         source = self.do_binary_request(src_url)
-        transcoder = imgOptimizer.get_memory_transcoder(
+        transcoder = pyimglib_transcoding.get_memory_transcoder(
             source, output_directory, name, tags, pipe
         )
         transcoder.transcode()

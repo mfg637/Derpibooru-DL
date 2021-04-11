@@ -1,0 +1,3 @@
+[submodule "pyimglib_transcoding"]
+	path = pyimglib_transcoding
+	url = https://github.com/mfg637/pyimglib_transcoding.git

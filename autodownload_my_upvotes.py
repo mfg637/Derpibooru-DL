@@ -14,7 +14,8 @@ except ImportError as e:
     raise(e)
 
 if config.enable_images_optimisations:
-    from derpibooru_dl import imgOptimizer
+    import pyimglib_transcoding
+    pyimglib_transcoding.config.enable_multiprocessing = config.enable_multiprocessing
 
 error_str1 = 'Error: user API key required.'
 error_str1_continue = 'Find you API key in page: "https://derpibooru.org/pages/api"'
@@ -78,7 +79,7 @@ except Exception as e:
     raise e
 finally:
     if config.enable_images_optimisations:
-        imgOptimizer.printStats()
+        pyimglib_transcoding.statistics.print_stats()
     if config.use_mysql:
         from derpibooru_dl import tagResponse
-        parser.derpibooru.mysql_connection.close()
+        parser.Parser.mysql_connection.close()

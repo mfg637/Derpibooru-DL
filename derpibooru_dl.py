@@ -8,7 +8,7 @@ import config
 
 
 if config.enable_images_optimisations:
-    from derpibooru_dl import imgOptimizer
+    import pyimglib_transcoding
 
 
 id_list = []
@@ -62,6 +62,6 @@ try:
             download(input())
 finally:
     if config.enable_images_optimisations:
-        imgOptimizer.printStats()
+        pyimglib_transcoding.statistics.print_stats()
     if config.use_mysql:
         parser.Parser.mysql_connection.close()

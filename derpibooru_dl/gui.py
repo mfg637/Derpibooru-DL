@@ -7,8 +7,6 @@ from tkinter import ttk, filedialog, messagebox
 from . import tagResponse
 import parser
 import config
-if config.enable_images_optimisations:
-    from . import imgOptimizer
 
 
 class GUI:
@@ -67,7 +65,8 @@ class GUI:
                     ))
                     process.start()
                     if config.enable_images_optimisations:
-                        imgOptimizer.sumos, imgOptimizer.sumsize, imgOptimizer.avq, imgOptimizer.items = pipe[0].recv()
+                        import pyimglib_transcoding.statistics as stats
+                        stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
                     process.join()
                 else:
                     _parser.save_image(outdir, data, parsed_tags, None)

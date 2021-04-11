@@ -9,8 +9,8 @@ try:
     browser.gui.GUI()
 finally:
     if config.enable_images_optimisations:
-        import derpibooru_dl.imgOptimizer
-        derpibooru_dl.imgOptimizer.printStats()
+        import pyimglib_transcoding
+        pyimglib_transcoding.statistics.print_stats()
     if config.use_mysql:
         from derpibooru_dl import tagResponse
-        parser.derpibooru.mysql_connection.close()
+        parser.Parser.mysql_connection.close()
