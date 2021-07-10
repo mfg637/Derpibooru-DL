@@ -14,6 +14,8 @@ from html.parser import HTMLParser
 if config.enable_images_optimisations:
     import pyimglib_transcoding
 
+ENABLE_REWRITING = False
+
 
 downloader_thread = threading.Thread()
 download_queue = []
@@ -45,6 +47,9 @@ class Parser(abc.ABC):
     def __init__(self, url, parsed_data=None):
         self._url = url
         self._parsed_data = parsed_data
+
+    def enable_rewriting(self):
+        return ENABLE_REWRITING
 
     @staticmethod
     def get_id_by_url(URL: str):

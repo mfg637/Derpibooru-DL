@@ -118,7 +118,7 @@ class DerpibooruParser(Parser.Parser):
 
         if config.enable_images_optimisations:
             if data["format"] in {'png', 'jpg', 'jpeg', 'gif'}:
-                if not os.path.isfile(src_filename) and \
+                if self.enable_rewriting() or not os.path.isfile(src_filename) and \
                         not pyimglib_transcoding.check_exists(
                             src_filename,
                             output_directory,
@@ -144,5 +144,5 @@ class DerpibooruParser(Parser.Parser):
                 if config.enable_multiprocessing:
                     pyimglib_transcoding.statistics.pipe_send(pipe)
         else:
-            if not os.path.isfile(src_filename):
+            if self.enable_rewriting() or not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)

@@ -22,6 +22,8 @@ while i < len(sys.argv):
             for line in file:
                 id_list.append(line[:-1])
             file.close()
+        if sys.argv[i][2:] == "rewrite":
+            parser.Parser.ENABLE_REWRITING = True
     else:
         id_list.append(sys.argv[i])
     i += 1
