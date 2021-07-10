@@ -6,6 +6,9 @@ import os
 import re
 import mysql.connector
 
+FILENAME_PREFIX = 'pb'
+
+
 from . import derpibooru
 
 
@@ -15,7 +18,7 @@ class PonybooruParser(derpibooru.DerpibooruParser):
         return 'ponybooru.org'
 
     def get_filename_prefix(self):
-        return 'pb'
+        return FILENAME_PREFIX
 
     def get_domain_name(self) -> str:
         return PonybooruParser.get_domain_name_s()

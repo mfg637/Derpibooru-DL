@@ -12,6 +12,8 @@ if config.enable_images_optimisations:
     import pyimglib_transcoding
     from PIL.Image import DecompressionBombError
 
+FILENAME_PREFIX = 'db'
+
 
 class DerpibooruParser(Parser.Parser):
 
@@ -32,7 +34,7 @@ class DerpibooruParser(Parser.Parser):
         return 'derpibooru.org'
 
     def get_filename_prefix(self):
-        return 'db'
+        return FILENAME_PREFIX
 
     def parseJSON(self, url=None, type="images"):
         id = None

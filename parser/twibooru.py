@@ -9,6 +9,9 @@ if config.enable_images_optimisations:
     from PIL.Image import DecompressionBombError
 
 
+FILENAME_PREFIX = 'tb'
+
+
 class TwibooruParser(Parser.Parser):
     def get_filename_prefix(self):
         return 'tb'
