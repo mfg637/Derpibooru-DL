@@ -35,7 +35,7 @@ def download(url):
     _parser = parser.get_parser(url)
     data = _parser.parseJSON()
 
-    parsed_tags = tagResponse.tagIndex(_parser, data['image']['tags'])
+    parsed_tags = _parser.tagIndex()
     print("parsed tags", parsed_tags)
     outdir = tagResponse.find_folder(parsed_tags)
     print("outdir", outdir)
@@ -43,7 +43,7 @@ def download(url):
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
-    _parser.save_image(outdir, data['image'], parsed_tags)
+    _parser.save_image(outdir, data, parsed_tags)
 
 
 try:
