@@ -1,6 +1,6 @@
+import sys
+
 import config
-import urllib.request
-import urllib.parse
 import threading
 import multiprocessing
 import abc
@@ -66,7 +66,7 @@ class Parser(abc.ABC):
     def async_downloader(self):
         global download_queue
         while len(download_queue):
-            print("Queue: lost {} images".format(len(download_queue)))
+            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
             current_download = download_queue.pop()
             pipe=multiprocessing.Pipe()
             params = current_download
@@ -76,7 +76,7 @@ class Parser(abc.ABC):
             import pyimglib_transcoding.statistics as stats
             stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
             process.join()
-            print("Queue: lost {} images".format(len(download_queue)))
+            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
 
     @staticmethod
     def download_file(filename: str, src_url: str) -> None:
@@ -148,15 +148,18 @@ class Parser(abc.ABC):
                 self.parsehtml_get_image_route_name(),
                 image_id
             )
-            print("parseHTML", request_url)
+            print("parseHTML", request_url, file=sys.stderr)
             try:
                 request_data = requests.get(request_url)
             except Exception as e:
-                print(e)
+                print(e, file=sys.stderr)
                 return
             raw_html = request_data.text
 
             class TagsParser(HTMLParser):
+                def error(self, message):
+                    raise Exception(message)
+
                 def handle_starttag(self, tag, attrs):
                     if tag == 'span':
                         attributes = dict(attrs)
