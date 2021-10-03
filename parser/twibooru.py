@@ -62,7 +62,7 @@ class TwibooruParser(Parser.Parser):
         src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
 
         metadata = {
-            "title": data['name'],
+            "title": data["file_name"],
             "origin": self.get_origin_name(),
             "id": data["id"]
         }
