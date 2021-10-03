@@ -85,10 +85,10 @@ class Parser(abc.ABC):
         file.write(request_data.content)
         file.close()
 
-    def in_memory_transcode(self, src_url, name, tags, output_directory, pipe):
+    def in_memory_transcode(self, src_url, name, tags, output_directory, pipe, metadata):
         source = self.do_binary_request(src_url)
         transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, tags, pipe
+            source, output_directory, name, tags, pipe, metadata
         )
         transcoder.transcode()
 
@@ -128,6 +128,10 @@ class Parser(abc.ABC):
 
     @abc.abstractmethod
     def get_filename_prefix(self):
+        pass
+
+    @abc.abstractmethod
+    def get_origin_name(self):
         pass
 
     def tagIndex(self):

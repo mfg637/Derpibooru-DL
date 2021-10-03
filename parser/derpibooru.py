@@ -13,9 +13,13 @@ if config.enable_images_optimisations:
     from PIL.Image import DecompressionBombError
 
 FILENAME_PREFIX = 'db'
+ORIGIN = 'derpibooru'
 
 
 class DerpibooruParser(Parser.Parser):
+
+    def get_origin_name(self):
+        return ORIGIN
 
     def getID(self) -> str:
         return str(self._parsed_data['image']["id"])
@@ -113,6 +117,12 @@ class DerpibooruParser(Parser.Parser):
             name = str(data["id"])
         src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
 
+        metadata = {
+            "title": data['name'],
+            "origin": self.get_origin_name(),
+            "id": data["id"]
+        }
+
         print("filename", src_filename)
         print("image_url", src_url)
 
@@ -125,15 +135,15 @@ class DerpibooruParser(Parser.Parser):
                             name
                         ):
                     try:
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe)
+                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
                     except DecompressionBombError:
                         src_url = \
                             'https:' + os.path.splitext(data['representations']["large"])[0] + '.' + \
                             data["format"]
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe)
+                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
                 elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
                     transcoder = pyimglib.transcoding.get_file_transcoder(
-                        src_filename, output_directory, name, tags, pipe
+                        src_filename, output_directory, name, tags, pipe, metadata
                     )
                     transcoder.transcode()
                 elif config.enable_multiprocessing:

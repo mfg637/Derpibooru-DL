@@ -10,9 +10,13 @@ if config.enable_images_optimisations:
 
 
 FILENAME_PREFIX = 'tb'
+ORIGIN = 'twibooru'
 
 
 class TwibooruParser(Parser.Parser):
+    def get_origin_name(self):
+        return ORIGIN
+
     def get_filename_prefix(self):
         return 'tb'
 
@@ -41,7 +45,7 @@ class TwibooruParser(Parser.Parser):
     def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe=None):
         if 'deletion_reason' in data:
             if config.enable_images_optimisations and config.enable_multiprocessing:
-                pyimglib_transcoding.statistics.pipe_send(pipe)
+                pyimglib.transcoding.statistics.pipe_send(pipe)
             return
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
@@ -57,35 +61,41 @@ class TwibooruParser(Parser.Parser):
             name = str(data["id"])
         src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
 
+        metadata = {
+            "title": data['name'],
+            "origin": self.get_origin_name(),
+            "id": data["id"]
+        }
+
         print("filename", src_filename)
         print(src_url)
 
         if config.enable_images_optimisations:
             if data["original_format"] in {'png', 'jpg', 'jpeg', 'gif'}:
-                if self.enable_rewriting() or not os.path.isfile(src_filename) and not pyimglib_transcoding.check_exists(
+                if self.enable_rewriting() or not os.path.isfile(src_filename) and not pyimglib.transcoding.check_exists(
                         src_filename,
                         output_directory,
                         name
                 ):
                     try:
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe)
+                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
                     except DecompressionBombError:
                         src_url = \
                             'https:' + os.path.splitext(data['representations']["large"])[0] + '.' + \
                             data["original_format"]
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe)
-                elif not pyimglib_transcoding.check_exists(src_filename, output_directory, name):
-                    transcoder = pyimglib_transcoding.get_file_transcoder(
-                        src_filename, output_directory, name, tags, pipe
+                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
+                elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+                    transcoder = pyimglib.transcoding.get_file_transcoder(
+                        src_filename, output_directory, name, tags, pipe, metadata
                     )
                     transcoder.transcode()
                 elif config.enable_multiprocessing:
-                    pyimglib_transcoding.statistics.pipe_send(pipe)
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
             else:
                 if not os.path.isfile(src_filename):
                     self.download_file(src_filename, src_url)
                 if config.enable_multiprocessing:
-                    pyimglib_transcoding.statistics.pipe_send(pipe)
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
