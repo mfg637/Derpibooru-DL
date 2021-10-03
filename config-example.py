@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 
-import pyimglib_transcoding.config
+import pyimglib.config
 
 # root of download directory (your collection)
 initial_dir = '*** insert your path required ***'
@@ -38,17 +38,17 @@ browser_tmpcache_directory = None
 enable_images_optimisations = False
 
 if enable_images_optimisations:
-    pyimglib_transcoding.config.preferred_codec = pyimglib_transcoding.config.PREFERRED_CODEC.WEBP
+    pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
 
     # if 0 or None, multithreading is off
     # else, it's enables row-mt
-    pyimglib_transcoding.config.avif_encoding_threads = 0
+    pyimglib.config.avif_encoding_threads = 0
 
     # Max image size
     # if value is None, set maximum possible for webp size
-    pyimglib_transcoding.config.MAX_SIZE = None
+    pyimglib.config.MAX_SIZE = None
 
     # if none, use JPEG's Arithmetic coding
     # if not none, use JPEG XL's lossless encoding
-    pyimglib_transcoding.config.jpeg_xl_tools_path = None
+    pyimglib.config.jpeg_xl_tools_path = None
 

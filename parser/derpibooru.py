@@ -9,7 +9,7 @@ import requests
 from . import Parser
 
 if config.enable_images_optimisations:
-    import pyimglib_transcoding
+    import pyimglib.transcoding
     from PIL.Image import DecompressionBombError
 
 FILENAME_PREFIX = 'db'
@@ -96,7 +96,7 @@ class DerpibooruParser(Parser.Parser):
         if 'deletion_reason' in data and data['deletion_reason'] is not None:
             print('DELETED')
             if config.enable_images_optimisations and config.enable_multiprocessing:
-                pyimglib_transcoding.statistics.pipe_send(pipe)
+                pyimglib.transcoding.statistics.pipe_send(pipe)
             return
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
@@ -119,7 +119,7 @@ class DerpibooruParser(Parser.Parser):
         if config.enable_images_optimisations:
             if data["format"] in {'png', 'jpg', 'jpeg', 'gif'}:
                 if self.enable_rewriting() or not os.path.isfile(src_filename) and \
-                        not pyimglib_transcoding.check_exists(
+                        not pyimglib.transcoding.check_exists(
                             src_filename,
                             output_directory,
                             name
@@ -131,18 +131,18 @@ class DerpibooruParser(Parser.Parser):
                             'https:' + os.path.splitext(data['representations']["large"])[0] + '.' + \
                             data["format"]
                         self.in_memory_transcode(src_url, name, tags, output_directory, pipe)
-                elif not pyimglib_transcoding.check_exists(src_filename, output_directory, name):
-                    transcoder = pyimglib_transcoding.get_file_transcoder(
+                elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+                    transcoder = pyimglib.transcoding.get_file_transcoder(
                         src_filename, output_directory, name, tags, pipe
                     )
                     transcoder.transcode()
                 elif config.enable_multiprocessing:
-                    pyimglib_transcoding.statistics.pipe_send(pipe)
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
             else:
                 if not os.path.isfile(src_filename):
                     self.download_file(src_filename, src_url)
                 if config.enable_multiprocessing:
-                    pyimglib_transcoding.statistics.pipe_send(pipe)
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)

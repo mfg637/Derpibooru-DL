@@ -1,14 +1,15 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import os, sys
-from derpibooru_dl import tagResponse
-import parser
-import config
+import os
+import sys
 
+import config
+import parser
+from derpibooru_dl import tagResponse
 
 if config.enable_images_optimisations:
-    import pyimglib_transcoding
+    import pyimglib.transcoding
 
 
 id_list = []
@@ -64,6 +65,6 @@ try:
             download(input())
 finally:
     if config.enable_images_optimisations:
-        pyimglib_transcoding.statistics.print_stats()
+        pyimglib.transcoding.statistics.print_stats()
     if config.use_mysql:
         parser.Parser.mysql_connection.close()

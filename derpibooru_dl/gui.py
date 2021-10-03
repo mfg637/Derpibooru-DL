@@ -65,7 +65,7 @@ class GUI:
                     ))
                     process.start()
                     if config.enable_images_optimisations:
-                        import pyimglib_transcoding.statistics as stats
+                        import pyimglib.transcoding.statistics as stats
                         stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
                     process.join()
                 else:
@@ -73,6 +73,7 @@ class GUI:
         except Exception as e:
             self._add_btn['state'] = DISABLED
             messagebox.showerror(e.__class__.__name__, str(e))
+            raise e
         self._current_item = None
         self._dl_btn['state'] = NORMAL
 

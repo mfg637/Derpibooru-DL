@@ -5,7 +5,7 @@ import re
 import requests
 
 if config.enable_images_optimisations:
-    import pyimglib_transcoding
+    import pyimglib.transcoding
     from PIL.Image import DecompressionBombError
 
 
