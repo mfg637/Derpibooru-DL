@@ -62,7 +62,7 @@ if __name__ == '__main__':
         print(error_message)
     finally:
         if config.enable_images_optimisations:
-            import pyimglib_transcoding
-            pyimglib_transcoding.statistics.print_stats()
+            import pyimglib.transcoding
+            pyimglib.transcoding.statistics.print_stats()
         if config.use_mysql:
             parser.Parser.mysql_connection.close()
