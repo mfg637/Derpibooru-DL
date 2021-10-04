@@ -127,7 +127,7 @@ class DerpibooruParser(Parser.Parser):
         print("image_url", src_url)
 
         if config.enable_images_optimisations:
-            if data["format"] in {'png', 'jpg', 'jpeg', 'gif'}:
+            if data["format"] in {'png', 'jpg', 'jpeg', 'gif', 'webm'}:
                 if self.enable_rewriting() or not os.path.isfile(src_filename) and \
                         not pyimglib.transcoding.check_exists(
                             src_filename,
