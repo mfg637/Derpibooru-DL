@@ -71,7 +71,7 @@ class TwibooruParser(Parser.Parser):
         print(src_url)
 
         if config.enable_images_optimisations:
-            if data["original_format"] in {'png', 'jpg', 'jpeg', 'gif', 'webm'}:
+            if data["original_format"] in Parser.TRANSCODE_FILES:
                 if self.enable_rewriting() or not os.path.isfile(src_filename) and not pyimglib.transcoding.check_exists(
                         src_filename,
                         output_directory,

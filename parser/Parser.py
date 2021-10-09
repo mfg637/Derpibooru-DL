@@ -16,6 +16,7 @@ if config.enable_images_optimisations:
 
 ENABLE_REWRITING = False
 
+TRANSCODE_FILES = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'svg'}
 
 downloader_thread = threading.Thread()
 download_queue = []
