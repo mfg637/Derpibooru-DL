@@ -100,6 +100,55 @@ class TwibooruParser(Parser.Parser):
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
 
+    def simulate_download(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
+        if 'deletion_reason' in data:
+            if config.enable_images_optimisations and config.enable_multiprocessing:
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+            return
+        if not os.path.isdir(output_directory):
+            os.makedirs(output_directory)
+        name = ''
+        src_url = os.path.splitext(data['image'])[0] + '.' + data["original_format"]
+        src_url = re.sub(r'\%', '', src_url)
+        if 'file_name' in data and data['file_name'] is not None:
+            name = "tb{} {}".format(
+                data["id"],
+                re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
+            )
+        else:
+            name = str(data["id"])
+        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
+
+        metadata = {
+            "title": data["file_name"],
+            "origin": self.get_origin_name(),
+            "id": data["id"]
+        }
+
+        print("filename", src_filename)
+        print(src_url)
+
+        if config.enable_images_optimisations:
+            if data["original_format"] in Parser.TRANSCODE_FILES:
+                if self.enable_rewriting() or not os.path.isfile(src_filename) and not pyimglib.transcoding.check_exists(
+                        src_filename,
+                        output_directory,
+                        name
+                ):
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
+                elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
+                elif config.enable_multiprocessing:
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
+            else:
+                if not os.path.isfile(src_filename):
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
+                if config.enable_multiprocessing:
+                    pyimglib.transcoding.statistics.pipe_send(pipe)
+        else:
+            if self.enable_rewriting() or not os.path.isfile(src_filename):
+                pass
+
     def parseJSON(self, _type="images"):
         id = self.get_id_by_url(self._url)
         print("parseJSON", 'https://twibooru.org/' + id + '.json')

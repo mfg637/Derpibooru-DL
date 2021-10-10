@@ -104,6 +104,10 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
+    def simulate_download(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
+        pass
+
+    @abc.abstractmethod
     def parseJSON(self, _type="images"):
         pass
 

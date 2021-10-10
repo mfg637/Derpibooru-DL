@@ -25,6 +25,8 @@ while i < len(sys.argv):
             file.close()
         if sys.argv[i][2:] == "rewrite":
             parser.Parser.ENABLE_REWRITING = True
+        if sys.argv[i][2:] == "simulate":
+            config.simulate = True
     else:
         id_list.append(sys.argv[i])
     i += 1

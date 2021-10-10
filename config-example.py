@@ -37,6 +37,8 @@ browser_tmpcache_directory = None
 # required programs: cwebp, jpegtran, ffmpeg, cavif, cjxl(JPEG XL reference encoder)
 enable_images_optimisations = False
 
+simulate = False
+
 if enable_images_optimisations:
     pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
 
