@@ -7,6 +7,7 @@ import sys
 import config
 import parser
 from derpibooru_dl import tagResponse
+import pyimglib
 
 if config.enable_images_optimisations:
     import pyimglib.transcoding
@@ -25,6 +26,7 @@ while i < len(sys.argv):
             file.close()
         if sys.argv[i][2:] == "rewrite":
             parser.Parser.ENABLE_REWRITING = True
+            pyimglib.config.allow_rewrite = True
         if sys.argv[i][2:] == "simulate":
             config.simulate = True
     else:
