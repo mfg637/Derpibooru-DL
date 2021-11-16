@@ -4,6 +4,7 @@
 import os
 import sys
 
+import argparse
 import config
 import parser
 from derpibooru_dl import tagResponse
@@ -14,30 +15,33 @@ if config.enable_images_optimisations:
 
 
 id_list = []
-i = 1
-while i < len(sys.argv):
-    if sys.argv[i][:2] == "--":
-        if sys.argv[i][2:] == "append":
-            i += 1
-            file_path = sys.argv[i]
-            file = open(file_path, 'r')
-            for line in file:
-                id_list.append(line[:-1])
-            file.close()
-        if sys.argv[i][2:] == "rewrite":
-            parser.Parser.ENABLE_REWRITING = True
-            pyimglib.config.allow_rewrite = True
-        if sys.argv[i][2:] == "simulate":
-            config.simulate = True
-    else:
-        id_list.append(sys.argv[i])
-    i += 1
+arg_parser = argparse.ArgumentParser()
+arg_parser.add_argument("id", help="derpibooru image ID", nargs="*")
+arg_parser.add_argument(
+    "--append",
+    metavar="file",
+    type=argparse.FileType('r'),
+    help="read IDs from text file (one line - one ID)",
+    default=None
+)
+arg_parser.add_argument("--simulate", help="do not download actual image files", action="store_true")
+arg_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
+args = arg_parser.parse_args()
+
+id_list = args.id.copy()
+parser.Parser.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
+config.simulate = args.simulate
+
+if args.append is not None:
+    for line in args.append:
+        id_list.append(line[:-1])
+    args.append.close()
 
 
 def download(url):
     print('open connection')
 
-    _parser = parser.get_parser(url)
+    _parser = arg_parser.get_parser(url)
     data = _parser.parseJSON()
 
     parsed_tags = _parser.tagIndex()
