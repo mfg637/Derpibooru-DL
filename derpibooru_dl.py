@@ -13,8 +13,9 @@ import pyimglib
 if config.enable_images_optimisations:
     import pyimglib.transcoding
 
-
 id_list = []
+NO_GUI = False
+
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("id", help="derpibooru image ID", nargs="*")
 arg_parser.add_argument(
@@ -26,11 +27,13 @@ arg_parser.add_argument(
 )
 arg_parser.add_argument("--simulate", help="do not download actual image files", action="store_true")
 arg_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
+arg_parser.add_argument("--no-gui", help="force to use CLI mode", action="store_true")
 args = arg_parser.parse_args()
 
 id_list = args.id.copy()
 parser.Parser.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
 config.simulate = args.simulate
+NO_GUI = args.no_gui
 
 if args.append is not None:
     for line in args.append:
@@ -41,7 +44,7 @@ if args.append is not None:
 def download(url):
     print('open connection')
 
-    _parser = arg_parser.get_parser(url)
+    _parser = parser.get_parser(url)
     data = _parser.parseJSON()
 
     parsed_tags = _parser.tagIndex()
@@ -56,7 +59,7 @@ def download(url):
 
 
 try:
-    if config.gui:
+    if config.gui and not NO_GUI:
         import tkinter
         try:
             from derpibooru_dl import gui
@@ -64,13 +67,14 @@ try:
         except tkinter.TclError:
             config.gui = False
 
-    if not config.gui:
-        for id in id_list:
-            download(id)
-
-        while True:
-            print("id||url>", end="")
-            download(input())
+    if not config.gui or NO_GUI:
+        if id_list:
+            for id in id_list:
+                download(id)
+        else:
+            while True:
+                print("id||url>", end="")
+                download(input())
 finally:
     if config.enable_images_optimisations:
         pyimglib.transcoding.statistics.print_stats()
