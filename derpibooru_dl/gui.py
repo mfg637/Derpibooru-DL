@@ -60,17 +60,11 @@ class GUI:
                 if not os.path.isdir(outdir):
                     os.makedirs(outdir)
                 if config.enable_multiprocessing:
-                    process = None
-                    if config.simulate:
-                        process = multiprocessing.Process(target=_parser.simulate_download, args=(
-                            outdir, data, parsed_tags, pipe[1]
-                        ))
-                    else:
-                        process = multiprocessing.Process(target=_parser.save_image, args=(
-                            outdir, data, parsed_tags, pipe[1]
-                        ))
+                    process = multiprocessing.Process(target=_parser.save_image, args=(
+                        outdir, data, parsed_tags, pipe[1]
+                    ))
                     process.start()
-                    if config.enable_images_optimisations:
+                    if config.do_transcode:
                         import pyimglib.transcoding.statistics as stats
                         stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
                     process.join()

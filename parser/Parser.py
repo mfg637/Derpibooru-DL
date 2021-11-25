@@ -11,7 +11,9 @@ import mysql.connector
 import re
 from html.parser import HTMLParser
 
-if config.enable_images_optimisations:
+import os
+
+if config.do_transcode:
     import pyimglib
 
 ENABLE_REWRITING = False
@@ -20,6 +22,11 @@ TRANSCODE_FILES = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'svg'}
 
 downloader_thread = threading.Thread()
 download_queue = []
+
+
+if config.do_transcode:
+    import pyimglib.transcoding
+    from PIL.Image import DecompressionBombError
 
 
 mysql_connection = None
@@ -101,10 +108,6 @@ class Parser(abc.ABC):
 
     @abc.abstractmethod
     def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
-        pass
-
-    @abc.abstractmethod
-    def simulate_download(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
         pass
 
     @abc.abstractmethod
@@ -258,4 +261,51 @@ class Parser(abc.ABC):
         return {'artist': artist, 'original character': originalCharacter,
                 'characters': indexed_characters, 'rating': indexed_rating,
                 'species': indexed_species, 'content': indexed_content}
+
+    def _do_transcode(self, format, large_image, src_filename, output_directory, name, src_url, tags, pipe, metadata):
+        if format in TRANSCODE_FILES:
+            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
+                    not pyimglib.transcoding.check_exists(
+                        src_filename,
+                        output_directory,
+                        name
+                    ):
+                try:
+                    self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
+                except DecompressionBombError:
+                    src_url = \
+                        'https:' + os.path.splitext(large_image)[0] + '.' + \
+                        format
+                    self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
+            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+                transcoder = pyimglib.transcoding.get_file_transcoder(
+                    src_filename, output_directory, name, tags, pipe, metadata
+                )
+                transcoder.transcode()
+            elif config.enable_multiprocessing:
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+        else:
+            if not os.path.isfile(src_filename):
+                self.download_file(src_filename, src_url)
+            if config.enable_multiprocessing:
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+
+    def _simulate_transcode(self, format, large_image, src_filename, output_directory, name, src_url, tags, pipe, metadata):
+        if format in TRANSCODE_FILES:
+            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
+                    not pyimglib.transcoding.check_exists(
+                        src_filename,
+                        output_directory,
+                        name
+                    ):
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+            elif config.enable_multiprocessing:
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+        else:
+            if not os.path.isfile(src_filename):
+                pyimglib.transcoding.statistics.pipe_send(pipe)
+            if config.enable_multiprocessing:
+                pyimglib.transcoding.statistics.pipe_send(pipe)
 

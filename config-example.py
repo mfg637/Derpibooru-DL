@@ -35,11 +35,11 @@ browser_tmpcache_directory = None
 # transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, WEBM, AVIF formats
 # required modules: Pillow
 # required programs: cwebp, jpegtran, ffmpeg, cavif, cjxl(JPEG XL reference encoder)
-enable_images_optimisations = False
+do_transcode = False
 
 simulate = False
 
-if enable_images_optimisations:
+if do_transcode:
     pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
 
     # if 0 or None, multithreading is off

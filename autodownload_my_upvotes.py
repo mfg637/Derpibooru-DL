@@ -13,7 +13,7 @@ except ImportError as e:
     print('error importing config.py')
     raise(e)
 
-if config.enable_images_optimisations:
+if config.do_transcode:
     import pyimglib_transcoding
     pyimglib_transcoding.config.enable_multiprocessing = config.enable_multiprocessing
 
@@ -78,7 +78,7 @@ try:
 except Exception as e:
     raise e
 finally:
-    if config.enable_images_optimisations:
+    if config.do_transcode:
         pyimglib_transcoding.statistics.print_stats()
     if config.use_mysql:
         from derpibooru_dl import tagResponse

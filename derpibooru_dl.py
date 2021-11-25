@@ -10,7 +10,7 @@ import parser
 from derpibooru_dl import tagResponse
 import pyimglib
 
-if config.enable_images_optimisations:
+if config.do_transcode:
     import pyimglib.transcoding
 
 id_list = []
@@ -76,7 +76,7 @@ try:
                 print("id||url>", end="")
                 download(input())
 finally:
-    if config.enable_images_optimisations:
+    if config.do_transcode:
         pyimglib.transcoding.statistics.print_stats()
     if config.use_mysql:
         parser.Parser.mysql_connection.close()

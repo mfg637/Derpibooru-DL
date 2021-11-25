@@ -61,7 +61,7 @@ if __name__ == '__main__':
         error_message = traceback.format_exc()
         print(error_message)
     finally:
-        if config.enable_images_optimisations:
+        if config.do_transcode:
             import pyimglib.transcoding
             pyimglib.transcoding.statistics.print_stats()
         if config.use_mysql:

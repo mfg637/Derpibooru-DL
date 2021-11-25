@@ -1,17 +1,16 @@
 import json
-import urllib.parse
-import urllib.request
-import config
 import os
 import re
+import urllib.parse
+import urllib.request
+
 import requests
 
-import parser.Parser
+import config
 from . import Parser
 
-if config.enable_images_optimisations:
+if config.do_transcode:
     import pyimglib.transcoding
-    from PIL.Image import DecompressionBombError
 
 FILENAME_PREFIX = 'db'
 ORIGIN = 'derpibooru'
@@ -100,7 +99,7 @@ class DerpibooruParser(Parser.Parser):
     def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
         if 'deletion_reason' in data and data['deletion_reason'] is not None:
             print('DELETED')
-            if config.enable_images_optimisations and config.enable_multiprocessing:
+            if config.do_transcode and config.enable_multiprocessing:
                 pyimglib.transcoding.statistics.pipe_send(pipe)
             return
         if not os.path.isdir(output_directory):
@@ -127,86 +126,24 @@ class DerpibooruParser(Parser.Parser):
         print("filename", src_filename)
         print("image_url", src_url)
 
-        if config.enable_images_optimisations:
-            if data["format"] in Parser.TRANSCODE_FILES:
-                if self.enable_rewriting() or not os.path.isfile(src_filename) and \
-                        not pyimglib.transcoding.check_exists(
-                            src_filename,
-                            output_directory,
-                            name
-                        ):
-                    try:
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
-                    except DecompressionBombError:
-                        src_url = \
-                            'https:' + os.path.splitext(data['representations']["large"])[0] + '.' + \
-                            data["format"]
-                        self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
-                elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                    transcoder = pyimglib.transcoding.get_file_transcoder(
-                        src_filename, output_directory, name, tags, pipe, metadata
-                    )
-                    transcoder.transcode()
-                elif config.enable_multiprocessing:
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
+        if config.do_transcode:
+            args = (
+                data['format'],
+                data['representations']["large"],
+                src_filename,
+                output_directory,
+                name,
+                src_url,
+                tags,
+                pipe,
+                metadata
+            )
+            if config.simulate:
+                self._simulate_transcode(*args)
             else:
-                if not os.path.isfile(src_filename):
+                self._do_transcode(*args)
+        else:
+            if self.enable_rewriting() or not os.path.isfile(src_filename):
+                if not config.simulate:
                     self.download_file(src_filename, src_url)
-                if config.enable_multiprocessing:
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-        else:
-            if self.enable_rewriting() or not os.path.isfile(src_filename):
-                self.download_file(src_filename, src_url)
-
-    def simulate_download(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
-        if 'deletion_reason' in data and data['deletion_reason'] is not None:
-            print('DELETED')
-            if config.enable_images_optimisations and config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
-            return
-        if not os.path.isdir(output_directory):
-            os.makedirs(output_directory)
-        name = ''
-        data = data['image']
-        src_url = os.path.splitext(data['representations']['full'])[0] + '.' + data["format"].lower()
-        if 'name' in data and data['name'] is not None:
-            name = "{}{} {}".format(
-                self.get_filename_prefix(),
-                data["id"],
-                re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["name"])[0])
-            )
-        else:
-            name = str(data["id"])
-        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
-
-        metadata = {
-            "title": data['name'],
-            "origin": self.get_origin_name(),
-            "id": data["id"]
-        }
-
-        print("filename", src_filename)
-        print("image_url", src_url)
-
-        if config.enable_images_optimisations:
-            if data["format"] in Parser.TRANSCODE_FILES:
-                if self.enable_rewriting() or not os.path.isfile(src_filename) and \
-                        not pyimglib.transcoding.check_exists(
-                            src_filename,
-                            output_directory,
-                            name
-                        ):
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-                elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-                elif config.enable_multiprocessing:
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-            else:
-                if not os.path.isfile(src_filename):
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-                if config.enable_multiprocessing:
-                    pyimglib.transcoding.statistics.pipe_send(pipe)
-        else:
-            if self.enable_rewriting() or not os.path.isfile(src_filename):
-                pass
 

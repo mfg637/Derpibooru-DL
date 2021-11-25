@@ -8,7 +8,7 @@ import parser
 try:
     browser.gui.GUI()
 finally:
-    if config.enable_images_optimisations:
+    if config.do_transcode:
         import pyimglib_transcoding
         pyimglib_transcoding.statistics.print_stats()
     if config.use_mysql:
