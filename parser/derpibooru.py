@@ -60,8 +60,8 @@ class DerpibooruParser(Parser.Parser):
             print("JSON decode error. HTTP status code:{} Raw data: {}".format(
                 request_data.status_code, request_data.text))
             raise e
-        while "duplicate_of" in data:
-            data = self.parseJSON(str(data["duplicate_of"]))
+        while "duplicate_of" in data["image"] and data["image"]["duplicate_of"] is not None:
+            data = self.parseJSON(str(data["image"]["duplicate_of"]))
         self._parsed_data = data
         return data
 
