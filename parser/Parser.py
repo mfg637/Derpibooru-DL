@@ -13,6 +13,8 @@ from html.parser import HTMLParser
 
 import os
 
+import pyimglib.transcoding.statistics as stats
+
 if config.do_transcode:
     import pyimglib
 
@@ -142,7 +144,7 @@ class Parser(abc.ABC):
     def get_origin_name(self):
         pass
 
-    def tagIndex(self):
+    def tagIndex(self) -> dict:
         global indexed_tags
         taglist = self.getTagList()
         tags_parsed_data = None
@@ -320,3 +322,6 @@ class Parser(abc.ABC):
             )
             pipe.close()
 
+
+def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:
+    return task[0].save_image(*task[1:])

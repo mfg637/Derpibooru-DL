@@ -4,13 +4,41 @@
 import flask
 import json
 import traceback
-
+import threading
 import config
 import parser
+import multiprocessing
+import logging
+import pyimglib
 from derpibooru_dl import tagResponse
+
+logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+
+logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
 error_message = None
+
+map_list = list()
+
+downloader_thread = threading.Thread()
+
+def append2queue_and_start_download(*args):
+    global downloader_thread
+    map_list.append(args)
+    if not downloader_thread.is_alive():
+        downloader_thread = threading.Thread(target=async_downloader)
+        downloader_thread.start()
+
+
+def async_downloader():
+    dl_pool = multiprocessing.Pool(processes=config.workers)
+    while len(map_list):
+        logger.info("IMAGES IN QUEUE: {}".format(len(map_list)))
+        local_map_list = map_list.copy()
+        map_list.clear()
+        results = dl_pool.map(parser.save_call, local_map_list)
+        pyimglib.transcoding.statistics.update_stats(results)
 
 
 class RouteFabric:
@@ -23,12 +51,12 @@ class RouteFabric:
             if error_message is not None:
                 return error_message
             content = json.loads(flask.request.data.decode("utf-8"))
-            parser = self._parser(content['imageId'])
-            data = parser.parseJSON()
-            parsed_tags = parser.tagIndex()
+            _parser = self._parser(content['imageId'])
+            data = _parser.parseJSON()
+            parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
-            parser.dataValidator(data)
-            parser.append2queue(output_directory=out_dir, data=data, tags=parsed_tags)
+            _parser.dataValidator(data)
+            append2queue_and_start_download(_parser, out_dir, data, parsed_tags)
             return "OK"
         except Exception as e:
             error_message = traceback.format_exc()
@@ -63,6 +91,6 @@ if __name__ == '__main__':
     finally:
         if config.do_transcode:
             import pyimglib.transcoding
-            pyimglib.transcoding.statistics.print_stats()
+            pyimglib.transcoding.statistics.log_stats()
         if config.use_mysql:
             parser.Parser.mysql_connection.close()

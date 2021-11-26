@@ -9,6 +9,9 @@ import config
 import parser
 from derpibooru_dl import tagResponse
 import pyimglib
+import logging
+
+logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
 
 if config.do_transcode:
     import pyimglib.transcoding
@@ -77,6 +80,6 @@ try:
                 download(input())
 finally:
     if config.do_transcode:
-        pyimglib.transcoding.statistics.print_stats()
+        pyimglib.transcoding.statistics.log_stats()
     if config.use_mysql:
         parser.Parser.mysql_connection.close()

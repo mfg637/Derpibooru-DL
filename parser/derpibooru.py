@@ -40,7 +40,7 @@ class DerpibooruParser(Parser.Parser):
     def get_filename_prefix(self):
         return FILENAME_PREFIX
 
-    def parseJSON(self, url=None, type="images"):
+    def parseJSON(self, url=None, type="images") -> dict:
         id = None
         if url is not None:
             id = url

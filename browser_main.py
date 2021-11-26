@@ -10,7 +10,7 @@ try:
 finally:
     if config.do_transcode:
         import pyimglib_transcoding
-        pyimglib_transcoding.statistics.print_stats()
+        pyimglib_transcoding.statistics.log_stats()
     if config.use_mysql:
         from derpibooru_dl import tagResponse
         parser.Parser.mysql_connection.close()

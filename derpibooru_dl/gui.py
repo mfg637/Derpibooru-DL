@@ -2,16 +2,21 @@
 # -*- coding: utf-8 -*- 
 
 import os, threading, multiprocessing
+import tkinter
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
+
+import pyimglib.transcoding.statistics
 from . import tagResponse
 import parser
 import config
 
 
+
+
 class GUI:
     def __init__(self, id_list):
-        self._root=Tk()
+        self._root = Tk()
 
         self._listbox = Frame(self._root)
         self._listbox_scroll = ttk.Scrollbar(self._listbox)
@@ -39,8 +44,8 @@ class GUI:
 
     def add(self):
         self._list.insert(END, self._root.clipboard_get())
-        if (self.dl_process is None) or (not self.dl_process.is_alive()):
-            self.start_downloader()
+        #if (self.dl_process is None) or (not self.dl_process.is_alive()):
+        #    self.start_downloader()
 
     def start_downloader(self):
         self.dl_process = threading.Thread(target=self.download)
@@ -50,26 +55,22 @@ class GUI:
         self._dl_btn['state']=DISABLED
         pipe = multiprocessing.Pipe()
         try:
-            while self._list.size()>0:
-                self._current_item = self._list.get(0)
-                self._list.delete(0)
-                _parser = parser.get_parser(self._current_item)
-                data = _parser.parseJSON()
-                parsed_tags = _parser.tagIndex()
-                outdir = tagResponse.find_folder(parsed_tags)
-                if not os.path.isdir(outdir):
-                    os.makedirs(outdir)
-                if config.enable_multiprocessing:
-                    process = multiprocessing.Process(target=_parser.save_image_old_interface, args=(
-                        outdir, data, parsed_tags, pipe[1]
-                    ))
-                    process.start()
-                    if config.do_transcode:
-                        import pyimglib.transcoding.statistics as stats
-                        stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
-                    process.join()
-                else:
-                    _parser.save_image_old_interface(outdir, data, parsed_tags, None)
+            while self._list.size() > 0:
+                id_list = self._list.get(0, tkinter.END)
+                self._list.delete(0, tkinter.END)
+
+                map_list = list()
+                for raw_id in id_list:
+                    _parser = parser.get_parser(raw_id)
+                    data = _parser.parseJSON()
+                    parsed_tags = _parser.tagIndex()
+                    outdir = tagResponse.find_folder(parsed_tags)
+                    if not os.path.isdir(outdir):
+                        os.makedirs(outdir)
+                    map_list.append((_parser, outdir, data, parsed_tags))
+                dl_pool = multiprocessing.Pool(processes=config.workers)
+                results = dl_pool.map(parser.save_call, map_list)
+                pyimglib.transcoding.statistics.update_stats(results)
         except Exception as e:
             self._add_btn['state'] = DISABLED
             messagebox.showerror(e.__class__.__name__, str(e))

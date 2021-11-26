@@ -39,6 +39,8 @@ do_transcode = False
 
 simulate = False
 
+workers = 1
+
 if do_transcode:
     pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
 
