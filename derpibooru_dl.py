@@ -55,7 +55,7 @@ def download(url):
     if not os.path.isdir(outdir):
         os.makedirs(outdir)
 
-    _parser.save_image(outdir, data, parsed_tags)
+    _parser.save_image_old_interface(outdir, data, parsed_tags)
 
 
 try:

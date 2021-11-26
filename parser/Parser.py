@@ -79,7 +79,7 @@ class Parser(abc.ABC):
             pipe=multiprocessing.Pipe()
             params = current_download
             params['pipe'] = pipe[1]
-            process = multiprocessing.Process(target=self.save_image, kwargs=params)
+            process = multiprocessing.Process(target=self.save_image_old_interface, kwargs=params)
             process.start()
             import pyimglib.transcoding.statistics as stats
             stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
@@ -93,12 +93,12 @@ class Parser(abc.ABC):
         file.write(request_data.content)
         file.close()
 
-    def in_memory_transcode(self, src_url, name, tags, output_directory, pipe, metadata):
+    def in_memory_transcode(self, src_url, name, tags, output_directory, metadata):
         source = self.do_binary_request(src_url)
         transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, tags, pipe, metadata
+            source, output_directory, name, tags, metadata
         )
-        transcoder.transcode()
+        return transcoder.transcode()
 
     @staticmethod
     def do_binary_request(url):
@@ -107,7 +107,7 @@ class Parser(abc.ABC):
         return source
 
     @abc.abstractmethod
-    def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe = None):
+    def save_image(self, output_directory: str, data: dict, tags: dict = None):
         pass
 
     @abc.abstractmethod
@@ -262,8 +262,8 @@ class Parser(abc.ABC):
                 'characters': indexed_characters, 'rating': indexed_rating,
                 'species': indexed_species, 'content': indexed_content}
 
-    def _do_transcode(self, format, large_image, src_filename, output_directory, name, src_url, tags, pipe, metadata):
-        if format in TRANSCODE_FILES:
+    def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
+        if original_format in TRANSCODE_FILES:
             if self.enable_rewriting() or not os.path.isfile(src_filename) and \
                     not pyimglib.transcoding.check_exists(
                         src_filename,
@@ -271,41 +271,52 @@ class Parser(abc.ABC):
                         name
                     ):
                 try:
-                    self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
+                    return self.in_memory_transcode(src_url, name, tags, output_directory, metadata)
                 except DecompressionBombError:
                     src_url = \
                         'https:' + os.path.splitext(large_image)[0] + '.' + \
-                        format
-                    self.in_memory_transcode(src_url, name, tags, output_directory, pipe, metadata)
+                        original_format
+                    return self.in_memory_transcode(src_url, name, tags, output_directory,metadata)
             elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
                 transcoder = pyimglib.transcoding.get_file_transcoder(
-                    src_filename, output_directory, name, tags, pipe, metadata
+                    src_filename, output_directory, name, tags, metadata
                 )
                 transcoder.transcode()
             elif config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+                return 0, 0, 0, 0
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
-            if config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+            return 0, 0, 0, 0
 
-    def _simulate_transcode(self, format, large_image, src_filename, output_directory, name, src_url, tags, pipe, metadata):
-        if format in TRANSCODE_FILES:
+    def _simulate_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
+        if original_format in TRANSCODE_FILES:
             if self.enable_rewriting() or not os.path.isfile(src_filename) and \
                     not pyimglib.transcoding.check_exists(
                         src_filename,
                         output_directory,
                         name
                     ):
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+                return 0, 0, 0, 0
             elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+                return 0, 0, 0, 0
             elif config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+                return 0, 0, 0, 0
         else:
             if not os.path.isfile(src_filename):
-                pyimglib.transcoding.statistics.pipe_send(pipe)
-            if config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
+                pass
+            return 0, 0, 0, 0
+
+    def save_image_old_interface(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
+        result = self.save_image(output_directory, data, tags)
+        if pipe is not None:
+            pipe.send(
+                (
+                    pyimglib.transcoding.statistics.sumos + result[0],
+                    pyimglib.transcoding.statistics.sumsize + result[1],
+                    pyimglib.transcoding.statistics.avq + result[2],
+                    pyimglib.transcoding.statistics.items + result[3]
+                )
+            )
+            pipe.close()
 

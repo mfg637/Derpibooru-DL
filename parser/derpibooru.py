@@ -96,12 +96,12 @@ class DerpibooruParser(Parser.Parser):
         if 'large' not in data['representations']:
             raise KeyError("not found large representation")
 
-    def save_image(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
+    def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
         if 'deletion_reason' in data and data['deletion_reason'] is not None:
-            print('DELETED')
-            if config.do_transcode and config.enable_multiprocessing:
-                pyimglib.transcoding.statistics.pipe_send(pipe)
-            return
+            print("DELETED!", data)
+            if config.simulate:
+                exit(1)
+            return 0, 0, 0, 0
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
         name = ''
@@ -135,15 +135,15 @@ class DerpibooruParser(Parser.Parser):
                 name,
                 src_url,
                 tags,
-                pipe,
                 metadata
             )
             if config.simulate:
                 self._simulate_transcode(*args)
             else:
-                self._do_transcode(*args)
+                return self._do_transcode(*args)
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 if not config.simulate:
                     self.download_file(src_filename, src_url)
 
+        return 0, 0, 0, 0

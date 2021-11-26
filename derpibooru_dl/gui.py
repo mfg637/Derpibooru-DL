@@ -60,7 +60,7 @@ class GUI:
                 if not os.path.isdir(outdir):
                     os.makedirs(outdir)
                 if config.enable_multiprocessing:
-                    process = multiprocessing.Process(target=_parser.save_image, args=(
+                    process = multiprocessing.Process(target=_parser.save_image_old_interface, args=(
                         outdir, data, parsed_tags, pipe[1]
                     ))
                     process.start()
@@ -69,7 +69,7 @@ class GUI:
                         stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
                     process.join()
                 else:
-                    _parser.save_image(outdir, data, parsed_tags, None)
+                    _parser.save_image_old_interface(outdir, data, parsed_tags, None)
         except Exception as e:
             self._add_btn['state'] = DISABLED
             messagebox.showerror(e.__class__.__name__, str(e))
