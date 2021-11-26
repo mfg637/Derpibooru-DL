@@ -1,16 +1,18 @@
 import json
 import os
+import pathlib
 import re
 import urllib.parse
 import urllib.request
+import logging
+
+logger = logging.getLogger(__name__)
 
 import requests
 
 import config
 from . import Parser
 
-if config.do_transcode:
-    import pyimglib.transcoding
 
 FILENAME_PREFIX = 'db'
 ORIGIN = 'derpibooru'
@@ -54,6 +56,8 @@ class DerpibooruParser(Parser.Parser):
             print(e)
             return
         data = None
+        if request_data.status_code == 404:
+            raise IndexError("not founded \"{}\"".format(url))
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
@@ -62,6 +66,8 @@ class DerpibooruParser(Parser.Parser):
             raise e
         while "duplicate_of" in data["image"] and data["image"]["duplicate_of"] is not None:
             data = self.parseJSON(str(data["image"]["duplicate_of"]))
+        if 'tags' not in data['image']:
+            data['image']['tags'] = []
         self._parsed_data = data
         return data
 
@@ -97,11 +103,8 @@ class DerpibooruParser(Parser.Parser):
             raise KeyError("not found large representation")
 
     def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
-        if 'deletion_reason' in data and data['deletion_reason'] is not None:
-            print("DELETED!", data)
-            if config.simulate:
-                exit(1)
-            return 0, 0, 0, 0
+        if 'deletion_reason' in data['image'] and data['image']['deletion_reason'] is not None:
+            return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
         name = ''

@@ -1,3 +1,4 @@
+import pathlib
 import sys
 
 import config
@@ -5,6 +6,7 @@ import threading
 import multiprocessing
 import abc
 import requests
+import logging
 
 import mysql.connector
 
@@ -13,10 +15,10 @@ from html.parser import HTMLParser
 
 import os
 
-import pyimglib.transcoding.statistics as stats
-
 if config.do_transcode:
     import pyimglib
+
+logger = logging.getLogger(__name__)
 
 ENABLE_REWRITING = False
 
@@ -144,6 +146,43 @@ class Parser(abc.ABC):
     def get_origin_name(self):
         pass
 
+    def parseHTML(self, image_id) -> dict:
+        """
+        Parse tags by HTML page.
+        :param image_id:
+        :return: {"tag name 1": "tag category 1", …}
+        """
+        global tags_parsed_data
+        # derpibooru's API didn't provide method to get tag slug
+        # image route also didn't contain that data
+        tags_parsed_data = dict()
+        request_url = 'https://{}/{}/{}'.format(
+            self.get_domain_name(),
+            self.parsehtml_get_image_route_name(),
+            image_id
+        )
+        print("parseHTML", request_url, file=sys.stderr)
+        try:
+            request_data = requests.get(request_url)
+        except Exception as e:
+            print(e, file=sys.stderr)
+            return
+        raw_html = request_data.text
+
+        class TagsParser(HTMLParser):
+            def error(self, message):
+                raise Exception(message)
+
+            def handle_starttag(self, tag, attrs):
+                if tag == 'span':
+                    attributes = dict(attrs)
+                    if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
+                        tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
+
+        parser = TagsParser()
+        parser.feed(raw_html)
+        return tags_parsed_data
+
     def tagIndex(self) -> dict:
         global indexed_tags
         taglist = self.getTagList()
@@ -151,37 +190,6 @@ class Parser(abc.ABC):
 
         def mysql_escafe_quotes(_string):
             return re.sub("\"", "\\\"", _string)
-
-        def parseHTML(image_id):
-            global tags_parsed_data
-            # derpibooru's API didn't provide method to get tag slug
-            # image route also didn't contain that data
-            tags_parsed_data = dict()
-            request_url = 'https://{}/{}/{}'.format(
-                self.get_domain_name(),
-                self.parsehtml_get_image_route_name(),
-                image_id
-            )
-            print("parseHTML", request_url, file=sys.stderr)
-            try:
-                request_data = requests.get(request_url)
-            except Exception as e:
-                print(e, file=sys.stderr)
-                return
-            raw_html = request_data.text
-
-            class TagsParser(HTMLParser):
-                def error(self, message):
-                    raise Exception(message)
-
-                def handle_starttag(self, tag, attrs):
-                    if tag == 'span':
-                        attributes = dict(attrs)
-                        if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
-                            tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
-            parser = TagsParser()
-            parser.feed(raw_html)
-            return tags_parsed_data
 
 
         artist = set()
@@ -205,7 +213,7 @@ class Parser(abc.ABC):
                 result = mysql_cursor.fetchone()
                 if result is None:
                     if tags_parsed_data is None:
-                        tags_parsed_data = parseHTML(self.getID())
+                        tags_parsed_data = self.parseHTML(self.getID())
                     if tags_parsed_data[tag] == "character":
                         category_name = "character"
                         indexed_characters.add(tag)
@@ -321,6 +329,17 @@ class Parser(abc.ABC):
                 )
             )
             pipe.close()
+
+    def _file_deleted_handing(self, prefix, _id):
+        logging.exception("deleted image {}".format(_id))
+        if config.deleted_image_list_file_path is not None:
+            deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
+            parse_results = self.parseHTML(_id)
+            deleted_list_f.write("{}{}: {}\n".format(
+                prefix, _id, ", ".join([str(key) for key in parse_results.keys()])
+            ))
+            deleted_list_f.close()
+        return 0, 0, 0, 0
 
 
 def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:

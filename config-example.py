@@ -41,6 +41,9 @@ simulate = False
 
 workers = 1
 
+# None or constant string
+deleted_image_list_file_path = None
+
 if do_transcode:
     pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
 

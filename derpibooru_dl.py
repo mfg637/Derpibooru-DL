@@ -2,9 +2,10 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 
 import argparse
+import pathlib
+
 import config
 import parser
 from derpibooru_dl import tagResponse
@@ -31,12 +32,20 @@ arg_parser.add_argument(
 arg_parser.add_argument("--simulate", help="do not download actual image files", action="store_true")
 arg_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
 arg_parser.add_argument("--no-gui", help="force to use CLI mode", action="store_true")
+arg_parser.add_argument(
+    "--deleted-list",
+    help="list of deleted image's ID and it's tags",
+    type=pathlib.Path,
+    default=None,
+    metavar="DELETED_LIST_FILE"
+)
 args = arg_parser.parse_args()
 
 id_list = args.id.copy()
 parser.Parser.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
 config.simulate = args.simulate
 NO_GUI = args.no_gui
+config.deleted_image_list_file_path = args.deleted_list
 
 if args.append is not None:
     for line in args.append:
@@ -48,7 +57,10 @@ def download(url):
     print('open connection')
 
     _parser = parser.get_parser(url)
-    data = _parser.parseJSON()
+    try:
+        data = _parser.parseJSON()
+    except IndexError:
+        return
 
     parsed_tags = _parser.tagIndex()
     print("parsed tags", parsed_tags)

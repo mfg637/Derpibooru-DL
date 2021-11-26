@@ -44,8 +44,7 @@ class TwibooruParser(Parser.Parser):
 
     def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
         if 'deletion_reason' in data and data['deletion_reason'] is not None:
-            print("DELETED!", data)
-            return 0, 0, 0, 0
+            return self._file_deleted_handing(FILENAME_PREFIX, data['id'])
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
         name = ''
@@ -103,6 +102,8 @@ class TwibooruParser(Parser.Parser):
         data = request_data.json()
         while "duplicate_of" in data:
             data = self.parseJSON(str(data["duplicate_of"]))
+        if 'tags' not in data:
+            data['tags'] = ""
         self._parsed_data = data
         return data
 

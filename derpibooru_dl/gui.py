@@ -62,7 +62,10 @@ class GUI:
                 map_list = list()
                 for raw_id in id_list:
                     _parser = parser.get_parser(raw_id)
-                    data = _parser.parseJSON()
+                    try:
+                        data = _parser.parseJSON()
+                    except IndexError:
+                        continue
                     parsed_tags = _parser.tagIndex()
                     outdir = tagResponse.find_folder(parsed_tags)
                     if not os.path.isdir(outdir):
