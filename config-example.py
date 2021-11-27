@@ -49,7 +49,7 @@ if do_transcode:
 
     # if 0 or None, multithreading is off
     # else, it's enables row-mt
-    pyimglib.config.avif_encoding_threads = 0
+    pyimglib.config.encoding_threads = 0
 
     # Max image size
     # if value is None, set maximum possible for webp size
