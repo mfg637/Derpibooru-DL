@@ -25,7 +25,7 @@ def probe(source):
 			'-show_format', '-show_streams', '-show_chapters', source]
 		return json.loads(str(getOutput(commandline),'utf-8'))
 	except UnicodeEncodeError:
-		raise exceptions.invalidFilename(source)
+		raise exceptions.InvalidFileName(source)
 
 def getPPM_commandline(source:str, size=None, force=False):
 	commandline = ['ffmpeg', '-loglevel', '24', '-i', source,

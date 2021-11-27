@@ -1,7 +1,13 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*- 
 
-import os, threading, multiprocessing
+import os
+import threading
+import multiprocessing
+import logging
+
+import exceptions
+
 import tkinter
 from tkinter import *
 from tkinter import ttk, filedialog, messagebox
@@ -11,7 +17,7 @@ from . import tagResponse
 import parser
 import config
 
-
+logger = logging.getLogger(__name__)
 
 
 class GUI:
@@ -61,7 +67,15 @@ class GUI:
 
                 map_list = list()
                 for raw_id in id_list:
-                    _parser = parser.get_parser(raw_id)
+                    _parser = None
+                    try:
+                        _parser = parser.get_parser(raw_id)
+                    except exceptions.NotBoorusPrefixError as e:
+                        logger.exception("invalid prefix in {}".format(e.url))
+                        continue
+                    except exceptions.SiteNotSupported as e:
+                        logger.exception("Site not supported {}".format(e.url))
+                        continue
                     try:
                         data = _parser.parseJSON()
                     except IndexError:

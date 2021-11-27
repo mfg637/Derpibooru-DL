@@ -11,8 +11,10 @@ import parser
 from derpibooru_dl import tagResponse
 import pyimglib
 import logging
+import exceptions
 
 logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+logger = logging.getLogger(__name__)
 
 if config.do_transcode:
     import pyimglib.transcoding
@@ -56,7 +58,14 @@ if args.append is not None:
 def download(url):
     print('open connection')
 
-    _parser = parser.get_parser(url)
+    try:
+        _parser = parser.get_parser(url)
+    except exceptions.NotBoorusPrefixError as e:
+        logger.exception("invalid prefix in {}".format(e.url))
+        return
+    except exceptions.SiteNotSupported as e:
+        logger.exception("Site not supported {}".format(e.url))
+        return
     try:
         data = _parser.parseJSON()
     except IndexError:
