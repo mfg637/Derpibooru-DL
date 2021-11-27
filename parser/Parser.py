@@ -245,7 +245,7 @@ class Parser(abc.ABC):
             else:
                 if tag not in indexed_tags:
                     if tags_parsed_data is None:
-                        tags_parsed_data = parseHTML(self.getID())
+                        tags_parsed_data = self.parseHTML(self.getID())
                     if tags_parsed_data[tag] == "character":
                         characters.add(tag)
                         indexed_characters.add(tag)
