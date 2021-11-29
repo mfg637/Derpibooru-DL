@@ -86,7 +86,7 @@ class GUI:
                         os.makedirs(outdir)
                     map_list.append((_parser, outdir, data, parsed_tags))
                 dl_pool = multiprocessing.Pool(processes=config.workers)
-                results = dl_pool.map(parser.save_call, map_list)
+                results = dl_pool.map(parser.save_call, map_list, chunksize=1)
                 pyimglib.transcoding.statistics.update_stats(results)
         except Exception as e:
             self._add_btn['state'] = DISABLED

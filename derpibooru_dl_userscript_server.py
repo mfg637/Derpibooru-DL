@@ -37,7 +37,7 @@ def async_downloader():
         logger.info("IMAGES IN QUEUE: {}".format(len(map_list)))
         local_map_list = map_list.copy()
         map_list.clear()
-        results = dl_pool.map(parser.save_call, local_map_list)
+        results = dl_pool.map(parser.save_call, local_map_list, chunksize=1)
         pyimglib.transcoding.statistics.update_stats(results)
 
 
