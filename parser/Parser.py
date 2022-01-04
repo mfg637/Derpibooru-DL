@@ -8,6 +8,8 @@ import abc
 import requests
 import logging
 
+import medialib_db
+
 import mysql.connector
 
 import re
@@ -32,17 +34,6 @@ if config.do_transcode:
     import pyimglib.transcoding
     from PIL.Image import DecompressionBombError
 
-
-mysql_connection = None
-mysql_cursor = None
-if config.use_mysql:
-    mysql_connection = mysql.connector.connect(
-        host=config.mysql_host,
-        user=config.mysql_user,
-        passwd=config.mysql_password,
-        database=config.mysql_database
-    )
-mysql_cursor = mysql_connection.cursor()
 
 indexed_tags = set()
 
@@ -198,19 +189,35 @@ class Parser(abc.ABC):
         indexed_rating = set()
         indexed_species = set()
         indexed_content = set()
+        indexed_set = set()
         for tag in taglist:
             if "oc:" in tag:
-                originalCharacter.add(tag.split(':')[1])
+                _oc = tag.split(':')[1]
+                originalCharacter.add(_oc)
+                if config.use_medialib_db:
+                    medialib_db.common.open_connection_if_not_opened()
+
+                    medialib_db.tags_indexer.tag_register(
+                        _oc, "original character", "original character:{}".format(_oc)
+                    )
+
+                    medialib_db.common.close_connection_if_not_closed()
             elif "artist:" in tag:
-                artist.add(tag.split(':')[1])
+                _artist = tag.split(':')[1]
+                artist.add(_artist)
+                if config.use_medialib_db:
+                    medialib_db.common.open_connection_if_not_opened()
+
+                    medialib_db.tags_indexer.tag_register(
+                        _artist, "artist", tag
+                    )
+
+                    medialib_db.common.close_connection_if_not_closed()
             elif '.' in tag or '-' in tag:
                 continue
-            elif config.use_mysql:
-                query = "SELECT category FROM tag_categories WHERE tag=\"{}\";".format(
-                    mysql_escafe_quotes(tag)
-                )
-                mysql_cursor.execute(query)
-                result = mysql_cursor.fetchone()
+            elif config.use_medialib_db:
+                medialib_db.common.open_connection_if_not_opened()
+                result = medialib_db.tags_indexer.get_category_of_tag(tag, auto_open_connection=False)
                 if result is None:
                     if tags_parsed_data is None:
                         tags_parsed_data = self.parseHTML(self.getID())
@@ -223,14 +230,16 @@ class Parser(abc.ABC):
                     elif tags_parsed_data[tag] == "species":
                         category_name = "species"
                         indexed_species.add(tag)
+                    elif "comic:" in tag:
+                        category_name = "set"
+                        indexed_set.add(tag)
                     else:
                         category_name = "content"
                         indexed_content.add(tag)
-                    insert_query = "INSERT INTO tag_categories VALUES (\"{}\", \"{}\");".format(
-                        mysql_escafe_quotes(tag), category_name
+                    q_tag = mysql_escafe_quotes(tag)
+                    medialib_db.tags_indexer.insert_new_tag(
+                        q_tag, category_name, q_tag, auto_open_connection=False
                     )
-                    mysql_cursor.execute(insert_query)
-                    mysql_connection.commit()
                 else:
                     if result[0] == "rating":
                         indexed_rating.add(tag)
@@ -238,10 +247,13 @@ class Parser(abc.ABC):
                         indexed_characters.add(tag)
                     elif result[0] == "species":
                         indexed_species.add(tag)
+                    elif result[0] == "set":
+                        indexed_set.add(tag)
                     elif result[0] == "content":
                         indexed_content.add(tag)
                     else:
                         print(result)
+                medialib_db.common.close_connection_if_not_closed()
             else:
                 if tag not in indexed_tags:
                     if tags_parsed_data is None:
@@ -270,7 +282,8 @@ class Parser(abc.ABC):
                         indexed_content.add(tag)
         return {'artist': artist, 'original character': originalCharacter,
                 'characters': indexed_characters, 'rating': indexed_rating,
-                'species': indexed_species, 'content': indexed_content}
+                'species': indexed_species, 'content': indexed_content,
+                'set': indexed_set}
 
     def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
         if original_format in TRANSCODE_FILES:
@@ -334,7 +347,11 @@ class Parser(abc.ABC):
         logging.exception("deleted image {}".format(_id))
         if config.deleted_image_list_file_path is not None:
             deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
-            parse_results = self.parseHTML(_id)
+            parse_results = dict()
+            try:
+                parse_results = self.parseHTML(_id)
+            except Exception as e:
+                logger.exception("Some error was hapenned", e)
             deleted_list_f.write("{}{}: {}\n".format(
                 prefix, _id, ", ".join([str(key) for key in parse_results.keys()])
             ))

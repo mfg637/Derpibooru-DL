@@ -1,3 +1,6 @@
 [submodule "pyimglib"]
 	path = pyimglib
 	url = https://github.com/mfg637/pyimglib.git
+[submodule "medialib_db"]
+	path = medialib_db
+	url = https://github.com/mfg637/medialib_db.git

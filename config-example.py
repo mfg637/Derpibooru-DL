@@ -17,17 +17,7 @@ gui = True
 enable_multiprocessing = False
 
 # Using database for tags info as key-value storage
-use_mysql = False
-# Create table command:
-#CREATE TABLE `tag_categories` (
-#  `tag` char(255) NOT NULL,
-#  `category` enum('character','rating','species','content') DEFAULT NULL,
-#  PRIMARY KEY (`tag`)
-#) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-mysql_host = "localhost"
-mysql_user = ""
-mysql_password = ""
-mysql_database = ""
+use_medialib_db = False
 
 browser_tmpcache_directory = None
 
