@@ -243,7 +243,7 @@ class Parser(abc.ABC):
                 else:
                     if result[0] == "rating":
                         indexed_rating.add(tag)
-                    elif result[0] == "character":
+                    elif result[0] == "characters":
                         indexed_characters.add(tag)
                     elif result[0] == "species":
                         indexed_species.add(tag)
@@ -306,11 +306,11 @@ class Parser(abc.ABC):
                 )
                 transcoder.transcode()
             elif config.enable_multiprocessing:
-                return 0, 0, 0, 0
+                return 0, 0, 0, 0, src_filename
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, src_filename
 
     def _simulate_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
         if original_format in TRANSCODE_FILES:
@@ -320,15 +320,15 @@ class Parser(abc.ABC):
                         output_directory,
                         name
                     ):
-                return 0, 0, 0, 0
+                return 0, 0, 0, 0, src_filename
             elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                return 0, 0, 0, 0
+                return 0, 0, 0, 0, src_filename
             elif config.enable_multiprocessing:
-                return 0, 0, 0, 0
+                return 0, 0, 0, 0, src_filename
         else:
             if not os.path.isfile(src_filename):
                 pass
-            return 0, 0, 0, 0
+            return 0, 0, 0, 0, src_filename
 
     def save_image_old_interface(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
         result = self.save_image(output_directory, data, tags)

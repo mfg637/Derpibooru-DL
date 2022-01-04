@@ -6,6 +6,7 @@ import json
 import traceback
 import threading
 import config
+import medialib_db.common
 import parser
 import multiprocessing
 import logging
@@ -92,5 +93,5 @@ if __name__ == '__main__':
         if config.do_transcode:
             import pyimglib.transcoding
             pyimglib.transcoding.statistics.log_stats()
-        if config.use_mysql:
-            parser.Parser.mysql_connection.close()
+        if config.use_medialib_db:
+            medialib_db.common.close_connection_if_not_closed()

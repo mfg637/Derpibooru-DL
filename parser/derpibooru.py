@@ -1,3 +1,4 @@
+import io
 import json
 import os
 import pathlib
@@ -7,6 +8,7 @@ import urllib.request
 import logging
 
 import exceptions
+import medialib_db.srs_indexer
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +133,8 @@ class DerpibooruParser(Parser.Parser):
         print("filename", src_filename)
         print("image_url", src_url)
 
+        result = None
+
         if config.do_transcode:
             args = (
                 data['format'],
@@ -146,12 +150,46 @@ class DerpibooruParser(Parser.Parser):
                 self._simulate_transcode(*args)
             else:
                 try:
-                    return self._do_transcode(*args)
+                    result = self._do_transcode(*args)
                 except exceptions.NotIdentifiedFileFormat:
-                    return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
+                    result = self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 if not config.simulate:
                     self.download_file(src_filename, src_url)
+        outname = src_filename
+        if result is not None:
+            outname = result[4]
+            if type(outname) is io.TextIOWrapper:
+                outname = outname.name
+            print(outname)
+        elif not pathlib.Path(outname).exists():
+            logger.error("NOT FOUNDED FILE")
+            raise FileNotFoundError()
+        _name = None
+        media_type = None
+        if 'name' in data:
+            _name = data['name']
+        if ".srs" in outname:
+            f = open(outname, "r")
+            _data = json.load(f)
+            f.close()
+            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
+        else:
+            out_path = pathlib.Path(outname)
+            if out_path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp", ".jxl", ".avif"}:
+                media_type = "image"
+            elif out_path.suffix.lower() == ".gif":
+                media_type = "video-loop"
+            elif out_path.suffix.lower() in {'.webm', ".mp4"}:
+                media_type = "video"
+            else:
+                media_type = "image"
+        _description = None
+        if "description" in data and len(data['description']):
+            _description = data['description']
+        medialib_db.srs_indexer.register(
+            pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
+        )
 
         return 0, 0, 0, 0

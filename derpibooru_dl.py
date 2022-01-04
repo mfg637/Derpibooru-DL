@@ -7,6 +7,7 @@ import argparse
 import pathlib
 
 import config
+import medialib_db.common
 import parser
 from derpibooru_dl import tagResponse
 import pyimglib
@@ -102,5 +103,5 @@ try:
 finally:
     if config.do_transcode:
         pyimglib.transcoding.statistics.log_stats()
-    if config.use_mysql:
-        parser.Parser.mysql_connection.close()
+    if config.use_medialib_db:
+        medialib_db.common.close_connection_if_not_closed()
