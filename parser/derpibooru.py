@@ -6,6 +6,8 @@ import urllib.parse
 import urllib.request
 import logging
 
+import exceptions
+
 logger = logging.getLogger(__name__)
 
 import requests
@@ -143,7 +145,10 @@ class DerpibooruParser(Parser.Parser):
             if config.simulate:
                 self._simulate_transcode(*args)
             else:
-                return self._do_transcode(*args)
+                try:
+                    return self._do_transcode(*args)
+                except exceptions.NotIdentifiedFileFormat:
+                    return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 if not config.simulate:

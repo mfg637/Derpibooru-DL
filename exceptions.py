@@ -16,3 +16,8 @@ class SiteNotSupported(Exception):
 class NotBoorusPrefixError(Exception):
 	def __init__(self, url):
 		self.url = url
+
+
+class NotIdentifiedFileFormat(Exception):
+	def __init__(self):
+		pass

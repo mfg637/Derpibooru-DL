@@ -80,7 +80,10 @@ class GUI:
                         data = _parser.parseJSON()
                     except IndexError:
                         continue
-                    parsed_tags = _parser.tagIndex()
+                    try:
+                        parsed_tags = _parser.tagIndex()
+                    except KeyError:
+                        continue
                     outdir = tagResponse.find_folder(parsed_tags)
                     if not os.path.isdir(outdir):
                         os.makedirs(outdir)

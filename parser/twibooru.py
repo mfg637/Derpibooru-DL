@@ -4,6 +4,7 @@ import re
 import requests
 
 import config
+import exceptions
 from . import Parser
 
 if config.do_transcode:
@@ -21,7 +22,11 @@ class TwibooruParser(Parser.Parser):
         return 'tb'
 
     def getID(self) -> str:
-        return str(self._parsed_data["id"])
+        try:
+            return str(self._parsed_data["id"])
+        except KeyError as e:
+            self._file_deleted_handing(FILENAME_PREFIX, self.input_id)
+            raise e
 
     def getTagList(self) -> list:
         return self._parsed_data['tags'].split(', ')
@@ -82,7 +87,10 @@ class TwibooruParser(Parser.Parser):
             if config.simulate:
                 self._simulate_transcode(*args)
             else:
-                return self._do_transcode(*args)
+                try:
+                    return self._do_transcode(*args)
+                except exceptions.NotIdentifiedFileFormat:
+                    return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 if not config.simulate:
@@ -91,11 +99,11 @@ class TwibooruParser(Parser.Parser):
         return 0, 0, 0, 0
 
     def parseJSON(self, _type="images"):
-        id = self.get_id_by_url(self._url)
-        print("parseJSON", 'https://twibooru.org/' + id + '.json')
+        self.input_id = self.get_id_by_url(self._url)
+        print("parseJSON", 'https://twibooru.org/' + self.input_id + '.json')
         request_data = None
         try:
-            request_data = requests.get('https://twibooru.org/' + id + '.json')
+            request_data = requests.get('https://twibooru.org/' + self.input_id + '.json')
         except Exception as e:
             print(e)
             return
