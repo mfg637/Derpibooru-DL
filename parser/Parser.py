@@ -230,7 +230,7 @@ class Parser(abc.ABC):
                     elif tags_parsed_data[tag] == "species":
                         category_name = "species"
                         indexed_species.add(tag)
-                    elif "comic:" in tag or "art pack:" in tag:
+                    elif "comic:" in tag or "art pack:" in tag or "fanfic:" in tag:
                         category_name = "set"
                         indexed_set.add(tag)
                     else:
