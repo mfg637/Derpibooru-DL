@@ -283,7 +283,7 @@ class Parser(abc.ABC):
         return {'artist': artist, 'original character': originalCharacter,
                 'characters': indexed_characters, 'rating': indexed_rating,
                 'species': indexed_species, 'content': indexed_content,
-                'set': indexed_set}
+                'set': indexed_set, 'copyright': {"my little pony"}}
 
     def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
         if original_format in TRANSCODE_FILES:
