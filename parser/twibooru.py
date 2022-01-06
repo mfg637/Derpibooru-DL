@@ -140,7 +140,10 @@ class TwibooruParser(Parser.Parser):
             pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
         )
 
-        return 0, 0, 0, 0
+        if result is not None:
+            return result[:4]
+        else:
+            return 0, 0, 0, 0
 
     def parseJSON(self, _type="images"):
         self.input_id = self.get_id_by_url(self._url)

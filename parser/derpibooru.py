@@ -192,4 +192,7 @@ class DerpibooruParser(Parser.Parser):
             pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
         )
 
-        return 0, 0, 0, 0
+        if result is not None:
+            return result[:4]
+        else:
+            return 0, 0, 0, 0
