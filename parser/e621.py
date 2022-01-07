@@ -245,6 +245,7 @@ class E621Parser(Parser.Parser):
         _description = None
         if "description" in data and len(data['description']):
             _description = data['description']
+        print("MEDIALIB_DB_STATE", medialib_db.common.connection)
         medialib_db.srs_indexer.register(
             pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
         )

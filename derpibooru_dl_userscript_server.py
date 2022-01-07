@@ -24,6 +24,7 @@ map_list = list()
 
 downloader_thread = threading.Thread()
 
+
 def append2queue_and_start_download(*args):
     global downloader_thread
     map_list.append(args)
@@ -33,7 +34,10 @@ def append2queue_and_start_download(*args):
 
 
 def async_downloader():
-    dl_pool = multiprocessing.Pool(processes=config.workers)
+    db_lock = multiprocessing.Lock()
+    dl_pool = multiprocessing.Pool(
+        processes=config.workers, initializer=medialib_db.common.db_lock_init, initargs=(db_lock,)
+    )
     while len(map_list):
         logger.info("IMAGES IN QUEUE: {}".format(len(map_list)))
         local_map_list = map_list.copy()
