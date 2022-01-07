@@ -12,6 +12,10 @@ def find_folder(parsed_tags: dict):
 
 	if 'my little pony' in parsed_tags['copyright']:
 		output_directory = output_directory.joinpath("mlp")
+	elif "gryphon" in parsed_tags["species"]:
+		output_directory = output_directory.joinpath("g6")
+	elif "horse" in parsed_tags["species"]:
+		output_directory = output_directory.joinpath("horses")
 
 	for mlp_generation_tag in {"g1", "g2", "g3", "g5"}:
 		if mlp_generation_tag in parsed_tags['content']:
@@ -48,7 +52,7 @@ def find_folder(parsed_tags: dict):
 
 	if {'questionable', 'explicit'} & parsed_tags['rating']:
 		output_directory = output_directory.joinpath("c")
-	elif {'horse'} & parsed_tags['species']:
+	elif 'horse' in parsed_tags['species'] and 'my little pony' not in parsed_tags['copyright']:
 		output_directory = output_directory.joinpath("horse")
 	elif 'vector' in parsed_tags['content']:
 		output_directory = output_directory.joinpath("vector")

@@ -1,7 +1,7 @@
 import re
 import exceptions
 
-from . import Parser, derpibooru, ponybooru, twibooru
+from . import Parser, derpibooru, ponybooru, twibooru, e621
 
 from .Parser import save_call
 
@@ -14,12 +14,14 @@ def get_parser(url):
     class_by_prefix = {
         derpibooru.FILENAME_PREFIX: derpibooru.DerpibooruParser,
         ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
-        twibooru.FILENAME_PREFIX: twibooru.TwibooruParser
+        twibooru.FILENAME_PREFIX: twibooru.TwibooruParser,
+        e621.FILENAME_PREFIX: e621.E621Parser
     }
     class_by_domain_name = {
         derpibooru.DerpibooruParser.get_domain_name_s(): derpibooru.DerpibooruParser,
         ponybooru.PonybooruParser.get_domain_name_s(): ponybooru.PonybooruParser,
-        'twibooru.org': twibooru.TwibooruParser
+        'twibooru.org': twibooru.TwibooruParser,
+        e621.E621Parser.get_domain_name_s(): e621.E621Parser
     }
     if url_pattern.match(url) is not None:
         for domain_name in class_by_domain_name:

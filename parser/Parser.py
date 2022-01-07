@@ -236,9 +236,8 @@ class Parser(abc.ABC):
                     else:
                         category_name = "content"
                         indexed_content.add(tag)
-                    q_tag = mysql_escafe_quotes(tag)
                     medialib_db.tags_indexer.insert_new_tag(
-                        q_tag, category_name, q_tag, auto_open_connection=False
+                        tag, category_name, tag, auto_open_connection=False
                     )
                 else:
                     if result[0] == "rating":

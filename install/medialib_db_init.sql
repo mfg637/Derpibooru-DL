@@ -37,3 +37,10 @@ INSERT IGNORE INTO tag (ID, title, category) VALUE (NULL, "applejack", 'characte
 
 INSERT IGNORE INTO tag_alias VALUE (NULL, (SELECT ID from tag where tag.title="applejack"), "applejack");
 INSERT IGNORE INTO tag_alias VALUE (NULL, (SELECT ID from tag where tag.title="applejack"), "aj");
+
+INSERT IGNORE INTO tag (ID, title, category) VALUE (NULL, "friendship is magic", 'content');
+INSERT IGNORE INTO tag_alias VALUE (NULL, (SELECT ID from tag where tag.title="friendship is magic"), "friendship is magic (season 1)");
+INSERT IGNORE INTO tag_alias VALUE (NULL, (SELECT ID from tag where tag.title="friendship is magic"), "friendship_is_magic_(s1e1)");
+
+INSERT IGNORE INTO tag (ID, title, category) VALUE (NULL, "equine", 'species');
+INSERT IGNORE INTO tag_alias VALUE (NULL, (SELECT ID from tag where tag.title="equine"), "equine");
