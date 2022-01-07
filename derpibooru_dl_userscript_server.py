@@ -52,7 +52,11 @@ class RouteFabric:
             if error_message is not None:
                 return error_message
             content = json.loads(flask.request.data.decode("utf-8"))
-            _parser = self._parser(content['imageId'])
+            _parser = None
+            if 'imageId' in content:
+                _parser = self._parser(content['imageId'])
+            elif "id" in content:
+                _parser = self._parser(content['id'])
             data = _parser.parseJSON()
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
@@ -80,6 +84,12 @@ def twibooru_handler():
 @app.route('/ponybooru', methods=['POST'])
 def ponybooru_handler():
     fabric = RouteFabric(parser.ponybooru.PonybooruParser)
+    return fabric.handle()
+
+
+@app.route('/e621', methods=['POST'])
+def e621_handler():
+    fabric = RouteFabric(parser.e621.E621Parser)
     return fabric.handle()
 
 

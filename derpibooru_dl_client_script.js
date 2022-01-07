@@ -10,9 +10,10 @@
 // @match       https://ponybooru.org/images*
 // @match       https://ponybooru.org/search
 // @match       https://ponybooru.org/tags/*
+// @match       https://e621.net/posts
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.1.2
+// @version     1.2.0
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -29,6 +30,8 @@ function dl_button_click_handler(event){
     url = url_head + "/twibooru";
   else if (document.domain === "ponybooru.org")
     url = url_head + "/ponybooru";
+  else if (document.domain === "e621.net")
+    url = url_head + "/e621";
   GM.xmlHttpRequest({
     method: "POST",
     data: JSON.stringify(this.data),
@@ -56,6 +59,9 @@ function button_placer_default(dl_button, image_wrapper){
   }else if (document.domain === "ponybooru.org"){
     dl_button.href = url_head + "/ponybooru";
     image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
+  }else if (document.domain === "e621.net"){
+    dl_button.href = url_head + "/e621";
+    image_wrapper.appendChild(dl_button);
   }
 }
 
@@ -83,17 +89,45 @@ function image_handler(data_wrapper, button_placer, bp_arg=null){
   button_placer(dl_button, bp_arg);
 }
 
-image_wrappers = document.getElementsByClassName('media-box');
-if (image_wrappers.length>0)
-  for (let i in image_wrappers){
-    if (!(image_wrappers[i] instanceof Element)){continue}
-    data_wrapper = image_wrappers[i].getElementsByClassName('image-container')[0];
-    image_handler(data_wrapper, button_placer_default, image_wrappers[i]);
+
+function e621_image_handler(data_wrapper, button_placer, bp_arg=null){
+  let raw_data = data_wrapper.dataset, data = {};
+  for (let key in raw_data){data[key]=raw_data[key];}
+  let dl_button = document.createElement('a');
+  dl_button.data = data;
+  dl_button.onclick = dl_button_click_handler;
+  dl_button.style.fontWeight = 'Bold';
+  dl_button.style.marginLeft = "0.5em";
+  button_placer(dl_button, data_wrapper.getElementsByClassName("post-score")[0]);
+}
+
+
+if ((document.domain === "derpibooru.org")|| (document.domain === 'twibooru.org') || (document.domain === "ponybooru.org"))
+{
+  image_wrappers = document.getElementsByClassName('media-box');
+  if (image_wrappers.length > 0)
+    for (let i in image_wrappers) {
+      if (!(image_wrappers[i] instanceof Element)) {
+        continue
+      }
+      data_wrapper = image_wrappers[i].getElementsByClassName('image-container')[0];
+      image_handler(data_wrapper, button_placer_default, image_wrappers[i]);
+    }
+  else {
+    image_wrappers = document.getElementsByClassName('image-show-container');
+    if (image_wrappers.length > 0) {
+      data_wrapper = image_wrappers[0];
+      image_handler(data_wrapper, button_placer_show_image);
+    }
   }
-else {
-  image_wrappers = document.getElementsByClassName('image-show-container');
-  if (image_wrappers.length>0){
-    data_wrapper = image_wrappers[0];
-    image_handler(data_wrapper, button_placer_show_image);
-  }
+}else if (document.domain === "e621.net"){
+  image_wrappers = document.getElementsByClassName('post-preview');
+  if (image_wrappers.length > 0)
+    for (let i in image_wrappers) {
+      if (!(image_wrappers[i] instanceof Element)) {
+        continue
+      }
+      //data_wrapper = image_wrappers[i].getElementsByClassName('image-container')[0];
+      e621_image_handler(image_wrappers[i], button_placer_default, image_wrappers[i]);
+    }
 }
