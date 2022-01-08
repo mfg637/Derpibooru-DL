@@ -85,6 +85,17 @@ class E621Parser(Parser.Parser):
         f.close()
 
     def tagIndex(self) -> dict:
+
+        def tag_register(tag_name, tag_category, tag_alias):
+            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, auto_open_connection=False)
+            if tag_id is None:
+                tag_id = medialib_db.tags_indexer.insert_new_tag(
+                    tag_name, tag_category, tag_alias, auto_open_connection=False
+                )
+            else:
+                tag_id = tag_id[0]
+            return tag_id
+
         artist = set()
         originalCharacter = set()
         indexed_characters = set()
@@ -107,13 +118,13 @@ class E621Parser(Parser.Parser):
                 _tag = tag.replace("_(mlp)", "")
             _tag = _tag.replace("_", " ")
             indexed_characters.add(_tag)
-            medialib_db.tags_indexer.tag_register(
-                _tag, 'characters', _tag, auto_open_connection=False
+            tag_register(
+                _tag, 'characters', _tag
             )
 
         for tag in indexed_copyright:
-            medialib_db.tags_indexer.tag_register(
-                tag, 'copyright', tag, auto_open_connection=False
+            tag_register(
+                tag, 'copyright', tag
             )
 
         for tag in self._parsed_data['post']['tags']['species']:
@@ -122,8 +133,9 @@ class E621Parser(Parser.Parser):
         for tag in self._parsed_data['post']['tags']['artist']:
             _tag = tag.replace("_", " ")
             artist.add(_tag)
-            medialib_db.tags_indexer.tag_register(
-                _tag, 'artist', _tag, auto_open_connection=False
+            tag_alias = "{}:{}".format("artist", _tag)
+            tag_register(
+                _tag, 'artist', tag_alias
             )
 
         rating_table = {
@@ -132,11 +144,10 @@ class E621Parser(Parser.Parser):
             "e": "explicit"
         }
         indexed_rating.add(rating_table[self._parsed_data['post']['rating']])
-        medialib_db.tags_indexer.tag_register(
+        tag_register(
             rating_table[self._parsed_data['post']['rating']],
             'rating',
-            rating_table[self._parsed_data['post']['rating']],
-            auto_open_connection=False
+            rating_table[self._parsed_data['post']['rating']]
         )
 
         for tag in self._parsed_data['post']['tags']['general']:
@@ -145,13 +156,13 @@ class E621Parser(Parser.Parser):
             else:
                 _tag = tag.replace("_", " ")
                 indexed_content.add(_tag)
-                medialib_db.tags_indexer.tag_register(
-                    _tag, 'content', _tag, auto_open_connection=False
+                tag_register(
+                    _tag, 'content', _tag
                 )
 
         for tag in indexed_species:
-            medialib_db.tags_indexer.tag_register(
-                tag, 'species', tag, auto_open_connection=False
+            tag_register(
+                tag, 'species', tag
             )
 
         medialib_db.common.close_connection_if_not_closed()
@@ -215,40 +226,8 @@ class E621Parser(Parser.Parser):
                     self.download_file(src_filename, src_url)
         outname = src_filename
 
-        if result is not None:
-            outname = result[4]
-            if type(outname) is io.TextIOWrapper:
-                outname = outname.name
-            print(outname)
-        elif not pathlib.Path(outname).exists():
-            logger.error("NOT FOUNDED FILE")
-            raise FileNotFoundError()
-        _name = None
-        media_type = None
-        if 'name' in data:
-            _name = data['name']
-        if ".srs" in outname:
-            f = open(outname, "r")
-            _data = json.load(f)
-            f.close()
-            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
-        else:
-            out_path = pathlib.Path(outname)
-            if out_path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp", ".jxl", ".avif"}:
-                media_type = "image"
-            elif out_path.suffix.lower() == ".gif":
-                media_type = "video-loop"
-            elif out_path.suffix.lower() in {'.webm', ".mp4"}:
-                media_type = "video"
-            else:
-                media_type = "image"
-        _description = None
-        if "description" in data and len(data['description']):
-            _description = data['description']
-        print("MEDIALIB_DB_STATE", medialib_db.common.connection)
-        medialib_db.srs_indexer.register(
-            pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
-        )
+        if config.use_medialib_db:
+            self.medualib_db_register(data, src_filename, result, tags)
 
         if result is not None:
             return result[:4]

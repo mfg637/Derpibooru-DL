@@ -1,3 +1,5 @@
+import io
+import json
 import pathlib
 import sys
 
@@ -179,8 +181,15 @@ class Parser(abc.ABC):
         taglist = self.getTagList()
         tags_parsed_data = None
 
-        def mysql_escafe_quotes(_string):
-            return re.sub("\"", "\\\"", _string)
+        def tag_register(tag_name, tag_category, tag_alias):
+            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, auto_open_connection=False)
+            if tag_id is None:
+                tag_id = medialib_db.tags_indexer.insert_new_tag(
+                    tag_name, tag_category, tag_alias, auto_open_connection=False
+                )
+            else:
+                tag_id = tag_id[0]
+            return tag_id
 
 
         artist = set()
@@ -197,7 +206,7 @@ class Parser(abc.ABC):
                 if config.use_medialib_db:
                     medialib_db.common.open_connection_if_not_opened()
 
-                    medialib_db.tags_indexer.tag_register(
+                    tag_register(
                         _oc, "original character", "original character:{}".format(_oc)
                     )
 
@@ -208,7 +217,7 @@ class Parser(abc.ABC):
                 if config.use_medialib_db:
                     medialib_db.common.open_connection_if_not_opened()
 
-                    medialib_db.tags_indexer.tag_register(
+                    tag_register(
                         _artist, "artist", tag
                     )
 
@@ -305,7 +314,7 @@ class Parser(abc.ABC):
                 )
                 transcoder.transcode()
             elif config.enable_multiprocessing:
-                return 0, 0, 0, 0, src_filename
+                return 0, 0, 0, 0, None
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
@@ -319,11 +328,13 @@ class Parser(abc.ABC):
                         output_directory,
                         name
                     ):
-                return 0, 0, 0, 0, src_filename
+                return 0, 0, 0, 0, None
             elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                return 0, 0, 0, 0, src_filename
+                return 0, 0, 0, 0, None
             elif config.enable_multiprocessing:
-                return 0, 0, 0, 0, src_filename
+                return 0, 0, 0, 0, None
+            else:
+                return 0, 0, 0, 0, None
         else:
             if not os.path.isfile(src_filename):
                 pass
@@ -356,6 +367,43 @@ class Parser(abc.ABC):
             ))
             deleted_list_f.close()
         return 0, 0, 0, 0
+
+    def medualib_db_register(self, data, src_filename, transcoding_result, tags):
+        outname = src_filename
+        if transcoding_result is not None:
+            outname = transcoding_result[4]
+            if type(outname) is io.TextIOWrapper:
+                outname = outname.name
+        elif not pathlib.Path(outname).exists():
+            logger.error("NOT FOUNDED FILE")
+            raise FileNotFoundError()
+
+        _name = None
+        media_type = None
+        if 'name' in data:
+            _name = data['name']
+        if outname is not None:
+            if ".srs" in outname:
+                f = open(outname, "r")
+                _data = json.load(f)
+                f.close()
+                media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
+            else:
+                out_path = pathlib.Path(outname)
+                if out_path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp", ".jxl", ".avif"}:
+                    media_type = "image"
+                elif out_path.suffix.lower() == ".gif":
+                    media_type = "video-loop"
+                elif out_path.suffix.lower() in {'.webm', ".mp4"}:
+                    media_type = "video"
+                else:
+                    media_type = "image"
+            _description = None
+            if "description" in data and len(data['description']):
+                _description = data['description']
+            medialib_db.srs_indexer.register(
+                pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
+            )
 
 
 def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:
