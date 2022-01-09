@@ -61,6 +61,8 @@ class E621Parser(Parser.Parser):
         else:
             id = self.get_id_by_url(self._url)
         request_url = 'https://{}/{}/{}.json'.format(self.get_domain_name_s(), _type, urllib.parse.quote(id))
+        if config.e621_login is not None and config.e621_API_KEY is not None:
+            request_url += "?login={}&api_key={}".format(config.e621_login, config.e621_API_KEY)
         print("parseJSON", request_url)
         try:
             request_data = requests.get(request_url, headers=headers)
@@ -70,6 +72,7 @@ class E621Parser(Parser.Parser):
         data = None
         if request_data.status_code == 404:
             raise IndexError("not founded \"{}\"".format(url))
+        print("STATUS CODE", request_data.status_code)
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
@@ -187,6 +190,9 @@ class E621Parser(Parser.Parser):
             os.makedirs(output_directory)
         name = ''
         data = data['post']
+        print(data["id"], data['file']['url'], data['file']['ext'])
+        if data['file']['url'] is None or data['file']['ext'] is None:
+            print(data)
         src_url = os.path.splitext(data['file']['url'])[0] + '.' + data['file']['ext'].lower()
         name = "{}{}".format(FILENAME_PREFIX, data["id"])
         src_filename = os.path.join(output_directory, "{}.{}".format(name, data['file']['ext'].lower()))

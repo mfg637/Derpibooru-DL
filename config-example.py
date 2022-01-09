@@ -49,3 +49,5 @@ if do_transcode:
     # if not none, use JPEG XL's lossless encoding
     pyimglib.config.jpeg_xl_tools_path = None
 
+e621_login = None
+e621_API_KEY = None
