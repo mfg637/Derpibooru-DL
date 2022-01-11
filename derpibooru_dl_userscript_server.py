@@ -91,6 +91,12 @@ def ponybooru_handler():
     return fabric.handle()
 
 
+@app.route('/furbooru', methods=['POST'])
+def furbooru_handler():
+    fabric = RouteFabric(parser.furbooru.FurbooruParser)
+    return fabric.handle()
+
+
 @app.route('/e621', methods=['POST'])
 def e621_handler():
     fabric = RouteFabric(parser.e621.E621Parser)

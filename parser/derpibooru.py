@@ -159,7 +159,7 @@ class DerpibooruParser(Parser.Parser):
                     self.download_file(src_filename, src_url)
 
         if config.use_medialib_db:
-            self.medualib_db_register(data, src_filename, result, tags)
+            self.medialib_db_register(data, src_filename, result, tags)
 
         if result is not None:
             return result[:4]

@@ -176,6 +176,9 @@ class Parser(abc.ABC):
         parser.feed(raw_html)
         return tags_parsed_data
 
+    def get_auto_copyright_tags(self):
+        return {"my little pony"}
+
     def tagIndex(self) -> dict:
         global indexed_tags
         taglist = self.getTagList()
@@ -199,6 +202,8 @@ class Parser(abc.ABC):
         indexed_species = set()
         indexed_content = set()
         indexed_set = set()
+        indexed_copyright = set()
+
         for tag in taglist:
             if "oc:" in tag:
                 _oc = tag.split(':')[1]
@@ -251,12 +256,14 @@ class Parser(abc.ABC):
                 else:
                     if result[0] == "rating":
                         indexed_rating.add(tag)
-                    elif result[0] == "characters":
+                    elif result[0] == "character":
                         indexed_characters.add(tag)
                     elif result[0] == "species":
                         indexed_species.add(tag)
                     elif result[0] == "set":
                         indexed_set.add(tag)
+                    elif result[0] == "copyright":
+                        indexed_copyright.add(tag)
                     elif result[0] == "content":
                         indexed_content.add(tag)
                     else:
@@ -291,7 +298,7 @@ class Parser(abc.ABC):
         return {'artist': artist, 'original character': originalCharacter,
                 'characters': indexed_characters, 'rating': indexed_rating,
                 'species': indexed_species, 'content': indexed_content,
-                'set': indexed_set, 'copyright': {"my little pony"}}
+                'set': indexed_set, 'copyright': indexed_copyright}
 
     def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
         if original_format in TRANSCODE_FILES:
@@ -368,7 +375,7 @@ class Parser(abc.ABC):
             deleted_list_f.close()
         return 0, 0, 0, 0
 
-    def medualib_db_register(self, data, src_filename, transcoding_result, tags):
+    def medialib_db_register(self, data, src_filename, transcoding_result, tags):
         outname = src_filename
         if transcoding_result is not None:
             outname = transcoding_result[4]

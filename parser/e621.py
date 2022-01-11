@@ -122,7 +122,7 @@ class E621Parser(Parser.Parser):
             _tag = _tag.replace("_", " ")
             indexed_characters.add(_tag)
             tag_register(
-                _tag, 'characters', _tag
+                _tag, 'character', _tag
             )
 
         for tag in indexed_copyright:
@@ -233,7 +233,7 @@ class E621Parser(Parser.Parser):
         outname = src_filename
 
         if config.use_medialib_db:
-            self.medualib_db_register(data, src_filename, result, tags)
+            self.medialib_db_register(data, src_filename, result, tags)
 
         if result is not None:
             return result[:4]

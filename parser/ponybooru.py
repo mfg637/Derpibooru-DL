@@ -1,11 +1,3 @@
-import json
-import urllib.parse
-import urllib.request
-import config
-import os
-import re
-import mysql.connector
-
 FILENAME_PREFIX = 'pb'
 ORIGIN = 'ponybooru'
 

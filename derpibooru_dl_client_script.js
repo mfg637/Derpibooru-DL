@@ -10,10 +10,14 @@
 // @match       https://ponybooru.org/images*
 // @match       https://ponybooru.org/search
 // @match       https://ponybooru.org/tags/*
+// @match       https://furbooru.org/
+// @match       https://furbooru.org/images*
+// @match       https://furbooru.org/search
+// @match       https://furbooru.org/tags/*
 // @match       https://e621.net/posts
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.2.0
+// @version     1.3.0
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -32,6 +36,8 @@ function dl_button_click_handler(event){
     url = url_head + "/ponybooru";
   else if (document.domain === "e621.net")
     url = url_head + "/e621";
+  else if (document.domain === "furbooru.org")
+    url = url_head + "/furbooru";
   GM.xmlHttpRequest({
     method: "POST",
     data: JSON.stringify(this.data),
@@ -59,6 +65,9 @@ function button_placer_default(dl_button, image_wrapper){
   }else if (document.domain === "ponybooru.org"){
     dl_button.href = url_head + "/ponybooru";
     image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
+  }else if (document.domain === "furbooru.org"){
+    dl_button.href = url_head + "/furbooru";
+    image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
   }else if (document.domain === "e621.net"){
     dl_button.href = url_head + "/e621";
     image_wrapper.appendChild(dl_button);
@@ -73,6 +82,8 @@ function button_placer_show_image(dl_button, unused_arg){
     dl_button.href = url_head + "/twibooru";
   }else if (document.domain === "ponybooru.org"){
     dl_button.href = url_head + "/ponybooru";
+  }else if (document.domain === "furbooru.org"){
+    dl_button.href = url_head + "/furbooru";
   }
   document.getElementsByClassName('image-metabar')[0].appendChild(dl_button);
 }
@@ -102,7 +113,12 @@ function e621_image_handler(data_wrapper, button_placer, bp_arg=null){
 }
 
 
-if ((document.domain === "derpibooru.org")|| (document.domain === 'twibooru.org') || (document.domain === "ponybooru.org"))
+if  (
+      (document.domain === "derpibooru.org") ||
+      (document.domain === 'twibooru.org') ||
+      (document.domain === "ponybooru.org") ||
+      (document.domain === "furbooru.org")
+    )
 {
   image_wrappers = document.getElementsByClassName('media-box');
   if (image_wrappers.length > 0)
