@@ -408,9 +408,18 @@ class Parser(abc.ABC):
             _description = None
             if "description" in data and len(data['description']):
                 _description = data['description']
+            medialib_db.common.open_connection_if_not_opened()
             medialib_db.srs_indexer.register(
-                pathlib.Path(outname), _name, media_type, _description, self.get_origin_name(), data["id"], tags
+                pathlib.Path(outname),
+                _name,
+                media_type,
+                _description,
+                self.get_origin_name(),
+                data["id"],
+                tags,
+                auto_open_connection=False
             )
+            medialib_db.common.close_connection_if_not_closed()
 
 
 def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:
