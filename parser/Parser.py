@@ -319,7 +319,10 @@ class Parser(abc.ABC):
                 transcoder = pyimglib.transcoding.get_file_transcoder(
                     src_filename, output_directory, name, tags, metadata
                 )
-                transcoder.transcode()
+                if transcoder is not None:
+                    transcoder.transcode()
+                else:
+                    self.download_file(src_filename, src_url)
             elif config.enable_multiprocessing:
                 return 0, 0, 0, 0, None
         else:

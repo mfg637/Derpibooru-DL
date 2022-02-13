@@ -9,6 +9,7 @@ import logging
 
 import exceptions
 import medialib_db.srs_indexer
+import pyimglib
 
 logger = logging.getLogger(__name__)
 
@@ -151,7 +152,7 @@ class DerpibooruParser(Parser.Parser):
             else:
                 try:
                     result = self._do_transcode(*args)
-                except exceptions.NotIdentifiedFileFormat:
+                except pyimglib.exceptions.NotIdentifiedFileFormat:
                     result = self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
