@@ -379,6 +379,8 @@ class Parser(abc.ABC):
         return 0, 0, 0, 0
 
     def medialib_db_register(self, data, src_filename, transcoding_result, tags):
+        if config.simulate:
+            return
         outname = src_filename
         if transcoding_result is not None:
             outname = transcoding_result[4]

@@ -30,13 +30,13 @@ class TwibooruParser(Parser.Parser):
 
     def getID(self) -> str:
         try:
-            return str(self._parsed_data["id"])
+            return str(self._parsed_data["post"]["id"])
         except KeyError as e:
             self._file_deleted_handing(FILENAME_PREFIX, self.input_id)
             raise e
 
     def getTagList(self) -> list:
-        return self._parsed_data['tags'].split(', ')
+        return self._parsed_data["post"]['tags']
 
     def parsehtml_get_image_route_name(self) -> str:
         return 'posts'
@@ -45,36 +45,36 @@ class TwibooruParser(Parser.Parser):
         return 'twibooru.org'
 
     def dataValidator(self, data):
-        if 'image' not in data:
+        if 'view_url' not in data["post"]:
             raise KeyError("data has no \'image\'")
-        if "original_format" not in data:
+        if "format" not in data["post"]:
             raise KeyError("data has no original_format property")
-        if 'representations' not in data:
+        if 'representations' not in data["post"]:
             raise KeyError("data has no \'representations\'")
-        if 'large' not in data['representations']:
+        if 'large' not in data["post"]['representations']:
             raise KeyError("not found large representation")
 
     def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
-        if 'deletion_reason' in data and data['deletion_reason'] is not None:
+        if 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None:
             return self._file_deleted_handing(FILENAME_PREFIX, data['id'])
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
         name = ''
-        src_url = os.path.splitext(data['image'])[0] + '.' + data["original_format"]
+        src_url = os.path.splitext(data["post"]["view_url"])[0] + '.' + data["post"]["format"]
         src_url = re.sub(r'\%', '', src_url)
-        if 'file_name' in data and data['file_name'] is not None:
+        if 'name' in data["post"] and data["post"]['name'] is not None:
             name = "tb{} {}".format(
-                data["id"],
-                re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["file_name"])[0])
+                data["post"]["id"],
+                re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["post"]["name"])[0])
             )
         else:
             name = str(data["id"])
-        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["original_format"]))
+        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["post"]["format"]))
 
         metadata = {
-            "title": data["file_name"],
+            "title": data["post"]["name"],
             "origin": self.get_origin_name(),
-            "id": data["id"]
+            "id": data["post"]["id"]
         }
 
         print("filename", src_filename)
@@ -84,8 +84,8 @@ class TwibooruParser(Parser.Parser):
 
         if config.do_transcode:
             args = (
-                data["original_format"],
-                data['representations']["large"],
+                data["post"]["format"],
+                data["post"]['representations']["large"],
                 src_filename,
                 output_directory,
                 name,
@@ -99,14 +99,14 @@ class TwibooruParser(Parser.Parser):
                 try:
                     result = self._do_transcode(*args)
                 except pyimglib.exceptions.NotIdentifiedFileFormat:
-                    result = self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
+                    result = self._file_deleted_handing(FILENAME_PREFIX, data["post"]['id'])
         else:
             if self.enable_rewriting() or not os.path.isfile(src_filename):
                 if not config.simulate:
                     self.download_file(src_filename, src_url)
 
         if config.use_medialib_db:
-            self.medialib_db_register(data, src_filename, result, tags)
+            self.medialib_db_register(data["post"], src_filename, result, tags)
 
         if result is not None:
             return result[:4]
@@ -115,18 +115,19 @@ class TwibooruParser(Parser.Parser):
 
     def parseJSON(self, _type="images"):
         self.input_id = self.get_id_by_url(self._url)
-        print("parseJSON", 'https://twibooru.org/' + self.input_id + '.json')
+        request_url = 'https://twibooru.org/api/v3/posts/{}'.format(self.input_id)
+        print("parseJSON", request_url)
         request_data = None
         try:
-            request_data = requests.get('https://twibooru.org/' + self.input_id + '.json')
+            request_data = requests.get(request_url)
         except Exception as e:
             print(e)
             return
         data = request_data.json()
         while "duplicate_of" in data:
-            data = self.parseJSON(str(data["duplicate_of"]))
-        if 'tags' not in data:
-            data['tags'] = ""
+            data = self.parseJSON(str(data["post"]["duplicate_of"]))
+        if 'tags' not in data["post"]:
+            data["post"]['tags'] = ""
         self._parsed_data = data
         return data
 
