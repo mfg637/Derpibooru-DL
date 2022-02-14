@@ -42,6 +42,7 @@ arg_parser.add_argument(
     default=None,
     metavar="DELETED_LIST_FILE"
 )
+arg_parser.add_argument("--response-cache-dir", metavar="CACHE DIRECTORY", type=pathlib.Path, default=None)
 args = arg_parser.parse_args()
 
 id_list = args.id.copy()
@@ -49,6 +50,7 @@ parser.Parser.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
 config.simulate = args.simulate
 NO_GUI = args.no_gui
 config.deleted_image_list_file_path = args.deleted_list
+config.response_cache_dir = args.response_cache_dir
 
 if args.append is not None:
     for line in args.append:
@@ -68,7 +70,7 @@ def download(url):
         logger.exception("Site not supported {}".format(e.url))
         return
     try:
-        data = _parser.parseJSON()
+        data = _parser.get_data()
     except IndexError:
         return
 

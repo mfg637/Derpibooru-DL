@@ -77,7 +77,7 @@ class GUI:
                         logger.exception("Site not supported {}".format(e.url))
                         continue
                     try:
-                        data = _parser.parseJSON()
+                        data = _parser.get_data()
                     except IndexError:
                         continue
                     try:

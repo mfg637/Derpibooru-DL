@@ -28,6 +28,7 @@ browser_tmpcache_directory = None
 do_transcode = False
 
 simulate = False
+response_cache_dir = None
 
 workers = 1
 

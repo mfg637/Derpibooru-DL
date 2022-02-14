@@ -56,6 +56,29 @@ class Parser(abc.ABC):
     def enable_rewriting(self):
         return ENABLE_REWRITING
 
+    def _dump_parsed_data(self):
+        if config.response_cache_dir is not None:
+            config.response_cache_dir.mkdir(parents=True, exist_ok=True)
+            f = config.response_cache_dir.joinpath(
+                "{}{}.json".format(self.get_filename_prefix(), self.getID())
+            ).open("w")
+            json.dump(self._parsed_data, f)
+            f.close()
+
+    def _load_parsed_data(self):
+        self.input_id = self.get_id_by_url(self._url)
+        if config.response_cache_dir is not None:
+            dump_file_path = config.response_cache_dir.joinpath(
+                "{}{}.json".format(self.get_filename_prefix(), self.input_id)
+            )
+            if dump_file_path.exists():
+                f = dump_file_path.open("r")
+                self._parsed_data = json.load(f)
+                f.close()
+                print("LOADED FROM DUMP")
+                return self._parsed_data
+        return None
+
     @staticmethod
     def get_id_by_url(URL: str):
         return URL.split('?')[0].split('/')[-1]
@@ -110,6 +133,14 @@ class Parser(abc.ABC):
     @abc.abstractmethod
     def parseJSON(self, _type="images"):
         pass
+
+    def get_data(self):
+        data = self._load_parsed_data()
+        if data is None:
+            data = self.parseJSON()
+            if config.response_cache_dir is not None:
+                self._dump_parsed_data()
+        return data
 
     @abc.abstractmethod
     def parsehtml_get_image_route_name(self) -> str:
