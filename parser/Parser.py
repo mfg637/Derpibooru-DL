@@ -233,7 +233,7 @@ class Parser(abc.ABC):
         indexed_species = set()
         indexed_content = set()
         indexed_set = set()
-        indexed_copyright = set()
+        indexed_copyright = self.get_auto_copyright_tags()
 
         for tag in taglist:
             if "oc:" in tag:
