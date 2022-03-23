@@ -2,6 +2,7 @@ import io
 import json
 import pathlib
 import sys
+from typing import Dict, Union, Set, Any
 
 import config
 import threading
@@ -215,11 +216,11 @@ class Parser(abc.ABC):
         taglist = self.getTagList()
         tags_parsed_data = None
 
-        def tag_register(tag_name, tag_category, tag_alias):
-            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, auto_open_connection=False)
+        def tag_register(tag_name, tag_category, tag_alias, connection):
+            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, connection)
             if tag_id is None:
                 tag_id = medialib_db.tags_indexer.insert_new_tag(
-                    tag_name, tag_category, tag_alias, auto_open_connection=False
+                    tag_name, tag_category, tag_alias, connection
                 )
             else:
                 tag_id = tag_id[0]
@@ -240,41 +241,40 @@ class Parser(abc.ABC):
                 _oc = tag.split(':')[1]
                 originalCharacter.add(_oc)
                 if config.use_medialib_db:
-                    medialib_db.common.open_connection_if_not_opened()
+                    connection = medialib_db.common.make_connection()
 
                     tag_register(
-                        _oc, "original character", "original character:{}".format(_oc)
+                        _oc, "original character", "original character:{}".format(_oc), connection
                     )
 
-                    medialib_db.common.close_connection_if_not_closed()
+                    connection.close()
             elif "artist:" in tag:
                 _artist = tag.split(':')[1]
                 artist.add(_artist)
                 if config.use_medialib_db:
-                    medialib_db.common.open_connection_if_not_opened()
+                    connection = medialib_db.common.make_connection()
 
                     tag_register(
-                        _artist, "artist", tag
+                        _artist, "artist", tag, connection
                     )
 
-                    medialib_db.common.close_connection_if_not_closed()
+                    connection.close()
             elif '.' in tag or '-' in tag:
                 continue
             elif config.use_medialib_db:
-                medialib_db.common.open_connection_if_not_opened()
-                result = medialib_db.tags_indexer.get_category_of_tag(tag, auto_open_connection=False)
+                connection = medialib_db.common.make_connection()
+                result = medialib_db.tags_indexer.get_category_of_tag(tag, connection)
                 if result is None:
                     if tags_parsed_data is None:
                         tags_parsed_data = self.parseHTML(self.getID())
-                    if tags_parsed_data[tag] == "character":
-                        category_name = "character"
-                        indexed_characters.add(tag)
-                    elif tags_parsed_data[tag] == "rating":
-                        category_name = "rating"
-                        indexed_rating.add(tag)
-                    elif tags_parsed_data[tag] == "species":
-                        category_name = "species"
-                        indexed_species.add(tag)
+                    INDEXED_TAG_CATEGORY = {
+                        "character": indexed_characters,
+                        "rating": indexed_rating,
+                        "species": indexed_species
+                    }
+                    if tags_parsed_data[tag] in INDEXED_TAG_CATEGORY:
+                        category_name = tags_parsed_data[tag]
+                        INDEXED_TAG_CATEGORY[tags_parsed_data[tag]].add(tag)
                     elif "comic:" in tag or "art pack:" in tag or "fanfic:" in tag:
                         category_name = "set"
                         indexed_set.add(tag)
@@ -282,50 +282,48 @@ class Parser(abc.ABC):
                         category_name = "content"
                         indexed_content.add(tag)
                     medialib_db.tags_indexer.insert_new_tag(
-                        tag, category_name, tag, auto_open_connection=False
+                        tag, category_name, tag, connection
                     )
                 else:
-                    if result[0] == "rating":
-                        indexed_rating.add(tag)
-                    elif result[0] == "character":
-                        indexed_characters.add(tag)
-                    elif result[0] == "species":
-                        indexed_species.add(tag)
-                    elif result[0] == "set":
-                        indexed_set.add(tag)
-                    elif result[0] == "copyright":
-                        indexed_copyright.add(tag)
-                    elif result[0] == "content":
-                        indexed_content.add(tag)
+                    INDEXED_TAG_CATEGORY = {
+                        "rating": indexed_rating,
+                        "character": indexed_characters,
+                        "species": indexed_species,
+                        "set": indexed_set,
+                        "copyright": indexed_copyright,
+                        "content": indexed_content
+                    }
+                    if result[0] in INDEXED_TAG_CATEGORY:
+                        INDEXED_TAG_CATEGORY[result[0]].add(tag)
                     else:
                         print(result)
-                medialib_db.common.close_connection_if_not_closed()
+                connection.close()
             else:
                 if tag not in indexed_tags:
                     if tags_parsed_data is None:
                         tags_parsed_data = self.parseHTML(self.getID())
-                    if tags_parsed_data[tag] == "character":
-                        characters.add(tag)
-                        indexed_characters.add(tag)
-                    elif tags_parsed_data[tag] == "rating":
-                        rating.add(tag)
-                        indexed_rating.add(tag)
-                    elif tags_parsed_data[tag] == "species":
-                        species.add(tag)
-                        indexed_species.add(tag)
+                    INDEXED_TAG_CATEGORY = {
+                        "character": (characters, indexed_characters),
+                        "rating": (rating, indexed_rating),
+                        "species": (species, indexed_species)
+                    }
+                    if tags_parsed_data[tag] in INDEXED_TAG_CATEGORY:
+                        INDEXED_TAG_CATEGORY[tags_parsed_data[tag]][0].add(tag)
+                        INDEXED_TAG_CATEGORY[tags_parsed_data[tag]][1].add(tag)
                     else:
                         content.add(tag)
                         indexed_content.add(tag)
                     indexed_tags.add(tag)
                 else:
-                    if tag in rating:
-                        indexed_rating.add(tag)
-                    elif tag in characters:
-                        indexed_characters.add(tag)
-                    elif tag in species:
-                        indexed_species.add(tag)
-                    elif tag in content:
-                        indexed_content.add(tag)
+                    INDEXED_TAG_CATEGORY = {
+                        rating: indexed_rating,
+                        characters: indexed_characters,
+                        species: indexed_species,
+                        content: indexed_content
+                    }
+                    for tag_category in INDEXED_TAG_CATEGORY:
+                        if tag in tag_category:
+                            INDEXED_TAG_CATEGORY[tag_category].add(tag)
         return {'artist': artist, 'original character': originalCharacter,
                 'characters': indexed_characters, 'rating': indexed_rating,
                 'species': indexed_species, 'content': indexed_content,
@@ -444,7 +442,7 @@ class Parser(abc.ABC):
             _description = None
             if "description" in data and len(data['description']):
                 _description = data['description']
-            medialib_db.common.open_connection_if_not_opened()
+            connection = medialib_db.common.make_connection()
             medialib_db.srs_indexer.register(
                 pathlib.Path(outname),
                 _name,
@@ -453,9 +451,9 @@ class Parser(abc.ABC):
                 self.get_origin_name(),
                 data["id"],
                 tags,
-                auto_open_connection=False
+                connection
             )
-            medialib_db.common.close_connection_if_not_closed()
+            connection.close()
 
 
 def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:
