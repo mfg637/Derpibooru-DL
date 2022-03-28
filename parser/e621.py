@@ -90,13 +90,15 @@ class E621Parser(Parser.Parser):
     def tagIndex(self) -> dict:
 
         def tag_register(tag_name, tag_category, tag_alias):
-            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, auto_open_connection=False)
+            connection = medialib_db.common.make_connection()
+            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, connection)
             if tag_id is None:
                 tag_id = medialib_db.tags_indexer.insert_new_tag(
-                    tag_name, tag_category, tag_alias, auto_open_connection=False
+                    tag_name, tag_category, tag_alias, connection
                 )
             else:
                 tag_id = tag_id[0]
+            connection.close()
             return tag_id
 
         artist = set()
