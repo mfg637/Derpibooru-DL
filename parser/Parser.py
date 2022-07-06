@@ -263,7 +263,7 @@ class Parser(abc.ABC):
                 continue
             elif config.use_medialib_db:
                 connection = medialib_db.common.make_connection()
-                result = medialib_db.tags_indexer.get_category_of_tag(tag, connection)
+                result: set = medialib_db.tags_indexer.get_category_of_tag(tag, connection)
                 if result is None:
                     if tags_parsed_data is None:
                         tags_parsed_data = self.parseHTML(self.getID())
@@ -293,10 +293,13 @@ class Parser(abc.ABC):
                         "copyright": indexed_copyright,
                         "content": indexed_content
                     }
-                    if result[0] in INDEXED_TAG_CATEGORY:
-                        INDEXED_TAG_CATEGORY[result[0]].add(tag)
+                    INDEXED_CATEGORIES = set(INDEXED_TAG_CATEGORY.keys())
+                    presented_categories = result & INDEXED_CATEGORIES
+                    if len(presented_categories):
+                        selected_category = presented_categories.pop()
+                        INDEXED_TAG_CATEGORY[selected_category].add(tag)
                     else:
-                        print(result)
+                        print(tag, result)
                 connection.close()
             else:
                 if tag not in indexed_tags:
