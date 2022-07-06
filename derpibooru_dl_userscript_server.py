@@ -28,9 +28,7 @@ downloader_thread = threading.Thread()
 def append2queue_and_start_download(*args):
     global downloader_thread
     map_list.append(args)
-    if not downloader_thread.is_alive():
-        downloader_thread = threading.Thread(target=async_downloader)
-        downloader_thread.start()
+    print("download queue now contains {} requests".format(len(map_list)))
 
 
 def async_downloader():
@@ -39,11 +37,20 @@ def async_downloader():
         processes=config.workers, initializer=medialib_db.common.db_lock_init, initargs=(db_lock,)
     )
     while len(map_list):
-        logger.info("IMAGES IN QUEUE: {}".format(len(map_list)))
         local_map_list = map_list.copy()
         map_list.clear()
+        logger.info("processing {} requests".format(len(local_map_list)))
         results = dl_pool.map(parser.save_call, local_map_list, chunksize=1)
         pyimglib.transcoding.statistics.update_stats(results)
+
+
+@app.route('/do_download')
+def do_download():
+    global downloader_thread
+    if not downloader_thread.is_alive():
+        downloader_thread = threading.Thread(target=async_downloader)
+        downloader_thread.start()
+    return "Download will start now!"
 
 
 class RouteFabric:
@@ -105,6 +112,8 @@ def e621_handler():
 
 if __name__ == '__main__':
     try:
+        print("accepting requests")
+        print("to do download, go to http://localhost:5757/do_download")
         app.run(host="localhost", port=5757)
     except Exception as e:
         error_message = traceback.format_exc()
