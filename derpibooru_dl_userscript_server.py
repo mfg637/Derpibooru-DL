@@ -6,6 +6,7 @@ import json
 import traceback
 import threading
 import config
+import download_manager
 import medialib_db.common
 import parser
 import multiprocessing
@@ -40,7 +41,7 @@ def async_downloader():
         local_map_list = map_list.copy()
         map_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
-        results = dl_pool.map(parser.save_call, local_map_list, chunksize=1)
+        results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
         pyimglib.transcoding.statistics.update_stats(results)
 
 
@@ -72,7 +73,8 @@ class RouteFabric:
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
             _parser.dataValidator(data)
-            append2queue_and_start_download(_parser, out_dir, data, parsed_tags)
+            dm = download_manager.make_download_manager(_parser)
+            append2queue_and_start_download(dm, out_dir, data, parsed_tags)
             return "OK"
         except Exception as e:
             error_message = traceback.format_exc()

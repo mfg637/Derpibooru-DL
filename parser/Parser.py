@@ -1,41 +1,18 @@
-import io
+import abc
 import json
+import logging
 import pathlib
 import sys
-from typing import Dict, Union, Set, Any
-
-import config
 import threading
-import multiprocessing
-import abc
-import requests
-import logging
-
-import medialib_db
-
-import mysql.connector
-
-import re
 from html.parser import HTMLParser
 
-import os
+import requests
 
-if config.do_transcode:
-    import pyimglib
+import config
+import medialib_db
 
 logger = logging.getLogger(__name__)
 
-ENABLE_REWRITING = False
-
-TRANSCODE_FILES = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'svg'}
-
-downloader_thread = threading.Thread()
-download_queue = []
-
-
-if config.do_transcode:
-    import pyimglib.transcoding
-    from PIL.Image import DecompressionBombError
 
 
 indexed_tags = set()
@@ -53,9 +30,6 @@ class Parser(abc.ABC):
     def __init__(self, url, parsed_data=None):
         self._url = url
         self._parsed_data = parsed_data
-
-    def enable_rewriting(self):
-        return ENABLE_REWRITING
 
     def _dump_parsed_data(self):
         if config.response_cache_dir is not None:
@@ -83,53 +57,6 @@ class Parser(abc.ABC):
     @staticmethod
     def get_id_by_url(URL: str):
         return URL.split('?')[0].split('/')[-1]
-
-    def append2queue(self, **kwargs):
-        global downloader_thread
-        global download_queue
-        download_queue.append(kwargs)
-        if not downloader_thread.is_alive():
-            downloader_thread = threading.Thread(target=self.async_downloader)
-            downloader_thread.start()
-
-    def async_downloader(self):
-        global download_queue
-        while len(download_queue):
-            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
-            current_download = download_queue.pop()
-            pipe=multiprocessing.Pipe()
-            params = current_download
-            params['pipe'] = pipe[1]
-            process = multiprocessing.Process(target=self.save_image_old_interface, kwargs=params)
-            process.start()
-            import pyimglib.transcoding.statistics as stats
-            stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
-            process.join()
-            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
-
-    @staticmethod
-    def download_file(filename: str, src_url: str) -> None:
-        request_data = requests.get(src_url)
-        file = open(filename, 'wb')
-        file.write(request_data.content)
-        file.close()
-
-    def in_memory_transcode(self, src_url, name, tags, output_directory, metadata):
-        source = self.do_binary_request(src_url)
-        transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, tags, metadata
-        )
-        return transcoder.transcode()
-
-    @staticmethod
-    def do_binary_request(url):
-        request_data = requests.get(url)
-        source = bytearray(request_data.content)
-        return source
-
-    @abc.abstractmethod
-    def save_image(self, output_directory: str, data: dict, tags: dict = None):
-        pass
 
     @abc.abstractmethod
     def parseJSON(self, _type="images"):
@@ -332,70 +259,8 @@ class Parser(abc.ABC):
                 'species': indexed_species, 'content': indexed_content,
                 'set': indexed_set, 'copyright': indexed_copyright}
 
-    def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
-        if original_format in TRANSCODE_FILES:
-            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
-                    not pyimglib.transcoding.check_exists(
-                        src_filename,
-                        output_directory,
-                        name
-                    ):
-                try:
-                    return self.in_memory_transcode(src_url, name, tags, output_directory, metadata)
-                except DecompressionBombError:
-                    src_url = \
-                        'https:' + os.path.splitext(large_image)[0] + '.' + \
-                        original_format
-                    return self.in_memory_transcode(src_url, name, tags, output_directory,metadata)
-            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                transcoder = pyimglib.transcoding.get_file_transcoder(
-                    src_filename, output_directory, name, tags, metadata
-                )
-                if transcoder is not None:
-                    transcoder.transcode()
-                else:
-                    self.download_file(src_filename, src_url)
-            elif config.enable_multiprocessing:
-                return 0, 0, 0, 0, None
-        else:
-            if not os.path.isfile(src_filename):
-                self.download_file(src_filename, src_url)
-            return 0, 0, 0, 0, src_filename
 
-    def _simulate_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, tags, metadata):
-        if original_format in TRANSCODE_FILES:
-            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
-                    not pyimglib.transcoding.check_exists(
-                        src_filename,
-                        output_directory,
-                        name
-                    ):
-                return 0, 0, 0, 0, None
-            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
-                return 0, 0, 0, 0, None
-            elif config.enable_multiprocessing:
-                return 0, 0, 0, 0, None
-            else:
-                return 0, 0, 0, 0, None
-        else:
-            if not os.path.isfile(src_filename):
-                pass
-            return 0, 0, 0, 0, src_filename
-
-    def save_image_old_interface(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
-        result = self.save_image(output_directory, data, tags)
-        if pipe is not None:
-            pipe.send(
-                (
-                    pyimglib.transcoding.statistics.sumos + result[0],
-                    pyimglib.transcoding.statistics.sumsize + result[1],
-                    pyimglib.transcoding.statistics.avq + result[2],
-                    pyimglib.transcoding.statistics.items + result[3]
-                )
-            )
-            pipe.close()
-
-    def _file_deleted_handing(self, prefix, _id):
+    def file_deleted_handing(self, prefix, _id):
         logging.exception("deleted image {}".format(_id))
         if config.deleted_image_list_file_path is not None:
             deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
@@ -410,54 +275,35 @@ class Parser(abc.ABC):
             deleted_list_f.close()
         return 0, 0, 0, 0
 
-    def medialib_db_register(self, data, src_filename, transcoding_result, tags):
-        if config.simulate:
-            return
-        outname = src_filename
-        if transcoding_result is not None:
-            outname = transcoding_result[4]
-            if type(outname) is io.TextIOWrapper:
-                outname = outname.name
-        elif not pathlib.Path(outname).exists():
-            logger.error("NOT FOUNDED FILE")
-            raise FileNotFoundError()
 
-        _name = None
-        media_type = None
-        if 'name' in data:
-            _name = data['name']
-        if outname is not None:
-            if ".srs" in outname:
-                f = open(outname, "r")
-                _data = json.load(f)
-                f.close()
-                media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
-            else:
-                out_path = pathlib.Path(outname)
-                if out_path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp", ".jxl", ".avif"}:
-                    media_type = "image"
-                elif out_path.suffix.lower() == ".gif":
-                    media_type = "video-loop"
-                elif out_path.suffix.lower() in {'.webm', ".mp4"}:
-                    media_type = "video"
-                else:
-                    media_type = "image"
-            _description = None
-            if "description" in data and len(data['description']):
-                _description = data['description']
-            connection = medialib_db.common.make_connection()
-            medialib_db.srs_indexer.register(
-                pathlib.Path(outname),
-                _name,
-                media_type,
-                _description,
-                self.get_origin_name(),
-                data["id"],
-                tags,
-                connection
-            )
-            connection.close()
+    @abc.abstractmethod
+    def verify_not_takedowned(self, data):
+        pass
 
+    @abc.abstractmethod
+    def get_takedowned_content_info(self, data):
+        pass
 
-def save_call(task: tuple[Parser, dict, dict, str]) -> tuple[int, int, int, int]:
-    return task[0].save_image(*task[1:])
+    @abc.abstractmethod
+    def get_content_source_url(self, data):
+        pass
+
+    @abc.abstractmethod
+    def get_output_filename(self, data, output_directory):
+        pass
+
+    @abc.abstractmethod
+    def get_image_metadata(self, data):
+        pass
+
+    @abc.abstractmethod
+    def get_image_format(self, data):
+        pass
+
+    @abc.abstractmethod
+    def get_big_thumbnail_url(self, data):
+        pass
+
+    @abc.abstractmethod
+    def get_raw_content_data(self):
+        pass

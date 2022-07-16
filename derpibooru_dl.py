@@ -7,6 +7,7 @@ import argparse
 import pathlib
 
 import config
+import download_manager
 import medialib_db.common
 import parser
 from derpibooru_dl import tagResponse
@@ -46,7 +47,7 @@ arg_parser.add_argument("--response-cache-dir", metavar="CACHE DIRECTORY", type=
 args = arg_parser.parse_args()
 
 id_list = args.id.copy()
-parser.Parser.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
+download_manager.download_manager.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
 config.simulate = args.simulate
 NO_GUI = args.no_gui
 config.deleted_image_list_file_path = args.deleted_list
@@ -62,7 +63,7 @@ def download(url):
     print('open connection')
 
     try:
-        _parser = parser.get_parser(url)
+        _parser: parser.Parser.Parser = parser.get_parser(url)
     except exceptions.NotBoorusPrefixError as e:
         logger.exception("invalid prefix in {}".format(e.url))
         return
@@ -79,10 +80,8 @@ def download(url):
     outdir = tagResponse.find_folder(parsed_tags)
     print("outdir", outdir)
 
-    if not os.path.isdir(outdir):
-        os.makedirs(outdir)
-
-    _parser.save_image_old_interface(outdir, data, parsed_tags)
+    dm = download_manager.make_download_manager(_parser)
+    dm.save_image_old_interface(outdir, data, parsed_tags)
 
 
 try:

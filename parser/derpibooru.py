@@ -1,21 +1,14 @@
-import io
 import json
+import logging
 import os
-import pathlib
 import re
 import urllib.parse
 import urllib.request
-import logging
-
-import exceptions
-import medialib_db.srs_indexer
-import pyimglib
 
 logger = logging.getLogger(__name__)
 
 import requests
 
-import config
 from . import Parser
 
 
@@ -107,14 +100,18 @@ class DerpibooruParser(Parser.Parser):
         if 'large' not in data['representations']:
             raise KeyError("not found large representation")
 
-    def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
-        if 'deletion_reason' in data['image'] and data['image']['deletion_reason'] is not None:
-            return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
-        if not os.path.isdir(output_directory):
-            os.makedirs(output_directory)
-        name = ''
+    def verify_not_takedowned(self, data):
+        return 'deletion_reason' in data['image'] and data['image']['deletion_reason'] is not None
+
+    def get_takedowned_content_info(self, data):
+        return self.file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
+
+    def get_content_source_url(self, data):
+        return os.path.splitext(data['image']['representations']['full'])[0] + '.' + data['image']["format"].lower()
+
+    def get_output_filename(self, data, output_directory):
         data = data['image']
-        src_url = os.path.splitext(data['representations']['full'])[0] + '.' + data["format"].lower()
+        name = ''
         if 'name' in data and data['name'] is not None:
             name = "{}{} {}".format(
                 self.get_filename_prefix(),
@@ -123,46 +120,20 @@ class DerpibooruParser(Parser.Parser):
             )
         else:
             name = str(data["id"])
-        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
+        return name, os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
 
-        metadata = {
-            "title": data['name'],
+    def get_image_metadata(self, data):
+        return {
+            "title": data['image']['name'],
             "origin": self.get_origin_name(),
-            "id": data["id"]
+            "id": data['image']["id"]
         }
 
-        print("filename", src_filename)
-        print("image_url", src_url)
+    def get_image_format(self, data):
+        return data['image']['format']
 
-        result = None
+    def get_big_thumbnail_url(self, data):
+        return data['image']['representations']["large"]
 
-        if config.do_transcode:
-            args = (
-                data['format'],
-                data['representations']["large"],
-                src_filename,
-                output_directory,
-                name,
-                src_url,
-                tags,
-                metadata
-            )
-            if config.simulate:
-                self._simulate_transcode(*args)
-            else:
-                try:
-                    result = self._do_transcode(*args)
-                except pyimglib.exceptions.NotIdentifiedFileFormat:
-                    result = self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
-        else:
-            if self.enable_rewriting() or not os.path.isfile(src_filename):
-                if not config.simulate:
-                    self.download_file(src_filename, src_url)
-
-        if config.use_medialib_db:
-            self.medialib_db_register(data, src_filename, result, tags)
-
-        if result is not None:
-            return result[:4]
-        else:
-            return 0, 0, 0, 0
+    def get_raw_content_data(self):
+        return self._parsed_data['image']

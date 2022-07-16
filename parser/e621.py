@@ -1,14 +1,8 @@
-import io
+import json
 import logging
 import os
-import pathlib
-import json
 import urllib
 
-import derpibooru_dl.tagResponse
-import pyimglib
-
-import exceptions
 import medialib_db
 
 logger = logging.getLogger(__name__)
@@ -177,68 +171,41 @@ class E621Parser(Parser.Parser):
                 'species': indexed_species, 'content': indexed_content,
                 'set': indexed_set, 'copyright': indexed_copyright}
 
-    # def test(self):
-    #     self.parseJSON()
-    #     tags = self.tagIndex()
-    #     print(tags)
-    #     outdir = derpibooru_dl.tagResponse.find_folder(tags)
-    #     print(outdir)
-    #     self.save_image(outdir, self._parsed_data, tags)
+    def verify_not_takedowned(self, data):
+        # TODO: find takedowned image
+        return False
 
-    def save_image(self, output_directory: str, data: dict, tags: dict = None):
-        #if 'deletion_reason' in data['image'] and data['image']['deletion_reason'] is not None:
-        #    return self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
-        if not os.path.isdir(output_directory):
-            os.makedirs(output_directory)
-        name = ''
+    def get_takedowned_content_info(self, data):
+        # TODO: find takedowned image
+        return None
+
+    def get_content_source_url(self, data):
+        return os.path.splitext(data['post']['file']['url'])[0] + '.' + data['post']['file']['ext'].lower()
+
+    def get_output_filename(self, data, output_directory):
         data = data['post']
+        name = ''
         print(data["id"], data['file']['url'], data['file']['ext'])
         if data['file']['url'] is None or data['file']['ext'] is None:
             print(data)
         src_url = os.path.splitext(data['file']['url'])[0] + '.' + data['file']['ext'].lower()
         name = "{}{}".format(FILENAME_PREFIX, data["id"])
-        src_filename = os.path.join(output_directory, "{}.{}".format(name, data['file']['ext'].lower()))
+        return name, os.path.join(output_directory, "{}.{}".format(name, data['file']['ext'].lower()))
 
-        metadata = {
+    def get_image_metadata(self, data):
+        return {
             "title": None,
             "origin": self.get_origin_name(),
-            "id": data["id"]
+            "id": data['post']["id"]
         }
 
-        print("filename", src_filename)
-        print("image_url", src_url)
+    def get_image_format(self, data):
+        return data['post']['file']['ext']
 
-        result = None
+    def get_big_thumbnail_url(self, data):
+        return data['post']['sample']["url"]
 
-        if config.do_transcode:
-            args = (
-                data['file']['ext'],
-                data['sample']["url"],
-                src_filename,
-                output_directory,
-                name,
-                src_url,
-                tags,
-                metadata
-            )
-            if config.simulate:
-                self._simulate_transcode(*args)
-            else:
-                try:
-                    result = self._do_transcode(*args)
-                except pyimglib.exceptions.NotIdentifiedFileFormat:
-                    result = self._file_deleted_handing(FILENAME_PREFIX, data['image']['id'])
-        else:
-            if self.enable_rewriting() or not os.path.isfile(src_filename):
-                if not config.simulate:
-                    self.download_file(src_filename, src_url)
-        outname = src_filename
+    def get_raw_content_data(self):
+        return self._parsed_data["post"]
 
-        if config.use_medialib_db:
-            self.medialib_db_register(data, src_filename, result, tags)
-
-        if result is not None:
-            return result[:4]
-        else:
-            return 0, 0, 0, 0
 

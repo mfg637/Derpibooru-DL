@@ -1,19 +1,10 @@
-import io
+import logging
 import os
 import re
 
 import requests
 
-import config
-import exceptions
-import json
-import logging
-import pathlib
 from . import Parser
-import medialib_db
-
-if config.do_transcode:
-    import pyimglib.transcoding
 
 FILENAME_PREFIX = 'tb'
 ORIGIN = 'twibooru'
@@ -32,7 +23,7 @@ class TwibooruParser(Parser.Parser):
         try:
             return str(self._parsed_data["post"]["id"])
         except KeyError as e:
-            self._file_deleted_handing(FILENAME_PREFIX, self.input_id)
+            self.file_deleted_handing(FILENAME_PREFIX, self.input_id)
             raise e
 
     def getTagList(self) -> list:
@@ -54,14 +45,19 @@ class TwibooruParser(Parser.Parser):
         if 'large' not in data["post"]['representations']:
             raise KeyError("not found large representation")
 
-    def save_image(self, output_directory: str, data: dict, tags: dict = None) -> tuple[int, int, int, int]:
-        if 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None:
-            return self._file_deleted_handing(FILENAME_PREFIX, data['id'])
-        if not os.path.isdir(output_directory):
-            os.makedirs(output_directory)
-        name = ''
+    def verify_not_takedowned(self, data):
+        return 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None
+
+    def get_takedowned_content_info(self, data):
+        return self.file_deleted_handing(FILENAME_PREFIX, data['id'])
+
+    def get_content_source_url(self, data):
         src_url = os.path.splitext(data["post"]["view_url"])[0] + '.' + data["post"]["format"]
         src_url = re.sub(r'\%', '', src_url)
+        return src_url
+
+    def get_output_filename(self, data, output_directory):
+        name = ''
         if 'name' in data["post"] and data["post"]['name'] is not None:
             name = "tb{} {}".format(
                 data["post"]["id"],
@@ -69,49 +65,23 @@ class TwibooruParser(Parser.Parser):
             )
         else:
             name = str(data["id"])
-        src_filename = os.path.join(output_directory, "{}.{}".format(name, data["post"]["format"]))
+        return name, os.path.join(output_directory, "{}.{}".format(name, data["post"]["format"]))
 
-        metadata = {
+    def get_image_metadata(self, data):
+        return {
             "title": data["post"]["name"],
             "origin": self.get_origin_name(),
             "id": data["post"]["id"]
         }
 
-        print("filename", src_filename)
-        print(src_url)
+    def get_image_format(self, data):
+        return data["post"]["format"]
 
-        result = None
+    def get_big_thumbnail_url(self, data):
+        return data["post"]['representations']["large"]
 
-        if config.do_transcode:
-            args = (
-                data["post"]["format"],
-                data["post"]['representations']["large"],
-                src_filename,
-                output_directory,
-                name,
-                src_url,
-                tags,
-                metadata
-            )
-            if config.simulate:
-                self._simulate_transcode(*args)
-            else:
-                try:
-                    result = self._do_transcode(*args)
-                except pyimglib.exceptions.NotIdentifiedFileFormat:
-                    result = self._file_deleted_handing(FILENAME_PREFIX, data["post"]['id'])
-        else:
-            if self.enable_rewriting() or not os.path.isfile(src_filename):
-                if not config.simulate:
-                    self.download_file(src_filename, src_url)
-
-        if config.use_medialib_db:
-            self.medialib_db_register(data["post"], src_filename, result, tags)
-
-        if result is not None:
-            return result[:4]
-        else:
-            return 0, 0, 0, 0
+    def get_raw_content_data(self):
+        return self._parsed_data["post"]
 
     def parseJSON(self, _type="images"):
         self.input_id = self.get_id_by_url(self._url)

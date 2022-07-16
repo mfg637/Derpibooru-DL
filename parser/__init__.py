@@ -3,8 +3,6 @@ import exceptions
 
 from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru
 
-from .Parser import save_call
-
 
 url_pattern = re.compile(r"https?://")
 filename_prefix_pattern = re.compile(r"[a-z]{2}\d+")
