@@ -2,8 +2,9 @@ import json
 import logging
 import os
 import urllib
+import urllib.parse
 
-import medialib_db
+from . import exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -76,100 +77,11 @@ class E621Parser(Parser.Parser):
         self._parsed_data = data
         return data
 
-        # test stub
-        f = open("./e621_sample_post_3109846.json", "r")
-        self._parsed_data = json.load(f)
-        f.close()
-
     def tagIndex(self) -> dict:
-
-        def tag_register(tag_name, tag_category, tag_alias):
-            connection = medialib_db.common.make_connection()
-            tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, connection)
-            if tag_id is None:
-                tag_id = medialib_db.tags_indexer.insert_new_tag(
-                    tag_name, tag_category, tag_alias, connection
-                )
-            else:
-                tag_id = tag_id[0]
-            connection.close()
-            return tag_id
-
-        artist = set()
-        originalCharacter = set()
-        indexed_characters = set()
-        indexed_rating = set()
-        indexed_species = set()
-        indexed_content = set()
-        indexed_set = set()
-        indexed_copyright = set()
-
-        medialib_db.common.open_connection_if_not_opened()
-
-        for tag in self._parsed_data['post']['tags']['copyright']:
-            _tag = tag.replace("_", " ")
-            indexed_copyright.add(_tag)
-
-        for tag in self._parsed_data['post']['tags']['character']:
-            _tag = tag
-            if "_(mlp)" in tag:
-                indexed_copyright.add("my little pony")
-                _tag = tag.replace("_(mlp)", "")
-            _tag = _tag.replace("_", " ")
-            indexed_characters.add(_tag)
-            tag_register(
-                _tag, 'character', _tag
-            )
-
-        for tag in indexed_copyright:
-            tag_register(
-                tag, 'copyright', tag
-            )
-
-        for tag in self._parsed_data['post']['tags']['species']:
-            indexed_species.add(tag.replace("_", " "))
-
-        for tag in self._parsed_data['post']['tags']['artist']:
-            _tag = tag.replace("_", " ")
-            artist.add(_tag)
-            tag_alias = "{}:{}".format("artist", _tag)
-            tag_register(
-                _tag, 'artist', tag_alias
-            )
-
-        rating_table = {
-            "s": "safe",
-            "q": "questionable",
-            "e": "explicit"
-        }
-        indexed_rating.add(rating_table[self._parsed_data['post']['rating']])
-        tag_register(
-            rating_table[self._parsed_data['post']['rating']],
-            'rating',
-            rating_table[self._parsed_data['post']['rating']]
-        )
-
-        for tag in self._parsed_data['post']['tags']['general']:
-            if tag == "anthro":
-                indexed_species.add("anthro")
-            else:
-                _tag = tag.replace("_", " ")
-                indexed_content.add(_tag)
-                tag_register(
-                    _tag, 'content', _tag
-                )
-
-        for tag in indexed_species:
-            tag_register(
-                tag, 'species', tag
-            )
-
-        medialib_db.common.close_connection_if_not_closed()
-
-        return {'artist': artist, 'original character': originalCharacter,
-                'characters': indexed_characters, 'rating': indexed_rating,
-                'species': indexed_species, 'content': indexed_content,
-                'set': indexed_set, 'copyright': indexed_copyright}
+        if self._tag_indexer is not None:
+            return self._tag_indexer.e621_index()
+        else:
+            raise exceptions.NotProperlyInitialisedParser()
 
     def verify_not_takedowned(self, data):
         # TODO: find takedowned image

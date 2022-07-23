@@ -3,6 +3,8 @@
 import tkinter
 import tkinter.ttk
 import tkinter.messagebox
+
+import medialib_db.common
 from . import ScrolledFrame, Images
 import PIL.Image
 import PIL.ImageTk
@@ -157,6 +159,10 @@ class GUI:
 		elemWidth = (self.width - 25)//250
 		for elem in self.data:
 			_parser = parser.derpibooru.DerpibooruParser(None, {'image': elem})
+			if config.use_medialib_db:
+				_parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
+			else:
+				_parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
 			parsed_tags = _parser.tagIndex()
 			self.checkbox_array.append(
 				CustomCheckbox(

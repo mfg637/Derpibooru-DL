@@ -70,12 +70,16 @@ class GUI:
                     _parser = None
                     try:
                         _parser = parser.get_parser(raw_id)
-                    except exceptions.NotBoorusPrefixError as e:
+                    except parser.exceptions.NotBoorusPrefixError as e:
                         logger.exception("invalid prefix in {}".format(e.url))
                         continue
-                    except exceptions.SiteNotSupported as e:
+                    except parser.exceptions.SiteNotSupported as e:
                         logger.exception("Site not supported {}".format(e.url))
                         continue
+                    if config.use_medialib_db:
+                        _parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
+                    else:
+                        _parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
                     try:
                         data = _parser.get_data()
                     except IndexError:
