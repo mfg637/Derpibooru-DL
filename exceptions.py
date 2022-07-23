@@ -8,16 +8,6 @@ class InvalidFileName(Exception):
 		self.filename = filename
 
 
-class SiteNotSupported(Exception):
-	def __init__(self, url):
-		self.url = url
-
-
-class NotBoorusPrefixError(Exception):
-	def __init__(self, url):
-		self.url = url
-
-
 class NotIdentifiedFileFormat(Exception):
 	def __init__(self):
 		pass

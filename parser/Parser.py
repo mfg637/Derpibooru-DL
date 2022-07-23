@@ -3,7 +3,6 @@ import json
 import logging
 import pathlib
 import sys
-import threading
 from html.parser import HTMLParser
 
 import requests

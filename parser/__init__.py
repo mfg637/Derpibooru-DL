@@ -1,7 +1,6 @@
 import re
-import exceptions
 
-from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru
+from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru, exceptions
 
 
 url_pattern = re.compile(r"https?://")
