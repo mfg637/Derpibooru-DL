@@ -77,12 +77,6 @@ class E621Parser(Parser.Parser):
         self._parsed_data = data
         return data
 
-    def tagIndex(self) -> dict:
-        if self._tag_indexer is not None:
-            return self._tag_indexer.e621_index()
-        else:
-            raise exceptions.NotProperlyInitialisedParser()
-
     def verify_not_takedowned(self, data):
         # TODO: find takedowned image
         return False

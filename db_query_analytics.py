@@ -60,11 +60,7 @@ while current_page<=pages:
             request_data.status_code, request_data.text), file=sys.stderr)
         raise e
     for image in data['images']:
-        _parser = parser.derpibooru.DerpibooruParser(None, {"image": image})
-        if config.use_medialib_db:
-            _parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
-        else:
-            _parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
+        _parser = parser.tag_indexer.DefaultTagIndexer(parser.derpibooru.DerpibooruParser(None, {"image": image}), None)
         parsed_tags = _parser.tagIndex()
         print(
             "\""+parsed_tags['characters'].pop()+"\"" if len(parsed_tags['characters']) > 0 else "",

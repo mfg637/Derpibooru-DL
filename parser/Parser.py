@@ -4,9 +4,6 @@ import logging
 import pathlib
 import sys
 from html.parser import HTMLParser
-from . import exceptions
-
-from . import tag_indexer
 
 import requests
 
@@ -127,15 +124,6 @@ class Parser(abc.ABC):
 
     def get_auto_copyright_tags(self):
         return {"my little pony"}
-
-    def set_tags_indexer(self, _tag_indexer: tag_indexer.TagIndexer):
-        self._tag_indexer = _tag_indexer
-
-    def tagIndex(self) -> dict:
-        if self._tag_indexer is not None:
-            return self._tag_indexer.index()
-        else:
-            raise exceptions.NotProperlyInitialisedParser()
 
 
     def file_deleted_handing(self, prefix, _id):

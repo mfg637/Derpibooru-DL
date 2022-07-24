@@ -1,5 +1,6 @@
 import re
 
+import parser.tag_indexer
 from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru, exceptions, tag_indexer
 
 
@@ -7,7 +8,7 @@ url_pattern = re.compile(r"https?://")
 filename_prefix_pattern = re.compile(r"[a-z]{2}\d+")
 
 
-def get_parser(url):
+def get_parser(url, use_medialib_db: bool):
     class_by_prefix = {
         derpibooru.FILENAME_PREFIX: derpibooru.DerpibooruParser,
         ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
@@ -22,16 +23,23 @@ def get_parser(url):
         e621.E621Parser.get_domain_name_s(): e621.E621Parser,
         furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser
     }
+    raw_parser = None
     if url_pattern.match(url) is not None:
         for domain_name in class_by_domain_name:
             if domain_name in url:
-                return class_by_domain_name[domain_name](url)
-        raise exceptions.SiteNotSupported(url)
+                raw_parser = class_by_domain_name[domain_name](url)
+        if raw_parser is None:
+            raise exceptions.SiteNotSupported(url)
     elif filename_prefix_pattern.match(url) is not None:
         for prefix in class_by_prefix:
             if prefix in url:
-                return class_by_prefix[prefix](url[2:])
-        raise exceptions.NotBoorusPrefixError(url)
+                raw_parser = class_by_prefix[prefix](url[2:])
+        if raw_parser is None:
+            raise exceptions.NotBoorusPrefixError(url)
     else:
-        return derpibooru.DerpibooruParser(url)
+        raw_parser = derpibooru.DerpibooruParser(url)
+    if use_medialib_db:
+        return parser.tag_indexer.MedialibTagIndexer(raw_parser, url)
+    else:
+        return parser.tag_indexer.DefaultTagIndexer(raw_parser, url)
 

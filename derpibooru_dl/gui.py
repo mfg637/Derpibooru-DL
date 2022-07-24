@@ -6,6 +6,7 @@ import threading
 import multiprocessing
 import logging
 
+import download_manager
 import exceptions
 
 import tkinter
@@ -69,17 +70,13 @@ class GUI:
                 for raw_id in id_list:
                     _parser = None
                     try:
-                        _parser = parser.get_parser(raw_id)
+                        _parser = parser.get_parser(raw_id, config.use_medialib_db)
                     except parser.exceptions.NotBoorusPrefixError as e:
                         logger.exception("invalid prefix in {}".format(e.url))
                         continue
                     except parser.exceptions.SiteNotSupported as e:
                         logger.exception("Site not supported {}".format(e.url))
                         continue
-                    if config.use_medialib_db:
-                        _parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
-                    else:
-                        _parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
                     try:
                         data = _parser.get_data()
                     except IndexError:
@@ -91,9 +88,10 @@ class GUI:
                     outdir = tagResponse.find_folder(parsed_tags)
                     if not os.path.isdir(outdir):
                         os.makedirs(outdir)
-                    map_list.append((_parser, outdir, data, parsed_tags))
+                    dm = download_manager.make_download_manager(_parser)
+                    map_list.append((dm, outdir, data, parsed_tags))
                 dl_pool = multiprocessing.Pool(processes=config.workers)
-                results = dl_pool.map(parser.save_call, map_list, chunksize=1)
+                results = dl_pool.map(download_manager.save_call, map_list, chunksize=1)
                 pyimglib.transcoding.statistics.update_stats(results)
         except Exception as e:
             self._add_btn['state'] = DISABLED

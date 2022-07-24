@@ -64,15 +64,11 @@ class RouteFabric:
             if error_message is not None:
                 return error_message
             content = json.loads(flask.request.data.decode("utf-8"))
-            _parser: parser.Parser.Parser = None
+            _parser: parser.tag_indexer.TagIndexer = None
             if 'imageId' in content:
-                _parser = self._parser(content['imageId'])
+                _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content['imageId'])
             elif "id" in content:
-                _parser = self._parser(content['id'])
-            if config.use_medialib_db:
-                _parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
-            else:
-                _parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
+                _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content['id'])
             data = _parser.parseJSON()
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)

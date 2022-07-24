@@ -1,8 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import os
-
 import argparse
 import pathlib
 
@@ -13,9 +11,8 @@ import parser
 from derpibooru_dl import tagResponse
 import pyimglib
 import logging
-import exceptions
 
-logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+logging.basicConfig(format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
 logger = logging.getLogger(__name__)
 
 if config.do_transcode:
@@ -44,7 +41,18 @@ arg_parser.add_argument(
     metavar="DELETED_LIST_FILE"
 )
 arg_parser.add_argument("--response-cache-dir", metavar="CACHE DIRECTORY", type=pathlib.Path, default=None)
+arg_parser.add_argument(
+    '-log',
+    '--loglevel',
+    default='warning',
+    help='Provide logging level. Example --loglevel debug, default=warning'
+)
 args = arg_parser.parse_args()
+
+if args.loglevel:
+    print(args.loglevel)
+    logger.setLevel(level=args.loglevel.upper())
+
 
 id_list = args.id.copy()
 download_manager.download_manager.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
@@ -59,21 +67,19 @@ if args.append is not None:
     args.append.close()
 
 
+
+
 def download(url):
     print('open connection')
 
     try:
-        _parser: parser.Parser.Parser = parser.get_parser(url)
+        _parser: parser.Parser.Parser = parser.get_parser(url, config.use_medialib_db)
     except parser.exceptions.NotBoorusPrefixError as e:
         logger.exception("invalid prefix in {}".format(e.url))
         return
     except parser.exceptions.SiteNotSupported as e:
         logger.exception("Site not supported {}".format(e.url))
         return
-    if config.use_medialib_db:
-        _parser.set_tags_indexer(parser.tag_indexer.MedialibTagIndexer(_parser))
-    else:
-        _parser.set_tags_indexer(parser.tag_indexer.DefaultTagIndexer(_parser))
     try:
         data = _parser.get_data()
     except IndexError:
