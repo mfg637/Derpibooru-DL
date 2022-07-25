@@ -64,8 +64,9 @@ class RouteFabric:
         try:
             if error_message is not None:
                 return error_message
-            content = json.loads(flask.request.data.decode("utf-8"))
+            content: dict = json.loads(flask.request.data.decode("utf-8"))
             _parser: parser.tag_indexer.TagIndexer = None
+            logger.debug("received content: {}".format(content.__repr__()))
             if 'imageId' in content:
                 _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content['imageId'])
             elif "id" in content:
