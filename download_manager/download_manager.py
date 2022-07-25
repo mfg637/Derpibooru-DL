@@ -99,8 +99,8 @@ class DownloadManager(abc.ABC):
         src_url = self._parser.get_content_source_url(data)
         name, src_filename = self._parser.get_output_filename(data, output_directory)
 
-        print("filename", src_filename)
-        print("image_url", src_url)
+        logger.info("filename: {}".format(src_filename))
+        logger.debug("image_url: {}".format(src_url))
 
         result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
 

@@ -29,7 +29,7 @@ downloader_thread = threading.Thread()
 def append2queue_and_start_download(*args):
     global downloader_thread
     map_list.append(args)
-    print("download queue now contains {} requests".format(len(map_list)))
+    logger.info("download queue now contains {} requests".format(len(map_list)))
 
 
 def async_downloader():
@@ -119,7 +119,7 @@ if __name__ == '__main__':
         app.run(host="localhost", port=5757)
     except Exception as e:
         error_message = traceback.format_exc()
-        print(error_message)
+        logging.exception(error_message)
     finally:
         if config.do_transcode:
             import pyimglib.transcoding

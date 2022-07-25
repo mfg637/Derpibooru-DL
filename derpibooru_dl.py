@@ -52,7 +52,6 @@ arg_parser.add_argument(
 args = arg_parser.parse_args()
 
 if args.loglevel:
-    print(args.loglevel)
     logger.setLevel(level=args.loglevel.upper())
 
 
@@ -69,13 +68,11 @@ if args.append is not None:
     args.append.close()
 
 
-
-
 def download(url):
-    print('open connection')
+    logger.debug('open connection')
 
     try:
-        _parser: parser.Parser.Parser = parser.get_parser(url, config.use_medialib_db)
+        _parser: parser.tag_indexer.TagIndexer = parser.get_parser(url, config.use_medialib_db)
     except parser.exceptions.NotBoorusPrefixError as e:
         logger.exception("invalid prefix in {}".format(e.url))
         return
@@ -87,10 +84,10 @@ def download(url):
     except IndexError:
         return
 
-    parsed_tags = _parser.tagIndex()
-    print("parsed tags", parsed_tags)
+    parsed_tags: dict = _parser.tagIndex()
+    logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))
     outdir = tagResponse.find_folder(parsed_tags)
-    print("outdir", outdir)
+    logger.info("output directory: {}".format(outdir))
 
     dm = download_manager.make_download_manager(_parser)
     dm.save_image_old_interface(outdir, data, parsed_tags)
