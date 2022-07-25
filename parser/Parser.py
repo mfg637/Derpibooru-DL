@@ -46,7 +46,7 @@ class Parser(abc.ABC):
         return URL.split('?')[0].split('/')[-1]
 
     @abc.abstractmethod
-    def parseJSON(self, _type="images"):
+    def parseJSON(self, url=None, _type="images") -> dict:
         pass
 
     def get_data(self):

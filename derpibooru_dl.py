@@ -12,7 +12,9 @@ from derpibooru_dl import tagResponse
 import pyimglib
 import logging
 
-logging.basicConfig(format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+logging.basicConfig(
+    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.INFO
+)
 logger = logging.getLogger(__name__)
 
 if config.do_transcode:

@@ -29,8 +29,8 @@ class TagIndexer(Parser):
             return self.index()
 
     # decorated methods
-    def parseJSON(self, _type="images"):
-        return self._parser.parseJSON(_type)
+    def parseJSON(self, url=None, _type="images") -> dict:
+        return self._parser.parseJSON(url, _type)
 
     def parsehtml_get_image_route_name(self) -> str:
         return self._parser.parsehtml_get_image_route_name()

@@ -6,7 +6,6 @@ import urllib.parse
 import urllib.request
 
 logger = logging.getLogger(__name__)
-print(logger.level)
 
 import requests
 
@@ -48,8 +47,8 @@ class DerpibooruParser(Parser.Parser):
         else:
             id = self.get_id_by_url(self._url)
         request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), type, urllib.parse.quote(id))
-        logger.debug("url", url)
-        logger.debug("parseJSON", request_url)
+        logger.debug("url: {}".format(url))
+        logger.info("parseJSON: {}".format(request_url))
         try:
             request_data = requests.get(request_url)
         except Exception as e:
