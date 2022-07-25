@@ -43,6 +43,7 @@ def async_downloader():
         logger.info("processing {} requests".format(len(local_map_list)))
         results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
         pyimglib.transcoding.statistics.update_stats(results)
+    logger.info("Download is done! Waiting for new requests.")
 
 
 @app.route('/do_download')
@@ -115,7 +116,7 @@ def e621_handler():
 if __name__ == '__main__':
     try:
         print("accepting requests")
-        print("to do download, go to http://localhost:5757/do_download")
+        print("to download, go to http://localhost:5757/do_download")
         app.run(host="localhost", port=5757)
     except Exception as e:
         error_message = traceback.format_exc()
