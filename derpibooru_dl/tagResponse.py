@@ -65,4 +65,4 @@ def find_folder(parsed_tags: dict):
 	elif 'photo' in parsed_tags['content']:
 		output_directory = output_directory.joinpath("photo")
 
-	return str(output_directory)
+	return output_directory

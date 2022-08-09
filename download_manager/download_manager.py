@@ -33,12 +33,12 @@ class DownloadManager(abc.ABC):
     def medialib_db_register(self, data, src_filename, transcoding_result, tags):
         if config.simulate:
             return
-        outname = src_filename
+        outname: pathlib.Path = src_filename
         if transcoding_result is not None:
             outname = transcoding_result[4]
             if type(outname) is io.TextIOWrapper:
-                outname = outname.name
-        elif not pathlib.Path(outname).exists():
+                outname = pathlib.Path(outname.name)
+        elif not outname.exists():
             logger.error("NOT FOUNDED FILE")
             raise FileNotFoundError()
 
@@ -47,7 +47,7 @@ class DownloadManager(abc.ABC):
         if 'name' in data:
             _name = data['name']
         if outname is not None:
-            if ".srs" in outname:
+            if outname.suffix == ".srs":
                 f = open(outname, "r")
                 _data = json.load(f)
                 f.close()
@@ -58,7 +58,7 @@ class DownloadManager(abc.ABC):
                     media_type = "image"
                 elif out_path.suffix.lower() == ".gif":
                     media_type = "video-loop"
-                elif out_path.suffix.lower() in {'.webm', ".mp4"}:
+                elif out_path.suffix.lower() in {'.webm', ".mp4", ".mpd"}:
                     media_type = "video"
                 else:
                     media_type = "image"
@@ -79,17 +79,17 @@ class DownloadManager(abc.ABC):
             connection.close()
 
     @staticmethod
-    def download_file(filename: str, src_url: str) -> None:
+    def download_file(filename: pathlib.Path, src_url: str) -> None:
         request_data = requests.get(src_url)
         file = open(filename, 'wb')
         file.write(request_data.content)
         file.close()
 
     @abc.abstractmethod
-    def _download_body(self, src_url, name, src_filename, output_directory: str, data: dict, tags):
+    def _download_body(self, src_url, name, src_filename, output_directory: pathlib.Path, data: dict, tags):
         pass
 
-    def download(self, output_directory: str, data: dict, tags: dict = None):
+    def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         if self._parser.verify_not_takedowned(data):
             return self._parser.get_takedowned_content_info(data)
 
@@ -105,14 +105,15 @@ class DownloadManager(abc.ABC):
         result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
 
         if config.use_medialib_db:
-            self.medialib_db_register(self._parser.get_raw_content_data(), src_filename, result, tags)
+            if result is not None:
+                self.medialib_db_register(self._parser.get_raw_content_data(), src_filename, result, tags)
 
         if result is not None:
             return result[:4]
         else:
             return 0, 0, 0, 0
 
-    def save_image_old_interface(self, output_directory: str, data: dict, tags: dict = None, pipe=None) -> None:
+    def save_image_old_interface(self, output_directory: pathlib.Path, data: dict, tags: dict = None, pipe=None) -> None:
         result = self.download(output_directory, data, tags)
         if pipe is not None:
             pipe.send(
@@ -148,10 +149,10 @@ class DownloadManager(abc.ABC):
             process.join()
             print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
 
-    def in_memory_transcode(self, src_url, name, tags, output_directory, metadata):
+    def in_memory_transcode(self, src_url, name, output_directory, force_lossless=False):
         source = self.do_binary_request(src_url)
         transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, tags, metadata
+            source, output_directory, name, force_lossless
         )
         return transcoder.transcode()
 

@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pathlib
 import re
 import urllib.parse
 import urllib.request
@@ -110,7 +111,7 @@ class DerpibooruParser(Parser.Parser):
     def get_content_source_url(self, data):
         return os.path.splitext(data['image']['representations']['full'])[0] + '.' + data['image']["format"].lower()
 
-    def get_output_filename(self, data, output_directory):
+    def get_output_filename(self, data, output_directory: pathlib.Path):
         data = data['image']
         name = ''
         if 'name' in data and data['name'] is not None:
@@ -121,7 +122,7 @@ class DerpibooruParser(Parser.Parser):
             )
         else:
             name = str(data["id"])
-        return name, os.path.join(output_directory, "{}.{}".format(name, data["format"].lower()))
+        return name, output_directory.joinpath("{}.{}".format(name, data["format"].lower()))
 
     def get_image_metadata(self, data):
         return {
