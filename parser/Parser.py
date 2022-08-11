@@ -42,8 +42,13 @@ class Parser(abc.ABC):
         return None
 
     @staticmethod
-    def get_id_by_url(URL: str):
-        return URL.split('?')[0].split('/')[-1]
+    def get_id_by_url(URL):
+        if type(URL) is str:
+            return URL.split('?')[0].split('/')[-1]
+        elif type(URL) is int:
+            return URL
+        else:
+            ValueError("URL {} is {}".format(URL, type(URL)))
 
     @abc.abstractmethod
     def parseJSON(self, url=None, _type="images") -> dict:

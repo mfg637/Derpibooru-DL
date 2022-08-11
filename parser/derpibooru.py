@@ -47,7 +47,7 @@ class DerpibooruParser(Parser.Parser):
             id = url
         else:
             id = self.get_id_by_url(self._url)
-        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), type, urllib.parse.quote(id))
+        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), type, urllib.parse.quote(str(id)))
         logger.debug("url: {}".format(url))
         logger.info("parseJSON: {}".format(request_url))
         try:

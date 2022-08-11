@@ -26,9 +26,13 @@ logger = logging.getLogger(__name__)
 class DownloadManager(abc.ABC):
     def __init__(self, _parser: parser.Parser.Parser):
         self._parser = _parser
+        self._enable_rewriting = False
+
+    def is_rewriting_allowed(self):
+        return ENABLE_REWRITING or self._enable_rewriting
 
     def enable_rewriting(self):
-        return ENABLE_REWRITING
+        self._enable_rewriting = True
 
     def medialib_db_register(self, data, src_filename, transcoding_result, tags, connection):
         if config.simulate:
@@ -101,8 +105,19 @@ class DownloadManager(abc.ABC):
                 self._parser.get_origin_name(), self._parser.getID(), medialib_db_connection
             )
             if content_info is not None:
-                medialib_db_connection.close()
-                return 0, 0, 0, 0
+                old_file_path = config.db_storage_dir.joinpath(content_info[1])
+                if self.is_rewriting_allowed() and old_file_path.exists():
+                    files: list[pathlib.Path] = []
+                    if old_file_path.suffix == ".srs":
+                        files.extend(pyimglib.decoders.srs.get_file_paths(old_file_path))
+                    files.append(old_file_path)
+                    for file in files:
+                        file.unlink()
+                elif self.is_rewriting_allowed():
+                    pass
+                else:
+                    medialib_db_connection.close()
+                    return 0, 0, 0, 0
 
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
@@ -116,11 +131,18 @@ class DownloadManager(abc.ABC):
         result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
 
         if config.use_medialib_db:
-            if result is not None:
-                self.medialib_db_register(
-                    self._parser.get_raw_content_data(), src_filename, result, tags, medialib_db_connection
-                )
-                medialib_db_connection.close()
+            if content_info is not None:
+                print(result[4])
+                if result is not None:
+                    medialib_db.update_file_path(
+                        content_info[0], str(result[4].relative_to(config.db_storage_dir)), medialib_db_connection
+                    )
+            else:
+                if result is not None:
+                    self.medialib_db_register(
+                        self._parser.get_raw_content_data(), src_filename, result, tags, medialib_db_connection
+                    )
+            medialib_db_connection.close()
 
         if result is not None:
             return result[:4]

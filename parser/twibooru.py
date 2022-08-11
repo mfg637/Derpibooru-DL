@@ -85,7 +85,7 @@ class TwibooruParser(Parser.Parser):
 
     def parseJSON(self, _type="images"):
         self.input_id = self.get_id_by_url(self._url)
-        request_url = 'https://twibooru.org/api/v3/posts/{}'.format(self.input_id)
+        request_url = 'https://twibooru.org/api/v3/posts/{}'.format(str(self.input_id))
         print("parseJSON", request_url)
         request_data = None
         try:

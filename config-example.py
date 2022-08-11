@@ -1,15 +1,19 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*- 
+# -*- coding: utf-8 -*-
+import pathlib
 
 import pyimglib.config
 
 # root of download directory (your collection)
 initial_dir = '*** insert your path required ***'
+db_storage_dir = pathlib.Path()
 
 # user API key here
 key = ''
 twibooru_key = ''
 ponybooru_key = ''
+e621_login = None
+e621_API_KEY = None
 
 # derpibooru-dl.py gui on/off
 gui = True
@@ -50,5 +54,3 @@ if do_transcode:
     # if not none, use JPEG XL's lossless encoding
     pyimglib.config.jpeg_xl_tools_path = None
 
-e621_login = None
-e621_API_KEY = None

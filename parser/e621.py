@@ -55,7 +55,7 @@ class E621Parser(Parser.Parser):
             id = url
         else:
             id = self.get_id_by_url(self._url)
-        request_url = 'https://{}/{}/{}.json'.format(self.get_domain_name_s(), _type, urllib.parse.quote(id))
+        request_url = 'https://{}/{}/{}.json'.format(self.get_domain_name_s(), _type, urllib.parse.quote(str(id)))
         if config.e621_login is not None and config.e621_API_KEY is not None:
             request_url += "?login={}&api_key={}".format(config.e621_login, config.e621_API_KEY)
         logger.info("parseJSON: {}".format(request_url))

@@ -21,7 +21,7 @@ class TranscodeManager(DownloadManager):
 
     def _simulate_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, force_lossless):
         if original_format in TRANSCODE_FILES:
-            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
+            if self.is_rewriting_allowed() or not os.path.isfile(src_filename) and \
                     not pyimglib.transcoding.check_exists(
                         src_filename,
                         output_directory,
@@ -41,7 +41,7 @@ class TranscodeManager(DownloadManager):
 
     def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, force_lossless):
         if original_format in TRANSCODE_FILES:
-            if self.enable_rewriting() or not os.path.isfile(src_filename) and \
+            if self.is_rewriting_allowed() or not os.path.isfile(src_filename) and \
                     not pyimglib.transcoding.check_exists(
                         src_filename,
                         output_directory,

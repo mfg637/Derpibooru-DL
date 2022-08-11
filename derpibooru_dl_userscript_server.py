@@ -64,18 +64,28 @@ class RouteFabric:
         try:
             if error_message is not None:
                 return error_message
-            content: dict = json.loads(flask.request.data.decode("utf-8"))
+            content_id: int = flask.request.args.get("id", None, int)
+            enable_rewriting: bool = flask.request.args.get("rewrite", False, bool)
+            print("content_id", content_id)
+            content: dict = None
+            if content_id is None:
+                content = json.loads(flask.request.data.decode("utf-8"))
             _parser: parser.tag_indexer.TagIndexer = None
             logger.debug("received content: {}".format(content.__repr__()))
-            if 'imageId' in content:
-                _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content['imageId'])
+            if content_id is not None:
+                pass
+            elif 'imageId' in content:
+                content_id = content['imageId']
             elif "id" in content:
-                _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content['id'])
+                content_id = content['id']
+            _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content_id)
             data = _parser.parseJSON()
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
             _parser.dataValidator(data)
             dm = download_manager.make_download_manager(_parser)
+            if enable_rewriting:
+                dm.enable_rewriting()
             append2queue_and_start_download(dm, out_dir, data, parsed_tags)
             return "OK"
         except Exception as e:
@@ -84,31 +94,32 @@ class RouteFabric:
             return error_message
 
 
-@app.route('/', methods=['POST'])
+@app.route('/', methods=['POST', 'GET'])
+@app.route('/derpibooru', methods=['POST', 'GET'])
 def derpibooru_handler():
     fabric = RouteFabric(parser.derpibooru.DerpibooruParser)
     return fabric.handle()
 
 
-@app.route('/twibooru', methods=['POST'])
+@app.route('/twibooru', methods=['POST', 'GET'])
 def twibooru_handler():
     fabric = RouteFabric(parser.twibooru.TwibooruParser)
     return fabric.handle()
 
 
-@app.route('/ponybooru', methods=['POST'])
+@app.route('/ponybooru', methods=['POST', 'GET'])
 def ponybooru_handler():
     fabric = RouteFabric(parser.ponybooru.PonybooruParser)
     return fabric.handle()
 
 
-@app.route('/furbooru', methods=['POST'])
+@app.route('/furbooru', methods=['POST', 'GET'])
 def furbooru_handler():
     fabric = RouteFabric(parser.furbooru.FurbooruParser)
     return fabric.handle()
 
 
-@app.route('/e621', methods=['POST'])
+@app.route('/e621', methods=['POST', 'GET'])
 def e621_handler():
     fabric = RouteFabric(parser.e621.E621Parser)
     return fabric.handle()

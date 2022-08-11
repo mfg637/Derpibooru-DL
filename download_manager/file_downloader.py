@@ -13,7 +13,7 @@ class FileDownloader(DownloadManager):
         super().__init__(_parser)
 
     def _download_body(self, src_url, name, src_filename, output_directory: str, data: dict, tags):
-        if self.enable_rewriting() or not os.path.isfile(src_filename):
+        if self.is_rewriting_allowed() or not os.path.isfile(src_filename):
             if not config.simulate:
                 self.download_file(src_filename, src_url)
 
