@@ -69,18 +69,22 @@ class DownloadManager(abc.ABC):
             _description = None
             if "description" in data and len(data['description']):
                 _description = data['description']
-            #connection = medialib_db.common.make_connection()
-            medialib_db.srs_indexer.register(
-                pathlib.Path(outname),
-                _name,
-                media_type,
-                _description,
-                self._parser.get_origin_name(),
-                data["id"],
-                tags,
-                connection
-            )
-            #connection.close()
+            try:
+                medialib_db.srs_indexer.register(
+                    pathlib.Path(outname),
+                    _name,
+                    media_type,
+                    _description,
+                    self._parser.get_origin_name(),
+                    data["id"],
+                    tags,
+                    connection
+                )
+            except Exception as e:
+                logger.exception(
+                    "Exception at content id={} from {}".format(data["id"], self._parser.get_origin_name())
+                )
+                raise e
 
     @staticmethod
     def download_file(filename: pathlib.Path, src_url: str) -> None:
