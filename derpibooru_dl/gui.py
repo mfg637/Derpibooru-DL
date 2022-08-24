@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*- 
 
 import os
+import random
 import threading
 import multiprocessing
 import logging
@@ -90,6 +91,7 @@ class GUI:
                         os.makedirs(outdir)
                     dm = download_manager.make_download_manager(_parser)
                     map_list.append((dm, outdir, data, parsed_tags))
+                random.shuffle(map_list)
                 dl_pool = multiprocessing.Pool(processes=config.workers)
                 results = dl_pool.map(download_manager.save_call, map_list, chunksize=1)
                 pyimglib.transcoding.statistics.update_stats(results)
