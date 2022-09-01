@@ -39,9 +39,15 @@ class DownloadManager(abc.ABC):
             return
         outname: pathlib.Path = src_filename
         if transcoding_result is not None:
-            outname = transcoding_result[4]
-            if type(outname) is io.TextIOWrapper:
-                outname = pathlib.Path(outname.name)
+            try:
+                outname = transcoding_result[4]
+                if type(outname) is io.TextIOWrapper:
+                    outname = pathlib.Path(outname.name)
+            except IndexError as e:
+                logger.exception(
+                    "Exception at content id={} from {}".format(data["id"], self._parser.get_origin_name())
+                )
+                raise e
         elif not outname.exists():
             logger.error("NOT FOUNDED FILE")
             raise FileNotFoundError()
