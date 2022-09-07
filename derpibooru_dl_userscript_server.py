@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import argparse
+import pathlib
 import random
 
 import flask
@@ -124,6 +126,13 @@ def e621_handler():
 
 
 if __name__ == '__main__':
+    arg_parser = argparse.ArgumentParser()
+    arg_parser.add_argument("--home-path", help="where to download image files", type=pathlib.Path, default=None)
+    arg_parser.add_argument("--test-medialib-db", action="store_true")
+    args = arg_parser.parse_args()
+    if args.home_path is not None:
+        config.initial_dir = str(args.home_path)
+    download_manager.download_manager.TEST_MEDIALIB = args.test_medialib_db
     try:
         print("accepting requests")
         print("to download, go to http://localhost:5757/do_download")
@@ -137,3 +146,5 @@ if __name__ == '__main__':
             pyimglib.transcoding.statistics.log_stats()
         if config.use_medialib_db:
             medialib_db.common.close_connection_if_not_closed()
+        if args.test_medialib_db:
+            medialib_db.testing.wipe()

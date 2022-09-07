@@ -17,6 +17,8 @@ import pyimglib
 
 ENABLE_REWRITING = False
 
+TEST_MEDIALIB = True
+
 downloader_thread = threading.Thread()
 download_queue = []
 
@@ -128,7 +130,10 @@ class DownloadManager(abc.ABC):
         medialib_db_connection = None
         content_info = None
         if config.use_medialib_db:
-            medialib_db_connection = medialib_db.common.make_connection()
+            if TEST_MEDIALIB:
+                medialib_db_connection = medialib_db.testing.make_connection()
+            else:
+                medialib_db_connection = medialib_db.common.make_connection()
             content_info = medialib_db.find_content_from_source(
                 self._parser.get_origin_name(), self._parser.getID(), medialib_db_connection
             )

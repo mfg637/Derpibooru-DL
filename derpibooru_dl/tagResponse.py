@@ -4,11 +4,11 @@
 
 import pathlib
 
-from config import initial_dir
+import config
 
 
 def find_folder(parsed_tags: dict):
-	output_directory = pathlib.Path(initial_dir)
+	output_directory = pathlib.Path(config.initial_dir)
 
 	if 'my little pony' in parsed_tags['copyright']:
 		output_directory = output_directory.joinpath("mlp")
