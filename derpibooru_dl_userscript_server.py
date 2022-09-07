@@ -12,12 +12,15 @@ import config
 import download_manager
 import medialib_db.common
 import parser
-import multiprocessing
 import logging
 import pyimglib
 from derpibooru_dl import tagResponse
 
-logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(asctime)s::%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s",
+    datefmt="%M:%S"
+)
 
 logger = logging.getLogger(__name__)
 

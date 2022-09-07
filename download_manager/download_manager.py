@@ -166,6 +166,7 @@ class DownloadManager(abc.ABC):
         result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
 
         if config.use_medialib_db:
+            logger.debug("medialib-db acquire lock")
             medialib_db_lock.acquire(block=True)
             if content_info is not None:
                 if result is not None:
@@ -178,6 +179,7 @@ class DownloadManager(abc.ABC):
                         self._parser.get_raw_content_data(), src_filename, result, tags, medialib_db_connection
                     )
             medialib_db_connection.close()
+            logger.debug("medialib-db release lock")
             medialib_db_lock.release()
 
         if result is not None:
