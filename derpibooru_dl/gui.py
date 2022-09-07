@@ -60,7 +60,7 @@ class GUI:
         self.dl_process.start()
 
     def download(self):
-        self._dl_btn['state']=DISABLED
+        self._dl_btn['state'] = DISABLED
         pipe = multiprocessing.Pipe()
         try:
             while self._list.size() > 0:
@@ -91,8 +91,7 @@ class GUI:
                         os.makedirs(outdir)
                     dm = download_manager.make_download_manager(_parser)
                     map_list.append((dm, outdir, data, parsed_tags))
-                random.shuffle(map_list)
-                dl_pool = multiprocessing.Pool(processes=config.workers)
+                dl_pool = download_manager.DownloadManager.create_pool(config.workers)
                 results = dl_pool.map(download_manager.save_call, map_list, chunksize=1)
                 pyimglib.transcoding.statistics.update_stats(results)
         except Exception as e:

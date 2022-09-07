@@ -22,6 +22,8 @@ download_queue = []
 
 logger = logging.getLogger(__name__)
 
+medialib_db_lock: multiprocessing.Lock = multiprocessing.Lock()
+
 
 class DownloadManager(abc.ABC):
     def __init__(self, _parser: parser.Parser.Parser):
@@ -103,7 +105,23 @@ class DownloadManager(abc.ABC):
     def _download_body(self, src_url, name, src_filename, output_directory: pathlib.Path, data: dict, tags):
         pass
 
+    @staticmethod
+    def _init_pool(_lock):
+        global medialib_db_lock
+        medialib_db_lock = _lock
+
+    @staticmethod
+    def create_pool(workers: int):
+        global medialib_db_lock
+
+        medialib_db_lock = multiprocessing.Lock()
+        return multiprocessing.Pool(
+            processes=config.workers, initializer=DownloadManager._init_pool, initargs=(medialib_db_lock,)
+        )
+
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
+        global medialib_db_lock
+
         if self._parser.verify_not_takedowned(data):
             return self._parser.get_takedowned_content_info(data)
 
@@ -143,6 +161,7 @@ class DownloadManager(abc.ABC):
         result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
 
         if config.use_medialib_db:
+            medialib_db_lock.acquire(block=True)
             if content_info is not None:
                 if result is not None:
                     medialib_db.update_file_path(
@@ -154,6 +173,7 @@ class DownloadManager(abc.ABC):
                         self._parser.get_raw_content_data(), src_filename, result, tags, medialib_db_connection
                     )
             medialib_db_connection.close()
+            medialib_db_lock.release()
 
         if result is not None:
             return result[:4]

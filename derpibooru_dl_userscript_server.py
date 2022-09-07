@@ -34,13 +34,9 @@ def append2queue_and_start_download(*args):
 
 
 def async_downloader():
-    db_lock = multiprocessing.Lock()
-    dl_pool = multiprocessing.Pool(
-        processes=config.workers, initializer=medialib_db.common.db_lock_init, initargs=(db_lock,)
-    )
+    dl_pool = download_manager.DownloadManager.create_pool(config.workers)
     while len(map_list):
         local_map_list = map_list.copy()
-        random.shuffle(local_map_list)
         map_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
         results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
