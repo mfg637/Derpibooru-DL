@@ -60,10 +60,10 @@ class DefaultTagIndexer(TagIndexer):
                     indexed_tags.add(tag)
                 else:
                     INDEXED_TAG_CATEGORY = {
-                        rating: indexed_rating,
-                        characters: indexed_characters,
-                        species: indexed_species,
-                        content: indexed_content
+                        "rating": indexed_rating,
+                        "characters": indexed_characters,
+                        "species": indexed_species,
+                        "content": indexed_content
                     }
                     for tag_category in INDEXED_TAG_CATEGORY:
                         if tag in tag_category:
