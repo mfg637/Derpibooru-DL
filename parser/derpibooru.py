@@ -138,4 +138,4 @@ class DerpibooruParser(Parser.Parser):
         return data['image']['representations']["large"]
 
     def get_raw_content_data(self):
-        return self._parsed_data['image']
+        return self.get_data()['image']

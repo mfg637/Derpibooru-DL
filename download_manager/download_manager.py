@@ -17,7 +17,7 @@ import pyimglib
 
 ENABLE_REWRITING = False
 
-TEST_MEDIALIB = True
+TEST_MEDIALIB = False
 
 downloader_thread = threading.Thread()
 download_queue = []

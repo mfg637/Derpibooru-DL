@@ -112,6 +112,6 @@ class E621Parser(Parser.Parser):
         return data['post']['sample']["url"]
 
     def get_raw_content_data(self):
-        return self._parsed_data["post"]
+        return self.get_data()["post"]
 
 

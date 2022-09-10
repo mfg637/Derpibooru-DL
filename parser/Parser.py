@@ -24,12 +24,16 @@ class Parser(abc.ABC):
             f = config.response_cache_dir.joinpath(
                 "{}{}.json".format(self.get_filename_prefix(), self.getID())
             ).open("w")
+            if self._parsed_data is None:
+                raise ValueError("self._parsed_data is None")
             json.dump(self._parsed_data, f)
             f.close()
 
     def _load_parsed_data(self):
         self.input_id = self.get_id_by_url(self._url)
         if config.response_cache_dir is not None:
+            if self.input_id[:2] == self.get_filename_prefix():
+                self.input_id = self.input_id[2:]
             dump_file_path = config.response_cache_dir.joinpath(
                 "{}{}.json".format(self.get_filename_prefix(), self.input_id)
             )
@@ -37,7 +41,15 @@ class Parser(abc.ABC):
                 f = dump_file_path.open("r")
                 self._parsed_data = json.load(f)
                 f.close()
-                print("LOADED FROM DUMP")
+                logger.info("LOADED FROM DUMP")
+                logger.debug(
+                    "response_cache_dir={}, prefix={}, id={}, file_path={}".format(
+                        config.response_cache_dir,
+                        self.get_filename_prefix(),
+                        self.input_id,
+                        dump_file_path
+                    )
+                )
                 return self._parsed_data
         return None
 
@@ -55,12 +67,16 @@ class Parser(abc.ABC):
         pass
 
     def get_data(self):
-        data = self._load_parsed_data()
-        if data is None:
-            data = self.parseJSON()
-            if config.response_cache_dir is not None:
-                self._dump_parsed_data()
-        return data
+        if self._parsed_data is None:
+            data = self._load_parsed_data()
+            if data is None:
+                data = self.parseJSON()
+                self._parsed_data = data
+                if config.response_cache_dir is not None:
+                    self._dump_parsed_data()
+            return data
+        else:
+            return self._parsed_data
 
     @abc.abstractmethod
     def parsehtml_get_image_route_name(self) -> str:

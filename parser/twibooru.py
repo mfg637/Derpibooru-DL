@@ -81,7 +81,7 @@ class TwibooruParser(Parser.Parser):
         return data["post"]['representations']["large"]
 
     def get_raw_content_data(self):
-        return self._parsed_data["post"]
+        return self.get_data()["post"]
 
     def parseJSON(self, _type="images"):
         self.input_id = self.get_id_by_url(self._url)

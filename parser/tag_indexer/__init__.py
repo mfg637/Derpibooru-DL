@@ -17,7 +17,7 @@ else:
 
 def decorate(parser_type: Parser, use_medialib_db: bool, url):
     logger.debug("parser type: {}, url: {}".format(parser_type, url))
-    #if use_medialib_db and medialib_db_usable:
-    #    return MedialibTagIndexer(parser_type(url), url)
-    #else:
-    return DefaultTagIndexer(parser_type(url), url)
+    if use_medialib_db and medialib_db_usable:
+        return MedialibTagIndexer(parser_type(url), url)
+    else:
+        return DefaultTagIndexer(parser_type(url), url)
