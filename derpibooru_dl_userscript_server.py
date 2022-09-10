@@ -147,7 +147,5 @@ if __name__ == '__main__':
         if config.do_transcode:
             import pyimglib.transcoding
             pyimglib.transcoding.statistics.log_stats()
-        if config.use_medialib_db:
-            medialib_db.common.close_connection_if_not_closed()
         if args.test_medialib_db:
             medialib_db.testing.wipe()

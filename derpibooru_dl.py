@@ -13,7 +13,7 @@ import pyimglib
 import logging
 
 logging.basicConfig(
-    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.INFO
+    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 
@@ -113,5 +113,3 @@ try:
 finally:
     if config.do_transcode:
         pyimglib.transcoding.statistics.log_stats()
-    if config.use_medialib_db:
-        medialib_db.common.close_connection_if_not_closed()

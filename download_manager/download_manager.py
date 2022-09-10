@@ -96,6 +96,17 @@ class DownloadManager(abc.ABC):
                 )
                 raise e
 
+    def medialib_db_update_tags(self, db_content_id, tags, connection):
+        for tag_category in tags:
+            _tag_category = tag_category
+            if tag_category == 'original character' or tag_category == "characters":
+                _tag_category = "character"
+            for tag in tags[tag_category]:
+                db_tag_id = medialib_db.tags_indexer.check_tag_exists(tag, _tag_category, connection)
+                if db_tag_id is None:
+                    db_tag_id = medialib_db.tags_indexer.insert_new_tag(tag, _tag_category, None, connection)
+                medialib_db.connect_tag_by_id(db_content_id, db_tag_id, connection)
+
     @staticmethod
     def download_file(filename: pathlib.Path, src_url: str) -> None:
         request_data = requests.get(src_url)
@@ -138,6 +149,7 @@ class DownloadManager(abc.ABC):
                 self._parser.get_origin_name(), self._parser.getID(), medialib_db_connection
             )
             if content_info is not None:
+                self.medialib_db_update_tags(content_info[0], tags, medialib_db_connection)
                 old_file_path = config.db_storage_dir.joinpath(content_info[1])
                 if self.is_rewriting_allowed() and old_file_path.exists():
                     files: list[pathlib.Path] = []

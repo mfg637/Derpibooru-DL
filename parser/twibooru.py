@@ -27,7 +27,7 @@ class TwibooruParser(Parser.Parser):
             raise e
 
     def getTagList(self) -> list:
-        return self._parsed_data["post"]['tags']
+        return self.get_data()["post"]['tags']
 
     def parsehtml_get_image_route_name(self) -> str:
         return 'posts'

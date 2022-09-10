@@ -26,7 +26,7 @@ class DerpibooruParser(Parser.Parser):
         return str(self._parsed_data['image']["id"])
 
     def getTagList(self) -> list:
-        return self._parsed_data['image']['tags']
+        return self.get_data()['image']['tags']
 
     def parsehtml_get_image_route_name(self) -> str:
         return 'images'
