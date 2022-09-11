@@ -30,7 +30,7 @@ class MedialibTagIndexer(TagIndexer):
         for tag in taglist:
             if "oc:" in tag:
                 tag_name = medialib_db.common.postgres_string_format(
-                    tag.split(':')[1], 32
+                    tag.split(':')[1], medialib_db.common.TAG_TITLE_MAX_SIZE
                 )
                 originalCharacter.add(tag_name)
 
@@ -41,7 +41,7 @@ class MedialibTagIndexer(TagIndexer):
                 connection.close()
             elif "artist:" in tag:
                 tag_name = medialib_db.common.postgres_string_format(
-                    tag.split(':')[1], 32
+                    tag.split(':')[1], medialib_db.common.TAG_TITLE_MAX_SIZE
                 )
                 artist.add(tag_name)
 
@@ -54,7 +54,9 @@ class MedialibTagIndexer(TagIndexer):
             #    continue
             else:
                 connection = medialib_db.common.make_connection()
-                tag_name = medialib_db.common.postgres_string_format(tag, 32)
+                tag_name = medialib_db.common.postgres_string_format(
+                    tag, medialib_db.common.TAG_TITLE_MAX_SIZE
+                )
                 result: set = medialib_db.tags_indexer.get_category_of_tag(tag, connection)
                 if result is None:
                     if tags_parsed_data is None:
@@ -121,7 +123,7 @@ class MedialibTagIndexer(TagIndexer):
 
         for tag in self._parser.get_raw_content_data()['tags']['copyright']:
             _tag = medialib_db.common.postgres_string_format(
-                tag.replace("_", " "), 32
+                tag.replace("_", " "), medialib_db.common.TAG_TITLE_MAX_SIZE
             )
             indexed_copyright.add(_tag)
 
@@ -131,7 +133,7 @@ class MedialibTagIndexer(TagIndexer):
                 indexed_copyright.add("my little pony")
                 _tag = tag.replace("_(mlp)", "")
             _tag = medialib_db.common.postgres_string_format(
-                _tag.replace("_", " "), 32
+                _tag.replace("_", " "), medialib_db.common.TAG_TITLE_MAX_SIZE
             )
             tag_alias = "character:{}".format(_tag)
             indexed_characters.add(_tag)
@@ -147,12 +149,12 @@ class MedialibTagIndexer(TagIndexer):
 
         for tag in self._parser.get_raw_content_data()['tags']['species']:
             indexed_species.add(medialib_db.common.postgres_string_format(
-                tag.replace("_", " "), 32
+                tag.replace("_", " "), medialib_db.common.TAG_TITLE_MAX_SIZE
             ))
 
         for tag in self._parser.get_raw_content_data()['tags']['artist']:
             _tag = medialib_db.common.postgres_string_format(
-                tag.replace("_", " "), 32
+                tag.replace("_", " "), medialib_db.common.TAG_TITLE_MAX_SIZE
             )
             artist.add(_tag)
             tag_alias = "{}:{}".format("artist", _tag)
@@ -178,7 +180,7 @@ class MedialibTagIndexer(TagIndexer):
                 indexed_species.add("anthro")
             else:
                 _tag = medialib_db.common.postgres_string_format(
-                    tag.replace("_", " "), 32
+                    tag.replace("_", " "), medialib_db.common.TAG_TITLE_MAX_SIZE
                 )
                 indexed_content.add(_tag)
                 MedialibTagIndexer.tag_register(

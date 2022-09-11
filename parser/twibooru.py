@@ -49,7 +49,7 @@ class TwibooruParser(Parser.Parser):
         return 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None
 
     def get_takedowned_content_info(self, data):
-        return self.file_deleted_handing(FILENAME_PREFIX, data['id'])
+        return self.file_deleted_handing(FILENAME_PREFIX, data['post']['id'])
 
     def get_content_source_url(self, data):
         src_url = os.path.splitext(data["post"]["view_url"])[0] + '.' + data["post"]["format"]
