@@ -17,7 +17,7 @@ import pyimglib
 from derpibooru_dl import tagResponse
 
 logging.basicConfig(
-    level=logging.DEBUG,
+    level=logging.INFO,
     format="%(asctime)s::%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s",
     datefmt="%M:%S"
 )
