@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 
 import config
 import parser
@@ -22,13 +23,13 @@ class TranscodeManager(DownloadManager):
     def _simulate_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, force_lossless):
         if original_format in TRANSCODE_FILES:
             if self.is_rewriting_allowed() or not os.path.isfile(src_filename) and \
-                    not pyimglib.transcoding.check_exists(
+                    not pyimglib.transcoding.get_trancoded_file(
                         src_filename,
                         output_directory,
                         name
                     ):
                 return 0, 0, 0, 0, None
-            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+            elif not pyimglib.transcoding.get_trancoded_file(src_filename, output_directory, name):
                 return 0, 0, 0, 0, None
             elif config.enable_multiprocessing:
                 return 0, 0, 0, 0, None
@@ -39,14 +40,24 @@ class TranscodeManager(DownloadManager):
                 pass
             return 0, 0, 0, 0, src_filename
 
-    def _do_transcode(self, original_format, large_image, src_filename, output_directory, name, src_url, force_lossless):
+    def _do_transcode(
+            self,
+            original_format,
+            large_image,
+            src_filename: pathlib.Path,
+            output_directory: pathlib.Path,
+            name: str,
+            src_url,
+            force_lossless: bool
+    ):
         if original_format in TRANSCODE_FILES:
-            if self.is_rewriting_allowed() or not os.path.isfile(src_filename) and \
-                    not pyimglib.transcoding.check_exists(
+            transcoded_file = pyimglib.transcoding.get_trancoded_file(
                         src_filename,
                         output_directory,
                         name
-                    ):
+                    )
+            if self.is_rewriting_allowed() or not os.path.isfile(src_filename) and \
+                    transcoded_file is None:
                 try:
                     return self.in_memory_transcode(src_url, name, output_directory, force_lossless)
                 except DecompressionBombError:
@@ -54,7 +65,7 @@ class TranscodeManager(DownloadManager):
                         'https:' + os.path.splitext(large_image)[0] + '.' + \
                         original_format
                     return self.in_memory_transcode(src_url, name, output_directory, force_lossless)
-            elif not pyimglib.transcoding.check_exists(src_filename, output_directory, name):
+            elif transcoded_file is None:
                 transcoder = pyimglib.transcoding.get_file_transcoder(
                     src_filename, output_directory, name
                 )
@@ -63,13 +74,18 @@ class TranscodeManager(DownloadManager):
                 else:
                     self.download_file(src_filename, src_url)
             elif config.enable_multiprocessing:
-                return 0, 0, 0, 0, None
+                if transcoded_file is not None:
+                    return 0, 0, 0, 0, transcoded_file
+                else:
+                    return 0, 0, 0, 0, src_filename
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
             return 0, 0, 0, 0, src_filename
 
-    def _download_body(self, src_url, name, src_filename, output_directory: str, data: dict, tags):
+    def _download_body(
+            self, src_url, name: str, src_filename: pathlib.Path, output_directory: pathlib.Path, data: dict, tags
+    ):
         result = None
 
         force_lossless = 'vector' in tags['content']

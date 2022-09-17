@@ -13,7 +13,7 @@ import pyimglib
 import logging
 
 logging.basicConfig(
-    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.INFO
+    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.DEBUG
 )
 logger = logging.getLogger(__name__)
 

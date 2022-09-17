@@ -1,6 +1,7 @@
 import json
 import logging
 import os
+import pathlib
 import urllib
 import urllib.parse
 
@@ -88,7 +89,7 @@ class E621Parser(Parser.Parser):
     def get_content_source_url(self, data):
         return os.path.splitext(data['post']['file']['url'])[0] + '.' + data['post']['file']['ext'].lower()
 
-    def get_output_filename(self, data, output_directory):
+    def get_output_filename(self, data, output_directory: pathlib.Path) -> tuple[str, pathlib.Path]:
         data = data['post']
         name = ''
         print(data["id"], data['file']['url'], data['file']['ext'])
@@ -96,7 +97,7 @@ class E621Parser(Parser.Parser):
             print(data)
         src_url = os.path.splitext(data['file']['url'])[0] + '.' + data['file']['ext'].lower()
         name = "{}{}".format(FILENAME_PREFIX, data["id"])
-        return name, os.path.join(output_directory, "{}.{}".format(name, data['file']['ext'].lower()))
+        return name, output_directory.joinpath("{}.{}".format(name, data['file']['ext'].lower()))
 
     def get_image_metadata(self, data):
         return {

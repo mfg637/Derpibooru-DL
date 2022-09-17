@@ -1,5 +1,6 @@
 import logging
 import os
+import pathlib
 import re
 
 import requests
@@ -56,7 +57,7 @@ class TwibooruParser(Parser.Parser):
         src_url = re.sub(r'\%', '', src_url)
         return src_url
 
-    def get_output_filename(self, data, output_directory):
+    def get_output_filename(self, data, output_directory: pathlib.Path) -> tuple[str, pathlib.Path]:
         name = ''
         if 'name' in data["post"] and data["post"]['name'] is not None:
             name = "tb{} {}".format(
@@ -65,7 +66,7 @@ class TwibooruParser(Parser.Parser):
             )
         else:
             name = str(data["id"])
-        return name, os.path.join(output_directory, "{}.{}".format(name, data["post"]["format"]))
+        return name, output_directory.joinpath("{}.{}".format(name, data["post"]["format"]))
 
     def get_image_metadata(self, data):
         return {

@@ -176,7 +176,7 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_output_filename(self, data, output_directory):
+    def get_output_filename(self, data, output_directory) -> tuple[str, pathlib.Path]:
         pass
 
     @abc.abstractmethod

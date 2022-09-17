@@ -111,7 +111,7 @@ class DerpibooruParser(Parser.Parser):
     def get_content_source_url(self, data):
         return os.path.splitext(data['image']['representations']['full'])[0] + '.' + data['image']["format"].lower()
 
-    def get_output_filename(self, data, output_directory: pathlib.Path):
+    def get_output_filename(self, data, output_directory: pathlib.Path) -> tuple[str, pathlib.Path]:
         data = data['image']
         name = ''
         if 'name' in data and data['name'] is not None:
