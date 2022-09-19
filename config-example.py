@@ -23,7 +23,7 @@ enable_multiprocessing = False
 # Using database for tags info as key-value storage
 use_medialib_db = False
 
-browser_tmpcache_directory = None
+source_name_as_file_name = True
 
 
 # transcode PNG, JPEG, GIF images transcoding to WEBP, arithmetic JPEG, WEBM, AVIF formats

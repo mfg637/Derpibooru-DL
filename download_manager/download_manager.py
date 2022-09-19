@@ -8,6 +8,7 @@ import pathlib
 import sys
 import threading
 
+import pathvalidate
 import requests
 
 import config
@@ -172,10 +173,18 @@ class DownloadManager(abc.ABC):
         src_url = self._parser.get_content_source_url(data)
         name, src_filename = self._parser.get_output_filename(data, output_directory)
 
+        if config.source_name_as_file_name:
+            name = pathvalidate.sanitize_filename(name)
+            name = name.replace("&", "-amp-")
+        else:
+            name = "{}{}".format(self._parser.get_filename_prefix(), self._parser.getID())
+
         logger.info("filename: {}".format(src_filename))
         logger.debug("image_url: {}".format(src_url))
 
-        result = self._download_body(src_url, name, src_filename, output_directory, data, tags)
+        result = self._download_body(
+            src_url, name, src_filename, output_directory, data, tags
+        )
 
         if config.use_medialib_db:
             logger.debug("medialib-db acquire lock")
