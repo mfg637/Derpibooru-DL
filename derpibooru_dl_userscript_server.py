@@ -42,6 +42,7 @@ def async_downloader():
     dl_pool = download_manager.DownloadManager.create_pool(config.workers)
     while len(map_list):
         local_map_list = map_list.copy()
+        random.shuffle(local_map_list)
         map_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
         results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
