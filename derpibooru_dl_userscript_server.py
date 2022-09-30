@@ -3,7 +3,7 @@
 import argparse
 import pathlib
 import random
-
+import urllib.parse
 import flask
 import json
 import traceback
@@ -30,6 +30,19 @@ error_message = None
 map_list = list()
 
 downloader_thread = threading.Thread()
+
+
+FILE_SUFFIX_BY_MIME_TYPE = {
+    "image/png": "png",
+    "image/jpeg": "jpg",
+    "image/gif": "gif",
+    "video/webm": "webm",
+    "video/mp4": "mp4",
+    "image/svg+xml": "svg"
+}
+FILE_SUFFIX_LIST = [
+    ".png", ".jpg", ".gif", ".webm", ".mp4", ".svg"
+]
 
 
 def append2queue_and_start_download(*args):
@@ -66,10 +79,12 @@ class RouteFabric:
     def handle(self):
         global error_message
         try:
-            if error_message is not None:
-                return error_message
             content_id: int = flask.request.args.get("id", None, int)
             enable_rewriting: bool = flask.request.args.get("rewrite", False, bool)
+            download_original_data: bool = flask.request.args.get("dl_orig", False, bool)
+            if error_message is not None and not download_original_data:
+                return error_message
+            content_title: str = flask.request.args.get("title", None, str)
             print("content_id", content_id)
             content: dict = None
             if content_id is None:
@@ -90,8 +105,28 @@ class RouteFabric:
             dm = download_manager.make_download_manager(_parser)
             if enable_rewriting:
                 dm.enable_rewriting()
-            append2queue_and_start_download(dm, out_dir, data, parsed_tags)
-            return "OK"
+            if download_original_data:
+                original_data = dm.download_original_data(out_dir, data, parsed_tags)
+                response = flask.Response(response=original_data["data"])
+                name = original_data["name"]
+                if content_title is not None:
+                    for suffix in FILE_SUFFIX_LIST:
+                        if suffix in content_title:
+                            content_title = content_title.replace(suffix, "")
+                    name = "{}{} {}.{}".format(
+                        _parser.get_filename_prefix(),
+                        _parser.getID(),
+                        content_title.replace("-amp-", "&").replace("-eq-", "="),
+                        FILE_SUFFIX_BY_MIME_TYPE[original_data["mime"]]
+                    )
+                response.headers['content-disposition'] = 'attachment; filename="{}"'.format(
+                    urllib.parse.quote(name)
+                )
+                response.headers['content-type'] = original_data["mime"]
+                return response
+            else:
+                append2queue_and_start_download(dm, out_dir, data, parsed_tags)
+                return "OK"
         except Exception as e:
             error_message = traceback.format_exc()
             print(error_message)

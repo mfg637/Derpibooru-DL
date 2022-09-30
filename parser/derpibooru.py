@@ -121,7 +121,7 @@ class DerpibooruParser(Parser.Parser):
                 re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["name"])[0])
             )
         else:
-            name = str(data["id"])
+            name = "{}{}".format(self.get_filename_prefix(), data["id"])
         return name, output_directory.joinpath("{}.{}".format(name, data["format"].lower()))
 
     def get_image_metadata(self, data):

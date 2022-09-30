@@ -133,6 +133,13 @@ class DownloadManager(abc.ABC):
             processes=config.workers, initializer=DownloadManager._init_pool, initargs=(medialib_db_lock,)
         )
 
+    @staticmethod
+    def fix_filename(filename):
+        name = pathvalidate.sanitize_filename(filename)
+        name = name.replace("&", "-amp-")
+        return name
+
+
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         global medialib_db_lock
 
@@ -174,8 +181,7 @@ class DownloadManager(abc.ABC):
         name, src_filename = self._parser.get_output_filename(data, output_directory)
 
         if config.source_name_as_file_name:
-            name = pathvalidate.sanitize_filename(name)
-            name = name.replace("&", "-amp-")
+            name = DownloadManager.fix_filename(name)
         else:
             name = "{}{}".format(self._parser.get_filename_prefix(), self._parser.getID())
 
@@ -207,6 +213,20 @@ class DownloadManager(abc.ABC):
             return result[:4]
         else:
             return 0, 0, 0, 0
+
+    def download_original_data(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
+        src_url = self._parser.get_content_source_url(data)
+        name, src_filename = self._parser.get_output_filename(data, output_directory)
+
+        name = DownloadManager.fix_filename(name)
+
+        logger.info("filename: {}".format(src_filename))
+        logger.debug("image_url: {}".format(src_url))
+
+        request_data = requests.get(src_url)
+        result = {"mime": request_data.headers.get('content-type'), "data": request_data.content, "name": name}
+
+        return result
 
     def save_image_old_interface(self, output_directory: pathlib.Path, data: dict, tags: dict = None, pipe=None) -> None:
         result = self.download(output_directory, data, tags)
