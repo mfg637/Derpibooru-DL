@@ -23,7 +23,7 @@ class DerpibooruParser(Parser.Parser):
         return ORIGIN
 
     def getID(self) -> str:
-        return str(self._parsed_data['image']["id"])
+        return str(self.get_data()['image']["id"])
 
     def getTagList(self) -> list:
         return self.get_data()['image']['tags']

@@ -16,7 +16,7 @@ def init(application_name: str):
     logging.getLogger().addHandler(console_logger)
 
     file_rotating_handler = logging.handlers.RotatingFileHandler(
-        filename='logs/{}.log'.format(application_name), maxBytes=100000, backupCount=5
+        filename='logs/{}.log'.format(application_name), maxBytes=1_000_000, backupCount=5
     )
     file_rotating_handler.setLevel(logging.DEBUG)
     formatter = logging.Formatter('%(asctime)s::%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s')
