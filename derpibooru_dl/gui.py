@@ -82,6 +82,12 @@ class GUI:
                         data = _parser.get_data()
                     except IndexError:
                         continue
+                    logger.info(
+                        "Request for download: {}{}".format(
+                            _parser.get_filename_prefix(),
+                            _parser.getID()
+                        )
+                    )
                     try:
                         parsed_tags = _parser.tagIndex()
                     except KeyError:

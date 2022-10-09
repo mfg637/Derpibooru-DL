@@ -209,6 +209,10 @@ class DownloadManager(abc.ABC):
             logger.debug("medialib-db release lock")
             medialib_db_lock.release()
 
+        logger.info(
+            "Done downloading: {}{}".format(self._parser.get_filename_prefix(), self._parser.getID())
+        )
+
         if result is not None:
             return result[:4]
         else:

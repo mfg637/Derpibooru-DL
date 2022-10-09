@@ -8,13 +8,12 @@ import config
 import download_manager
 import medialib_db.common
 import parser
+import derpibooru_dl
 from derpibooru_dl import tagResponse
 import pyimglib
 import logging
 
-logging.basicConfig(
-    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s", level=logging.DEBUG
-)
+derpibooru_dl.logging.init("derpibooru_dl")
 logger = logging.getLogger(__name__)
 
 if config.do_transcode:

@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+import sys
 import argparse
 import pathlib
 import random
@@ -14,13 +15,10 @@ import medialib_db.common
 import parser
 import logging
 import pyimglib
+import derpibooru_dl
 from derpibooru_dl import tagResponse
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s::%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s",
-    datefmt="%M:%S"
-)
+derpibooru_dl.logging.init("server")
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +96,13 @@ class RouteFabric:
             elif "id" in content:
                 content_id = content['id']
             _parser = parser.tag_indexer.decorate(self._parser, config.use_medialib_db, content_id)
+            if not download_original_data:
+                logger.info(
+                    "Request for download: {}{}".format(
+                        _parser.get_filename_prefix(),
+                        content_id
+                    )
+                )
             data = _parser.parseJSON()
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
