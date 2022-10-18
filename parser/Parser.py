@@ -164,7 +164,7 @@ class Parser(abc.ABC):
 
 
     @abc.abstractmethod
-    def verify_not_takedowned(self, data):
+    def check_is_takedowned(self, data):
         pass
 
     @abc.abstractmethod

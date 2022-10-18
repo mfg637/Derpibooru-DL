@@ -56,8 +56,8 @@ class TagIndexer(Parser):
     def get_origin_name(self):
         return self._parser.get_origin_name()
 
-    def verify_not_takedowned(self, data):
-        return self._parser.verify_not_takedowned(data)
+    def check_is_takedowned(self, data):
+        return self._parser.check_is_takedowned(data)
 
     def get_takedowned_content_info(self, data):
         return self._parser.get_takedowned_content_info(data)

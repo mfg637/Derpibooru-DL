@@ -46,7 +46,7 @@ class TwibooruParser(Parser.Parser):
         if 'large' not in data["post"]['representations']:
             raise KeyError("not found large representation")
 
-    def verify_not_takedowned(self, data):
+    def check_is_takedowned(self, data):
         return 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None
 
     def get_takedowned_content_info(self, data):

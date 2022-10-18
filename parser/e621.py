@@ -78,13 +78,27 @@ class E621Parser(Parser.Parser):
         self._parsed_data = data
         return data
 
-    def verify_not_takedowned(self, data):
-        # TODO: find takedowned image
-        return False
+    def check_is_takedowned(self, data):
+        # takedowned content example: https://e621.net/posts/1744852.json
+        return data['post']['flags']['deleted']
 
     def get_takedowned_content_info(self, data):
-        # TODO: find takedowned image
-        return None
+        logging.exception("deleted image ef{}".format(data['post']['id']))
+        if config.deleted_image_list_file_path is not None:
+            deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
+            general_tags_category = ("general", "species", "meta", "invalid", "lore")
+            for category in general_tags_category:
+                deleted_list_f.write("{}{}: {}\n".format(
+                    "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags'][category]])
+                ))
+            deleted_list_f.write("{}{}: character:{}\n".format(
+                "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags']['character']])
+            ))
+            deleted_list_f.write("{}{}: copyright:{}\n".format(
+                "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags']['copyright']])
+            ))
+            deleted_list_f.close()
+        return 0, 0, 0, 0
 
     def get_content_source_url(self, data):
         return os.path.splitext(data['post']['file']['url'])[0] + '.' + data['post']['file']['ext'].lower()

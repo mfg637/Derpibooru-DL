@@ -102,7 +102,7 @@ class DerpibooruParser(Parser.Parser):
         if 'large' not in data['representations']:
             raise KeyError("not found large representation")
 
-    def verify_not_takedowned(self, data):
+    def check_is_takedowned(self, data):
         return 'deletion_reason' in data['image'] and data['image']['deletion_reason'] is not None
 
     def get_takedowned_content_info(self, data):
