@@ -1,0 +1,6 @@
+flask
+Pillow
+lxml
+CairoSVG
+psycopg2
+pathvalidate
