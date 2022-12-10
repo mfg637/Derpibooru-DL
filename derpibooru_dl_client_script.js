@@ -14,7 +14,10 @@
 // @match       https://furbooru.org/images*
 // @match       https://furbooru.org/search
 // @match       https://furbooru.org/tags/*
+// @match       https://e621.net/popular
+// @match       https://e621.net/favorites
 // @match       https://e621.net/posts
+// @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
 // @version     1.3.0
@@ -101,7 +104,7 @@ function image_handler(data_wrapper, button_placer, bp_arg=null){
 }
 
 
-function e621_image_handler(data_wrapper, button_placer, bp_arg=null){
+function e621_image_handler(data_wrapper, button_placer, placing_place){
   let raw_data = data_wrapper.dataset, data = {};
   for (let key in raw_data){data[key]=raw_data[key];}
   let dl_button = document.createElement('a');
@@ -109,7 +112,7 @@ function e621_image_handler(data_wrapper, button_placer, bp_arg=null){
   dl_button.onclick = dl_button_click_handler;
   dl_button.style.fontWeight = 'Bold';
   dl_button.style.marginLeft = "0.5em";
-  button_placer(dl_button, data_wrapper.getElementsByClassName("post-score")[0]);
+  button_placer(dl_button, placing_place);
 }
 
 
@@ -138,12 +141,24 @@ if  (
   }
 }else if (document.domain === "e621.net"){
   image_wrappers = document.getElementsByClassName('post-preview');
-  if (image_wrappers.length > 0)
+  if (image_wrappers.length > 0) {
     for (let i in image_wrappers) {
       if (!(image_wrappers[i] instanceof Element)) {
         continue
       }
       //data_wrapper = image_wrappers[i].getElementsByClassName('image-container')[0];
-      e621_image_handler(image_wrappers[i], button_placer_default, image_wrappers[i]);
+      e621_image_handler(
+          image_wrappers[i],
+          button_placer_default,
+          image_wrappers[i].getElementsByClassName("post-score")[0]
+      );
     }
+  } else {
+    image_wrapper = document.getElementById('image-container');
+    e621_image_handler(
+        image_wrapper,
+        button_placer_default,
+        document.getElementById("image-extra-controls")
+    )
+  }
 }
