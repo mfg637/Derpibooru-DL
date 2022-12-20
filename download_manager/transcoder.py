@@ -61,9 +61,10 @@ class TranscodeManager(DownloadManager):
                 try:
                     return self.in_memory_transcode(src_url, name, output_directory, force_lossless)
                 except DecompressionBombError:
-                    src_url = \
-                        'https:' + os.path.splitext(large_image)[0] + '.' + \
+                    src_url = os.path.splitext(large_image)[0] + '.' + \
                         original_format
+                    if 'https:' not in src_url:
+                        src_url = 'https:' + src_url
                     return self.in_memory_transcode(src_url, name, output_directory, force_lossless)
             elif transcoded_file is None:
                 transcoder = pyimglib.transcoding.get_file_transcoder(
