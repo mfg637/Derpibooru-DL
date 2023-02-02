@@ -16,4 +16,5 @@ class FileDownloader(DownloadManager):
         if self.is_rewriting_allowed() or not os.path.isfile(src_filename):
             if not config.simulate:
                 self.download_file(src_filename, src_url)
+                return 0, 0, 0, 0, src_filename
 
