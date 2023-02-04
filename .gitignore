@@ -5,4 +5,4 @@ Thumbs.db
 *.psd
 browser/tmpcache/*
 .idea!/logs/
-!/logs/
+/logs/*
