@@ -160,14 +160,17 @@ class DownloadManager(abc.ABC):
                 self.medialib_db_update_tags(content_info[0], tags, medialib_db_connection)
                 old_file_path = config.db_storage_dir.joinpath(content_info[1])
                 if self.is_rewriting_allowed() and old_file_path.exists():
-                    files: list[pathlib.Path] = []
+                    manifest_controller = None
                     if old_file_path.suffix == ".srs":
-                        files.extend(pyimglib.decoders.srs.get_file_paths(old_file_path))
+                        manifest_controller =\
+                            pyimglib.transcoding.encoders.srs_image_encoder.SrsImageEncoder(1, 0, 1)
                     elif old_file_path.suffix == ".mpd":
-                        pyimglib.transcoding.encoders.dash_encoder.DASHEncoder.delete_result(old_file_path)
-                    files.append(old_file_path)
-                    for file in files:
-                        file.unlink(missing_ok=True)
+                        manifest_controller = pyimglib.transcoding.encoders.dash_encoder.DashVideoEncoder(1)
+                    if manifest_controller is not None:
+                        manifest_controller.set_manifest_file(old_file_path)
+                        manifest_controller.delete_result()
+                    else:
+                        old_file_path.unlink(missing_ok=True)
                 elif self.is_rewriting_allowed():
                     pass
                 else:
@@ -198,7 +201,7 @@ class DownloadManager(abc.ABC):
             if content_info is not None:
                 if result is not None:
                     medialib_db.update_file_path(
-                        content_info[0], str(result[4].relative_to(config.db_storage_dir)), medialib_db_connection
+                        content_info[0], result[4], medialib_db_connection
                     )
             else:
                 if result is not None:
