@@ -1,6 +1,8 @@
 import logging
 import os
 
+import PIL.Image
+
 import config
 from .download_manager import DownloadManager
 import parser

@@ -2,10 +2,12 @@ import json
 import logging
 import os
 import pathlib
+import typing
 import urllib
 import urllib.parse
 
 from . import exceptions
+from .Parser import FileTypes
 
 logger = logging.getLogger(__name__)
 
@@ -14,12 +16,24 @@ import requests
 import config
 from . import Parser
 
-
 FILENAME_PREFIX = 'ef'
 ORIGIN = 'e621'
 
 
 class E621Parser(Parser.Parser):
+
+    def identify_filetype(self) -> FileTypes:
+        FILE_EXTENSION_ASSOCIATION: typing.Final[dict[str, FileTypes]] = {
+            "jpg": FileTypes.IMAGE,
+            "jpeg": FileTypes.IMAGE,
+            "png": FileTypes.IMAGE,
+            "gif": FileTypes.ANIMATION,
+            "webm": FileTypes.VIDEO
+        }
+        filetype = FILE_EXTENSION_ASSOCIATION[self._parsed_data['post']['file']['ext'].lower()]
+        if filetype == FileTypes.IMAGE and "animated" in self._parsed_data['post']['tags']['meta']:
+            filetype = FileTypes.ANIMATION
+        return filetype
 
     def parsehtml_get_image_route_name(self) -> str:
         pass
@@ -128,5 +142,3 @@ class E621Parser(Parser.Parser):
 
     def get_raw_content_data(self):
         return self.get_data()["post"]
-
-

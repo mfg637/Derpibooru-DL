@@ -6,6 +6,8 @@ import re
 import urllib.parse
 import urllib.request
 
+from .Parser import FileTypes
+
 logger = logging.getLogger(__name__)
 
 import requests
@@ -18,6 +20,11 @@ ORIGIN = 'derpibooru'
 
 
 class DerpibooruParser(Parser.Parser):
+    def identify_filetype(self) -> FileTypes:
+        filetype = Parser.Parser.identify_by_mimetype(self.get_data()["image"]["mime_type"])
+        if filetype == FileTypes.IMAGE and "animated" in self.get_data()['image']['tags']:
+            filetype = FileTypes.ANIMATION
+        return filetype
 
     def get_origin_name(self):
         return ORIGIN

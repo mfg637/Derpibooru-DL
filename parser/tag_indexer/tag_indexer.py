@@ -1,5 +1,5 @@
 import abc
-from ..Parser import Parser
+from ..Parser import Parser, FileTypes
 from ..e621 import E621Parser
 
 
@@ -79,3 +79,6 @@ class TagIndexer(Parser):
 
     def get_raw_content_data(self):
         return self._parser.get_raw_content_data()
+
+    def identify_filetype(self) -> FileTypes:
+        return self._parser.identify_filetype()

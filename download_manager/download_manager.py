@@ -8,13 +8,16 @@ import pathlib
 import sys
 import threading
 
+import PIL.Image
 import pathvalidate
 import requests
+import imagehash
 
 import config
 import medialib_db
 import parser
 import pyimglib
+import numpy
 
 ENABLE_REWRITING = False
 
@@ -32,6 +35,7 @@ class DownloadManager(abc.ABC):
     def __init__(self, _parser: parser.Parser.Parser):
         self._parser = _parser
         self._enable_rewriting = False
+        self.source_file_data = None
 
     def is_rewriting_allowed(self):
         return ENABLE_REWRITING or self._enable_rewriting
@@ -39,7 +43,16 @@ class DownloadManager(abc.ABC):
     def enable_rewriting(self):
         self._enable_rewriting = True
 
-    def medialib_db_register(self, data, src_filename, transcoding_result, tags, connection):
+    def medialib_db_register(
+            self,
+            data,
+            src_filename,
+            transcoding_result,
+            tags,
+            file_type: parser.Parser.FileTypes,
+            image_hash,
+            connection
+    ):
         if config.simulate:
             return
         outname: pathlib.Path = src_filename
@@ -68,20 +81,20 @@ class DownloadManager(abc.ABC):
                 f.close()
                 media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
             else:
-                out_path = pathlib.Path(outname)
-                if out_path.suffix.lower() in {".jpeg", ".jpg", ".png", ".webp", ".jxl", ".avif"}:
+                if file_type in {parser.Parser.FileTypes.IMAGE, parser.Parser.FileTypes.VECTOR_IMAGE}:
                     media_type = "image"
-                elif out_path.suffix.lower() == ".gif":
+                elif file_type == parser.Parser.FileTypes.ANIMATION:
                     media_type = "video-loop"
-                elif out_path.suffix.lower() in {'.webm', ".mp4", ".mpd"}:
+                elif file_type == parser.Parser.FileTypes.VIDEO:
                     media_type = "video"
                 else:
                     media_type = "image"
             _description = None
+            content_id = None
             if "description" in data and len(data['description']):
                 _description = data['description']
             try:
-                medialib_db.srs_indexer.register(
+                content_id = medialib_db.srs_indexer.register(
                     pathlib.Path(outname),
                     _name,
                     media_type,
@@ -96,6 +109,8 @@ class DownloadManager(abc.ABC):
                     "Exception at content id={} from {}".format(data["id"], self._parser.get_origin_name())
                 )
                 raise e
+            if content_id is not None and image_hash is not None:
+                medialib_db.set_image_hash(content_id, image_hash, connection)
 
     def medialib_db_update_tags(self, db_content_id, tags, connection):
         for tag_category in tags:
@@ -108,11 +123,11 @@ class DownloadManager(abc.ABC):
                     db_tag_id = medialib_db.tags_indexer.insert_new_tag(tag, _tag_category, None, connection)
                 medialib_db.connect_tag_by_id(db_content_id, db_tag_id, connection)
 
-    @staticmethod
-    def download_file(filename: pathlib.Path, src_url: str) -> None:
+    def download_file(self, filename: pathlib.Path, src_url: str) -> None:
         request_data = requests.get(src_url)
+        self.source_file_data = request_data.content
         file = open(filename, 'wb')
-        file.write(request_data.content)
+        file.write(self.source_file_data)
         file.close()
 
     @abc.abstractmethod
@@ -139,6 +154,25 @@ class DownloadManager(abc.ABC):
         name = name.replace("&", "-amp-")
         return name
 
+    @staticmethod
+    def calc_hash(img: PIL.Image.Image):
+        hsv_image = img.convert(mode="HSV")
+        aspect_ratio = img.width / img.height
+        hue_hash_obj = imagehash.phash(hsv_image.getchannel("H"), hash_size=4)
+        saturation_hash_obj = imagehash.phash(hsv_image.getchannel("S"), hash_size=4)
+        value_hash_obj = imagehash.phash(hsv_image.getchannel("V"), hash_size=8)
+        hue_hash_array = numpy.packbits(hue_hash_obj.hash)
+        saturation_hash_array = numpy.packbits(saturation_hash_obj.hash)
+        value_hash_array = numpy.packbits(value_hash_obj.hash)
+        hue_hash_array.dtype = numpy.short
+        saturation_hash_array.dtype = numpy.short
+        value_hash_array.dtype = numpy.int64
+        hs_array = numpy.array(
+            [saturation_hash_array[0], value_hash_array[0]],
+            dtype=numpy.short
+        )
+        hs_array.dtype = numpy.int32
+        return aspect_ratio, int(value_hash_array[0]), int(hs_array[0])
 
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         global medialib_db_lock
@@ -195,18 +229,33 @@ class DownloadManager(abc.ABC):
             src_url, name, src_filename, output_directory, data, tags
         )
 
+        image_hash = None
+        file_type: parser.Parser.FileTypes = self._parser.identify_filetype()
+        if file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is not None:
+            buffer = io.BytesIO(self.source_file_data)
+            with PIL.Image.open(buffer) as img:
+                image_hash = self.calc_hash(img)
+        elif file_type == parser.Parser.FileTypes.IMAGE:
+            raise ValueError("self.source_file_data IS NONE")
+
         if config.use_medialib_db:
             logger.debug("medialib-db acquire lock")
             medialib_db_lock.acquire(block=True)
             if content_info is not None:
                 if result is not None:
                     medialib_db.update_file_path(
-                        content_info[0], result[4], medialib_db_connection
+                        content_info[0], result[4], image_hash, medialib_db_connection
                     )
             else:
                 if result is not None:
                     self.medialib_db_register(
-                        self._parser.get_raw_content_data(), src_filename, result, tags, medialib_db_connection
+                        self._parser.get_raw_content_data(),
+                        src_filename,
+                        result,
+                        tags,
+                        file_type,
+                        image_hash,
+                        medialib_db_connection
                     )
             medialib_db_connection.close()
             logger.debug("medialib-db release lock")
@@ -271,15 +320,8 @@ class DownloadManager(abc.ABC):
             process.join()
             print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
 
-    def in_memory_transcode(self, src_url, name, output_directory, force_lossless=False):
-        source = self.do_binary_request(src_url)
-        transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, force_lossless
-        )
-        return transcoder.transcode()
-
-    @staticmethod
-    def do_binary_request(url):
+    def do_binary_request(self, url):
         request_data = requests.get(url)
-        source = bytearray(request_data.content)
+        self.source_file_data = request_data.content
+        source = bytearray(self.source_file_data)
         return source

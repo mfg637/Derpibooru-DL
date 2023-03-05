@@ -3,6 +3,8 @@ import json
 import logging
 import pathlib
 import sys
+import enum
+import typing
 from html.parser import HTMLParser
 
 import requests
@@ -10,6 +12,13 @@ import requests
 import config
 
 logger = logging.getLogger(__name__)
+
+
+class FileTypes(enum.Enum):
+    IMAGE = enum.auto()
+    VECTOR_IMAGE = enum.auto()
+    ANIMATION = enum.auto()
+    VIDEO = enum.auto()
 
 
 class Parser(abc.ABC):
@@ -194,3 +203,21 @@ class Parser(abc.ABC):
     @abc.abstractmethod
     def get_raw_content_data(self):
         pass
+
+    @abc.abstractmethod
+    def identify_filetype(self) -> FileTypes:
+        pass
+
+    @staticmethod
+    def identify_by_mimetype(mime_type: str) -> FileTypes:
+        MIMETYPE_ASSOCIATIONS: typing.Final[dict[str, FileTypes]] = {
+            "image/jpeg": FileTypes.IMAGE,
+            "image/png": FileTypes.IMAGE,
+            "image/gif": FileTypes.ANIMATION,
+            "image/vnd.mozilla.apng": FileTypes.ANIMATION,
+            "image/apng": FileTypes.ANIMATION,
+            "video/webm": FileTypes.VIDEO,
+            "video/mp4": FileTypes.VIDEO,
+            "image/svg+xml": FileTypes.VECTOR_IMAGE
+        }
+        return MIMETYPE_ASSOCIATIONS[mime_type]

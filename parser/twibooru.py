@@ -6,6 +6,7 @@ import re
 import requests
 
 from . import Parser
+from .Parser import FileTypes
 
 FILENAME_PREFIX = 'tb'
 ORIGIN = 'twibooru'
@@ -14,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class TwibooruParser(Parser.Parser):
+    def identify_filetype(self) -> FileTypes:
+        filetype = Parser.Parser.identify_by_mimetype(self.get_data()["post"]["mime_type"])
+        if filetype == FileTypes.IMAGE and "animated" in self.get_data()["post"]['tags']:
+            filetype = FileTypes.ANIMATION
     def get_origin_name(self):
         return ORIGIN
 
