@@ -46,15 +46,18 @@ except AttributeError:
 pages = 1
 current_page = 1
 
+
 argument_parser = argparse.ArgumentParser()
 argument_parser.add_argument("n value", type=int, help="numeric value of some period type", default=3)
 argument_parser.add_argument("period", type=str, help="type of period", default="days")
+argument_parser.add_argument("--prompt", type=str, help="custom prompt to search", default="None")
 argument_parser.add_argument("--items-per-page", type=int, default=15)
 argument_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
 args = argument_parser.parse_args()
 
 n_value = vars(args)['n value']
 period = args.period
+prompt = vars(args)['prompt']
 items_per_page = args.items_per_page
 download_manager.download_manager.ENABLE_REWRITING = args.rewrite
 if period == "pages":
@@ -63,19 +66,30 @@ if period == "pages":
 try:
     while current_page <= pages:
         print('loading page {} of {}'.format(current_page, pages))
-        request = {
-            'nvalue': n_value,
-            'period': period,
-            'page': current_page,
-            'key': config.key,
-            'perpage': items_per_page
-        }
         request_url = None
-        if period == "pages":
+        if period == "pages" or prompt is not None:
+            period = "pages"
+            if prompt is None:
+                prompt = "my%3Aupvotes"
+            request = {
+                'nvalue': n_value,
+                'period': period,
+                'page': current_page,
+                'key': config.key,
+                'perpage': items_per_page,
+                'prompt': prompt
+            }
             request_url = ("https://derpibooru.org/api/v1/json/search/images?"
-                           "q=my%3Aupvotes&key={key}"
+                           "q={prompt}&key={key}"
                            "&page={page}&perpage={perpage}").format(**request)
         else:
+            request = {
+                'nvalue': n_value,
+                'period': period,
+                'page': current_page,
+                'key': config.key,
+                'perpage': items_per_page
+            }
             request_url = ("https://derpibooru.org/api/v1/json/search/images?"
                            "q=first_seen_at.gt%3A{nvalue}+{period}+ago+"
                            "%26%26+my%3Aupvotes&key={key}"
@@ -100,6 +114,12 @@ try:
                 _parser = parser.tag_indexer.MedialibTagIndexer(_parser, None)
             else:
                 _parser = parser.tag_indexer.DefaultTagIndexer(_parser, None)
+            logger.info(
+                "Request for download: {}{}".format(
+                    _parser.get_filename_prefix(),
+                    _parser.getID()
+                )
+            )
             parsed_tags = _parser.tagIndex()
             outdir = tagResponse.find_folder(parsed_tags)
             dm = download_manager.make_download_manager(_parser)
@@ -109,9 +129,7 @@ try:
         current_page += 1
 
     db_lock = multiprocessing.Lock()
-    dl_pool = multiprocessing.Pool(
-        processes=config.workers, initializer=medialib_db.common.db_lock_init, initargs=(db_lock,)
-    )
+    dl_pool = download_manager.DownloadManager.create_pool(config.workers)
     random.shuffle(tasks)
     logger.info("processing {} requests".format(len(tasks)))
     results = dl_pool.map(download_manager.save_call, tasks, chunksize=1)
