@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import pathlib
+import time
 import typing
 import urllib
 import urllib.parse
@@ -60,7 +61,7 @@ class E621Parser(Parser.Parser):
     def get_origin_name(self):
         return ORIGIN
 
-    def parseJSON(self, url=None, _type="posts"):
+    def parseJSON(self, url=None, _type="posts", trial_count=2):
         headers = {
             'User-Agent': 'Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)'
         }
@@ -74,11 +75,20 @@ class E621Parser(Parser.Parser):
         if config.e621_login is not None and config.e621_API_KEY is not None:
             request_url += "?login={}&api_key={}".format(config.e621_login, config.e621_API_KEY)
         logger.info("parseJSON: {}".format(request_url))
+        request_data = None
         try:
             request_data = requests.get(request_url, headers=headers)
-        except Exception as e:
-            print(e)
-            return
+        except json.JSONDecodeError as e:
+            if trial_count > 0:
+                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                print("try again after 10 minutes")
+                time.sleep(600)
+                return self.parseJSON(url, _type, trial_count - 1)
+            else:
+                logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                raise e
         data = None
         if request_data.status_code == 404:
             raise IndexError("not founded \"{}\"".format(url))

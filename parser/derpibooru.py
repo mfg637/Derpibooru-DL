@@ -3,6 +3,7 @@ import logging
 import os
 import pathlib
 import re
+import time
 import urllib.parse
 import urllib.request
 
@@ -48,13 +49,13 @@ class DerpibooruParser(Parser.Parser):
     def get_filename_prefix(self):
         return FILENAME_PREFIX
 
-    def parseJSON(self, url=None, type="images") -> dict:
+    def parseJSON(self, url=None, _type="images", trial_count=2) -> dict:
         id = None
         if url is not None:
             id = url
         else:
             id = self.get_id_by_url(self._url)
-        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), type, urllib.parse.quote(str(id)))
+        request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), _type, urllib.parse.quote(str(id)))
         logger.debug("url: {}".format(url))
         logger.info("parseJSON: {}".format(request_url))
         try:
@@ -68,9 +69,16 @@ class DerpibooruParser(Parser.Parser):
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
-            print("JSON decode error. HTTP status code:{} Raw data: {}".format(
-                request_data.status_code, request_data.text))
-            raise e
+            if trial_count > 0:
+                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                print("try again after 10 minutes")
+                time.sleep(600)
+                return self.parseJSON(url, _type, trial_count - 1)
+            else:
+                logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                raise e
         while "duplicate_of" in data["image"] and data["image"]["duplicate_of"] is not None:
             data = self.parseJSON(str(data["image"]["duplicate_of"]))
         if 'tags' not in data['image']:

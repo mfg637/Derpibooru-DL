@@ -1,7 +1,9 @@
+import json
 import logging
 import os
 import pathlib
 import re
+import time
 
 import requests
 
@@ -89,7 +91,7 @@ class TwibooruParser(Parser.Parser):
     def get_raw_content_data(self):
         return self.get_data()["post"]
 
-    def parseJSON(self, _type="images"):
+    def parseJSON(self, _type="images", trial_count=2):
         self.input_id = self.get_id_by_url(self._url)
         request_url = 'https://twibooru.org/api/v3/posts/{}'.format(str(self.input_id))
         print("parseJSON", request_url)
@@ -99,7 +101,19 @@ class TwibooruParser(Parser.Parser):
         except Exception as e:
             print(e)
             return
-        data = request_data.json()
+        try:
+            data = request_data.json()
+        except json.JSONDecodeError as e:
+            if trial_count > 0:
+                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                print("try again after 10 minutes")
+                time.sleep(600)
+                return self.parseJSON(type, trial_count-1)
+            else:
+                logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                raise e
         while "duplicate_of" in data:
             data = self.parseJSON(str(data["post"]["duplicate_of"]))
         if 'tags' not in data["post"]:
