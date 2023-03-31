@@ -103,8 +103,8 @@ try:
 
     if not config.gui or NO_GUI:
         if id_list:
-            for id in id_list:
-                download(id)
+            dl_pool = download_manager.DownloadManager.create_pool(config.workers)
+            dl_pool.map(download, id_list, chunksize=1)
         else:
             while True:
                 print("id||url>", end="")
