@@ -154,26 +154,6 @@ class DownloadManager(abc.ABC):
         name = name.replace("&", "-amp-")
         return name
 
-    @staticmethod
-    def calc_hash(img: PIL.Image.Image):
-        hsv_image = img.convert(mode="HSV")
-        aspect_ratio = img.width / img.height
-        hue_hash_obj = imagehash.phash(hsv_image.getchannel("H"), hash_size=4)
-        saturation_hash_obj = imagehash.phash(hsv_image.getchannel("S"), hash_size=4)
-        value_hash_obj = imagehash.phash(hsv_image.getchannel("V"), hash_size=8)
-        hue_hash_array = numpy.packbits(hue_hash_obj.hash)
-        saturation_hash_array = numpy.packbits(saturation_hash_obj.hash)
-        value_hash_array = numpy.packbits(value_hash_obj.hash)
-        hue_hash_array.dtype = numpy.short
-        saturation_hash_array.dtype = numpy.short
-        value_hash_array.dtype = numpy.int64
-        hs_array = numpy.array(
-            [saturation_hash_array[0], value_hash_array[0]],
-            dtype=numpy.short
-        )
-        hs_array.dtype = numpy.int32
-        return aspect_ratio, int(value_hash_array[0]), int(hs_array[0])
-
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         global medialib_db_lock
 
@@ -234,7 +214,7 @@ class DownloadManager(abc.ABC):
         if file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is not None:
             buffer = io.BytesIO(self.source_file_data)
             with PIL.Image.open(buffer) as img:
-                image_hash = self.calc_hash(img)
+                image_hash = pyimglib.calc_image_hash(img)
         elif file_type == parser.Parser.FileTypes.IMAGE:
             raise ValueError("self.source_file_data IS NONE")
 
