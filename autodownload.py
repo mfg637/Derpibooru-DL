@@ -130,7 +130,6 @@ try:
 
     db_lock = multiprocessing.Lock()
     dl_pool = download_manager.DownloadManager.create_pool(config.workers)
-    random.shuffle(tasks)
     logger.info("processing {} requests".format(len(tasks)))
     results = dl_pool.map(download_manager.save_call, tasks, chunksize=1)
     pyimglib.transcoding.statistics.update_stats(results)
