@@ -40,8 +40,6 @@ workers = 1
 deleted_image_list_file_path = None
 
 if do_transcode:
-    pyimglib.config.preferred_codec = pyimglib.config.PREFERRED_CODEC.WEBP
-
     # if 0 or None, multithreading is off
     # else, it's enables row-mt
     pyimglib.config.encoding_threads = 0
