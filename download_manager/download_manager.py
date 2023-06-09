@@ -177,7 +177,7 @@ class DownloadManager(abc.ABC):
                     manifest_controller = None
                     if old_file_path.suffix == ".srs":
                         manifest_controller =\
-                            pyimglib.transcoding.encoders.srs_image_encoder.SrsImageEncoder(1, 0, 1)
+                            pyimglib.transcoding.encoders.srs_image_encoder.SrsLossyImageEncoder(1, 0, 1)
                     elif old_file_path.suffix == ".mpd":
                         manifest_controller = pyimglib.transcoding.encoders.dash_encoder.DashVideoEncoder(1)
                     if manifest_controller is not None:
