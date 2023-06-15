@@ -99,8 +99,8 @@ class TranscodeManager(DownloadManager):
         force_lossless = 'vector' in tags['content']
 
         args = (
-            self._parser.get_image_format(data),
-            self._parser.get_big_thumbnail_url(data),
+            self.parser.get_image_format(data),
+            self.parser.get_big_thumbnail_url(data),
             src_filename,
             output_directory,
             name,
@@ -113,6 +113,6 @@ class TranscodeManager(DownloadManager):
             try:
                 result = self._do_transcode(*args)
             except pyimglib.exceptions.NotIdentifiedFileFormat:
-                result = self._parser.file_deleted_handing(self._parser.get_filename_prefix(), self._parser.getID())
+                result = self.parser.file_deleted_handing(self.parser.get_filename_prefix(), self.parser.getID())
 
         return result

@@ -4,6 +4,7 @@ import sys
 import argparse
 import pathlib
 import random
+import time
 import urllib.parse
 import flask
 import json
@@ -26,6 +27,9 @@ app = flask.Flask(__name__)
 error_message = None
 
 map_list = list()
+
+executed_tasks_titles = []
+executing_tasks = []
 
 downloader_thread = threading.Thread()
 
@@ -56,7 +60,39 @@ def async_downloader():
         random.shuffle(local_map_list)
         map_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
-        results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
+        executed_tasks_titles.clear()
+        for task_arguments in local_map_list:
+            dm: download_manager.DownloadManager = task_arguments[0]
+            executed_tasks_titles.append(
+                "{}{}".format(dm.parser.get_filename_prefix(), dm.parser.getID())
+            )
+        #results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
+        results = []
+
+        for task_arguments in local_map_list:
+            task = dl_pool.apply_async(download_manager.save_call, (task_arguments,))
+            executing_tasks.append(task)
+
+        is_done = False
+        tasks_number = len(executing_tasks)
+        prev_tasks_ready = 0
+        while not is_done:
+            tasks_ready = 0
+            is_done = True
+            for task in executing_tasks:
+                if task.ready():
+                    tasks_ready += 1
+                else:
+                    is_done = False
+            if tasks_ready != prev_tasks_ready:
+                logger.info("ready {} tasks of {} total".format(tasks_ready, tasks_number))
+                prev_tasks_ready = tasks_ready
+            if not is_done:
+                time.sleep(0.5)
+
+        for task in executing_tasks:
+            results.append(task.get())
+
         pyimglib.transcoding.statistics.update_stats(results)
     logger.info("Download is done! Waiting for new requests.")
 
@@ -131,7 +167,10 @@ class RouteFabric:
                 return response
             else:
                 append2queue_and_start_download(dm, out_dir, data, parsed_tags)
-                return "OK"
+                if flask.request.method == 'POST':
+                    return "OK"
+                else:
+                    return flask.render_template("response_ok.html")
         except Exception as e:
             error_message = traceback.format_exc()
             print(error_message)

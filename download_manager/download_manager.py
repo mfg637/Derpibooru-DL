@@ -33,7 +33,7 @@ medialib_db_lock: multiprocessing.Lock = multiprocessing.Lock()
 
 class DownloadManager(abc.ABC):
     def __init__(self, _parser: parser.Parser.Parser):
-        self._parser = _parser
+        self.parser = _parser
         self._enable_rewriting = False
         self.source_file_data = None
 
@@ -63,7 +63,7 @@ class DownloadManager(abc.ABC):
                     outname = pathlib.Path(outname.name)
             except IndexError as e:
                 logger.exception(
-                    "Exception at content id={} from {}".format(data["id"], self._parser.get_origin_name())
+                    "Exception at content id={} from {}".format(data["id"], self.parser.get_origin_name())
                 )
                 raise e
         elif not outname.exists():
@@ -99,14 +99,14 @@ class DownloadManager(abc.ABC):
                     _name,
                     media_type,
                     _description,
-                    self._parser.get_origin_name(),
+                    self.parser.get_origin_name(),
                     data["id"],
                     tags,
                     connection
                 )
             except Exception as e:
                 logger.exception(
-                    "Exception at content id={} from {}".format(data["id"], self._parser.get_origin_name())
+                    "Exception at content id={} from {}".format(data["id"], self.parser.get_origin_name())
                 )
                 raise e
             if content_id is not None and image_hash is not None:
@@ -157,8 +157,8 @@ class DownloadManager(abc.ABC):
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         global medialib_db_lock
 
-        if self._parser.check_is_takedowned(data):
-            return self._parser.get_takedowned_content_info(data)
+        if self.parser.check_is_takedowned(data):
+            return self.parser.get_takedowned_content_info(data)
 
         medialib_db_connection = None
         content_info = None
@@ -168,7 +168,7 @@ class DownloadManager(abc.ABC):
             else:
                 medialib_db_connection = medialib_db.common.make_connection()
             content_info = medialib_db.find_content_from_source(
-                self._parser.get_origin_name(), self._parser.getID(), medialib_db_connection
+                self.parser.get_origin_name(), self.parser.getID(), medialib_db_connection
             )
             if content_info is not None:
                 self.medialib_db_update_tags(content_info[0], tags, medialib_db_connection)
@@ -194,13 +194,13 @@ class DownloadManager(abc.ABC):
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
 
-        src_url = self._parser.get_content_source_url(data)
-        name, src_filename = self._parser.get_output_filename(data, output_directory)
+        src_url = self.parser.get_content_source_url(data)
+        name, src_filename = self.parser.get_output_filename(data, output_directory)
 
         if config.source_name_as_file_name:
             name = DownloadManager.fix_filename(name)
         else:
-            name = "{}{}".format(self._parser.get_filename_prefix(), self._parser.getID())
+            name = "{}{}".format(self.parser.get_filename_prefix(), self.parser.getID())
 
         logger.info("filename: {}".format(src_filename))
         logger.debug("image_url: {}".format(src_url))
@@ -210,7 +210,7 @@ class DownloadManager(abc.ABC):
         )
 
         image_hash = None
-        file_type: parser.Parser.FileTypes = self._parser.identify_filetype()
+        file_type: parser.Parser.FileTypes = self.parser.identify_filetype()
         if file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is not None:
             buffer = io.BytesIO(self.source_file_data)
             with PIL.Image.open(buffer) as img:
@@ -229,7 +229,7 @@ class DownloadManager(abc.ABC):
             else:
                 if result is not None:
                     self.medialib_db_register(
-                        self._parser.get_raw_content_data(),
+                        self.parser.get_raw_content_data(),
                         src_filename,
                         result,
                         tags,
@@ -242,7 +242,7 @@ class DownloadManager(abc.ABC):
             medialib_db_lock.release()
 
         logger.info(
-            "Done downloading: {}{}".format(self._parser.get_filename_prefix(), self._parser.getID())
+            "Done downloading: {}{}".format(self.parser.get_filename_prefix(), self.parser.getID())
         )
 
         if result is not None:
@@ -251,8 +251,8 @@ class DownloadManager(abc.ABC):
             return 0, 0, 0, 0
 
     def download_original_data(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
-        src_url = self._parser.get_content_source_url(data)
-        name, src_filename = self._parser.get_output_filename(data, output_directory)
+        src_url = self.parser.get_content_source_url(data)
+        name, src_filename = self.parser.get_output_filename(data, output_directory)
 
         name = DownloadManager.fix_filename(name)
 
