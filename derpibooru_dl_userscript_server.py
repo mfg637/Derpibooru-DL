@@ -179,8 +179,8 @@ if __name__ == '__main__':
     download_manager.download_manager.TEST_MEDIALIB = args.test_medialib_db
     try:
         print("accepting requests")
-        print("to download, go to http://localhost:5757/do_download")
-        app.run(host="localhost", port=5757)
+        print("to download, go to http://{}:{}/do_download".format(config.webhost, config.port))
+        app.run(host=config.host, port=config.port)
     except Exception as e:
         error_message = traceback.format_exc()
         logging.exception(error_message)

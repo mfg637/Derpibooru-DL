@@ -4,6 +4,10 @@ import pathlib
 
 import pyimglib.config
 
+host = "localhost"
+webhost = host
+port = 5757
+
 # root of download directory (your collection)
 initial_dir = '*** insert your path required ***'
 db_storage_dir = pathlib.Path()
