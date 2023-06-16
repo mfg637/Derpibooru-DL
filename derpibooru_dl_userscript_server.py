@@ -106,6 +106,17 @@ def do_download():
     return "Download will start now!"
 
 
+@app.route('/get_status.json')
+def make_status_report():
+    response_generator = zip(executed_tasks_titles, executing_tasks)
+    response_document = []
+    for i in response_generator:
+        response_document.append({"title": i[0], "is_done": i[1].ready()})
+    response = flask.Response(json.dumps(response_document))
+    response.headers['content-type'] = "application/json"
+    return response
+
+
 class RouteFabric:
     def __init__(self, _parser):
         self._parser = _parser
