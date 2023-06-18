@@ -5,8 +5,8 @@ module.exports = {
       filename: '[name].css',
     })],
     entry: {
-        //"openCLIP-indexer": "./frontend-src/jsx/openCLIP-indexer.jsx",
-        // TODO: create module for building
+        "processing-status": "./frontend-src/jsx/processing-status.jsx",
+        "loading-spinner": "./frontend-src/sass/loading-spinner.sass",
     },
     module: {
         rules: [

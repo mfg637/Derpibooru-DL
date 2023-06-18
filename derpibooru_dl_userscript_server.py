@@ -103,7 +103,7 @@ def do_download():
     if not downloader_thread.is_alive():
         downloader_thread = threading.Thread(target=async_downloader)
         downloader_thread.start()
-    return "Download will start now!"
+    return flask.render_template("do_download.html")
 
 
 @app.route('/get_status.json')

@@ -1,0 +1,44 @@
+@use "sass:math"
+
+$radius: 6px
+$offset: 6px
+$elem_size: 3px
+$delay: 0.25s
+
+@keyframes loading
+  from
+    background-color: black
+  to
+    background-color: white
+
+.task
+  overflow: hidden
+
+  div
+    float: left
+
+  .icon
+    margin-right: 0.25em
+
+.loading-spinner
+  display: block
+  width: 16px
+  height: 16px
+  overflow: hidden
+  position: relative
+  float: left
+
+  div
+    float: none
+    background: black
+    width: $elem_size
+    height: $elem_size
+    position: absolute
+    border-radius: 50%
+    animation: 1s ease-in 1s infinite alternate loading
+
+  @for $i from 0 to 8
+    div:nth-child(8n + #{$i + 1})
+      left: math.cos(45deg * $i) * $radius + $offset
+      top: math.sin(45deg * $i)* $radius + $offset
+      animation-delay: $delay * $i
