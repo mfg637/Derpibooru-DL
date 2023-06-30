@@ -55,7 +55,8 @@ if args.loglevel:
 
 
 id_list = args.id.copy()
-download_manager.download_manager.ENABLE_REWRITING = pyimglib.config.allow_rewrite = args.rewrite
+rewrite = pyimglib.config.allow_rewrite = args.rewrite
+download_manager.download_manager.ENABLE_REWRITING = rewrite
 config.simulate = args.simulate
 NO_GUI = args.no_gui
 config.deleted_image_list_file_path = args.deleted_list
@@ -89,6 +90,8 @@ def download(url):
     logger.info("output directory: {}".format(outdir))
 
     dm = download_manager.make_download_manager(_parser)
+    if rewrite:
+        dm.enable_rewriting()
     dm.save_image_old_interface(outdir, data, parsed_tags)
 
 
