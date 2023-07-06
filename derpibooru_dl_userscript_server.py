@@ -53,6 +53,10 @@ dl_pool = download_manager.DownloadManager.create_pool(config.workers)
 def append2queue_and_start_download(*args):
     global downloader_thread
     map_list.append(args)
+    if not config.manual_start:
+        if not downloader_thread.is_alive():
+            downloader_thread = threading.Thread(target=async_downloader)
+            downloader_thread.start()
     logger.info("download queue now contains {} requests".format(len(map_list)))
 
 
@@ -105,9 +109,10 @@ def async_downloader():
 @app.route('/do_download')
 def do_download():
     global downloader_thread
-    if not downloader_thread.is_alive():
-        downloader_thread = threading.Thread(target=async_downloader)
-        downloader_thread.start()
+    if config.manual_start:
+        if not downloader_thread.is_alive():
+            downloader_thread = threading.Thread(target=async_downloader)
+            downloader_thread.start()
     return flask.render_template("do_download.html")
 
 

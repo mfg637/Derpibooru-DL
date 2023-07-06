@@ -56,3 +56,5 @@ if do_transcode:
     # if not none, use JPEG XL's lossless encoding
     pyimglib.config.jpeg_xl_tools_path = None
 
+
+manual_start = False
