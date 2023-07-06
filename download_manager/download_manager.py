@@ -156,6 +156,7 @@ class DownloadManager(abc.ABC):
 
     def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
         global medialib_db_lock
+        logger.debug("download method execution")
 
         if self.parser.check_is_takedowned(data):
             return self.parser.get_takedowned_content_info(data)

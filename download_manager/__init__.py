@@ -18,4 +18,5 @@ def make_download_manager(_parser: parser.Parser.Parser):
 
 
 def save_call(task: tuple[DownloadManager, str, dict, dict]) -> tuple[int, int, int, int]:
+    logger.debug("task info (save call used): {}".format(task.__repr__()))
     return task[0].download(*task[1:])

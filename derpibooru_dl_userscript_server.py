@@ -47,6 +47,9 @@ FILE_SUFFIX_LIST = [
 ]
 
 
+dl_pool = download_manager.DownloadManager.create_pool(config.workers)
+
+
 def append2queue_and_start_download(*args):
     global downloader_thread
     map_list.append(args)
@@ -54,12 +57,14 @@ def append2queue_and_start_download(*args):
 
 
 def async_downloader():
-    dl_pool = download_manager.DownloadManager.create_pool(config.workers)
+    global executing_tasks
+    global executed_tasks_titles
     while len(map_list):
         local_map_list = map_list.copy()
         random.shuffle(local_map_list)
         map_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
+        executing_tasks.clear()
         executed_tasks_titles.clear()
         for task_arguments in local_map_list:
             dm: download_manager.DownloadManager = task_arguments[0]
@@ -151,6 +156,7 @@ class RouteFabric:
                     )
                 )
             data = _parser.parseJSON()
+            logger.debug("received data: {}".format(data.__repr__()))
             parsed_tags = _parser.tagIndex()
             out_dir = tagResponse.find_folder(parsed_tags)
             _parser.dataValidator(data)
