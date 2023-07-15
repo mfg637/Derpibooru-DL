@@ -217,6 +217,7 @@ class DownloadManager(abc.ABC):
             with PIL.Image.open(buffer) as img:
                 image_hash = pyimglib.calc_image_hash(img)
         elif file_type == parser.Parser.FileTypes.IMAGE:
+            # TODO: BUGFIX db3163649
             raise ValueError("self.source_file_data IS NONE")
 
         if config.use_medialib_db:
