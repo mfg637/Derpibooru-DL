@@ -124,6 +124,7 @@ class DownloadManager(abc.ABC):
                 medialib_db.connect_tag_by_id(db_content_id, db_tag_id, connection)
 
     def download_file(self, filename: pathlib.Path, src_url: str) -> None:
+        logger.debug("download_file() call")
         request_data = requests.get(src_url)
         self.source_file_data = request_data.content
         file = open(filename, 'wb')
@@ -216,8 +217,10 @@ class DownloadManager(abc.ABC):
             buffer = io.BytesIO(self.source_file_data)
             with PIL.Image.open(buffer) as img:
                 image_hash = pyimglib.calc_image_hash(img)
+        elif result is None or result[:4] == (0, 0, 0, 0):
+            return 0, 0, 0, 0
         elif file_type == parser.Parser.FileTypes.IMAGE:
-            # TODO: BUGFIX db3163649
+            logger.debug("result: {}".format(result.__repr__()))
             raise ValueError("self.source_file_data IS NONE")
 
         if config.use_medialib_db:
@@ -303,6 +306,7 @@ class DownloadManager(abc.ABC):
             print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
 
     def do_binary_request(self, url):
+        logger.debug("do_binary_request() call")
         request_data = requests.get(url)
         self.source_file_data = request_data.content
         source = bytearray(self.source_file_data)
