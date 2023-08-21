@@ -217,9 +217,7 @@ class DownloadManager(abc.ABC):
             buffer = io.BytesIO(self.source_file_data)
             with PIL.Image.open(buffer) as img:
                 image_hash = pyimglib.calc_image_hash(img)
-        elif result is None or result[:4] == (0, 0, 0, 0):
-            return 0, 0, 0, 0
-        elif file_type == parser.Parser.FileTypes.IMAGE:
+        elif file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is None:
             logger.debug("result: {}".format(result.__repr__()))
             raise ValueError("self.source_file_data IS NONE")
 
