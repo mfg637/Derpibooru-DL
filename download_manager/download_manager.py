@@ -304,7 +304,7 @@ class DownloadManager(abc.ABC):
             print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
 
     def do_binary_request(self, url):
-        logger.debug("do_binary_request() call")
+        logger.debug("do_binary_request() call, url={}".format(url))
         request_data = requests.get(url)
         self.source_file_data = request_data.content
         source = bytearray(self.source_file_data)

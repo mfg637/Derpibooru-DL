@@ -127,7 +127,7 @@ class DerpibooruParser(Parser.Parser):
             )
             result["representations"]["full"] = result["view_url"]
             for repr_name in ("large", "medium", "small", "tall", "thumb", "thumb_small", "thumb_tiny"):
-                result["representations"][repr_name] = "https://derpicdn.net/img/view/{}/{}/{}/{}/{}.{}".format(
+                result["representations"][repr_name] = "https://derpicdn.net/img/{}/{}/{}/{}/{}.{}".format(
                     created_at.year,
                     created_at.month,
                     created_at.day,

@@ -2,6 +2,8 @@ import logging
 import os
 import pathlib
 
+import PIL.Image
+
 import config
 import parser
 from .download_manager import DownloadManager
@@ -67,7 +69,7 @@ class TranscodeManager(DownloadManager):
                     transcoded_file is None:
                 try:
                     return self.in_memory_transcode(src_url, name, output_directory, force_lossless)
-                except DecompressionBombError:
+                except PIL.Image.DecompressionBombError:
                     src_url = os.path.splitext(large_image)[0] + '.' + \
                         original_format
                     if 'https:' not in src_url:
