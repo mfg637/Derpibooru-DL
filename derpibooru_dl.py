@@ -75,14 +75,14 @@ def download(url):
         _parser: parser.tag_indexer.TagIndexer = parser.get_parser(url, config.use_medialib_db)
     except parser.exceptions.NotBoorusPrefixError as e:
         logger.exception("invalid prefix in {}".format(e.url))
-        return
+        exit(1)
     except parser.exceptions.SiteNotSupported as e:
         logger.exception("Site not supported {}".format(e.url))
-        return
+        exit(1)
     try:
         data = _parser.get_data()
     except IndexError:
-        return
+        exit(1)
 
     parsed_tags: dict = _parser.tagIndex()
     logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))

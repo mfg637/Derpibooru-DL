@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 import pathlib
-
+import enum
 import pyimglib.config
 
 host = "localhost"
@@ -11,6 +11,13 @@ port = 5757
 # root of download directory (your collection)
 initial_dir = '*** insert your path required ***'
 db_storage_dir = pathlib.Path()
+medialib_directory = db_storage_dir.joinpath("pictures").joinpath("medialib")
+
+class SavingPath(enum.Enum):
+    COLLECTION = enum.auto()
+    MEDIALIB = enum.auto()
+
+saving_path: SavingPath = SavingPath.COLLECTION
 
 # user API key here
 key = ''
