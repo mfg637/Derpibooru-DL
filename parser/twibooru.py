@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -15,6 +16,8 @@ ORIGIN = 'twibooru'
 
 logger = logging.getLogger(__name__)
 
+requests_remain = 60
+reset_time = datetime.datetime.utcnow()
 
 class TwibooruParser(Parser.Parser):
     def identify_filetype(self) -> FileTypes:
@@ -92,6 +95,18 @@ class TwibooruParser(Parser.Parser):
         return self.get_data()["post"]
 
     def parseJSON(self, _type="images", trial_count=2):
+        global reset_time
+        global requests_remain
+
+        current_time_utc = datetime.datetime.utcnow()
+        if current_time_utc >= reset_time:
+            requests_remain = 60
+        while requests_remain == 0:
+            print("requests exhausted. Wait for 30 seconds")
+            time.sleep(30)
+            current_time_utc = datetime.datetime.utcnow()
+            if current_time_utc >= reset_time:
+                requests_remain = 60
         self.input_id = self.get_id_by_url(self._url)
         request_url = 'https://twibooru.org/api/v3/posts/{}'.format(str(self.input_id))
         print("parseJSON", request_url)
@@ -101,6 +116,13 @@ class TwibooruParser(Parser.Parser):
         except Exception as e:
             print(e)
             return
+        requests_remain = int(request_data.headers['x-rl-remain'])
+        reset_time = datetime.datetime.strptime(request_data.headers['x-rl-reset'], "%Y-%m-%d %H:%M:%S %Z")
+        if request_data.status_code == 429:
+            print("requests exhausted. Wait for 10 minutes")
+            time.sleep(600)
+            return self.parseJSON(type, trial_count - 1)
+        print(requests_remain, "requests remain until reset")
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
