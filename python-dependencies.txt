@@ -2,5 +2,9 @@ flask
 Pillow
 lxml
 CairoSVG
-psycopg2
+psycopg2-binary
 pathvalidate
+pypng
+imagehash
+requests
+
