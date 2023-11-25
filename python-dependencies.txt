@@ -7,4 +7,4 @@ pathvalidate
 pypng
 imagehash
 requests
-
+av1an
