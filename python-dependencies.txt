@@ -8,3 +8,4 @@ pypng
 imagehash
 requests
 av1an
+pillow_heif
