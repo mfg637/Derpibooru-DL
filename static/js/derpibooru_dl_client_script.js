@@ -146,19 +146,19 @@ if  (
       if (!(image_wrappers[i] instanceof Element)) {
         continue
       }
-      //data_wrapper = image_wrappers[i].getElementsByClassName('image-container')[0];
       e621_image_handler(
           image_wrappers[i],
           button_placer_default,
           image_wrappers[i].getElementsByClassName("post-score")[0]
       );
     }
-  } else {
-    image_wrapper = document.getElementById('image-container');
+  }
+  image_wrapper = document.getElementById('image-container');
+  if (image_wrapper !== null) {
     e621_image_handler(
-        image_wrapper,
-        button_placer_default,
-        document.getElementById("image-extra-controls")
+      image_wrapper,
+      button_placer_default,
+      document.getElementById("image-extra-controls")
     )
   }
 }
