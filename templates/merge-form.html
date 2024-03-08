@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Merge form</title>
+</head>
+<body>
+    <h1>Merge form</h1>
+    <form action="/merge/handle" method="POST" enctype="multipart/form-data">
+        <label for="origin_id">URL or ID: </label>
+        <input type="text" name="origin" id="origin_id"/>
+        <br/>
+        <label for="file_upload">File:</label>
+        <input type="file" name="content_file" id="file_upload"/>
+        <input type="submit" value="MERGE" />
+    </form>
+</body>
+</html>

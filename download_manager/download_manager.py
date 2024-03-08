@@ -11,13 +11,11 @@ import threading
 import PIL.Image
 import pathvalidate
 import requests
-import imagehash
 
 import config
 import medialib_db
 import parser
 import pyimglib
-import numpy
 
 ENABLE_REWRITING = False
 
@@ -67,7 +65,7 @@ class DownloadManager(abc.ABC):
                 )
                 raise e
         elif not outname.exists():
-            logger.error("NOT FOUNDED FILE")
+            logger.error("THE FILE IS MISSING")
             raise FileNotFoundError()
 
         _name = None

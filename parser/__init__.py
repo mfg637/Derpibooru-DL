@@ -7,22 +7,22 @@ from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru, exception
 url_pattern = re.compile(r"https?://")
 filename_prefix_pattern = re.compile(r"[a-z]{2}\d+")
 
+class_by_prefix = {
+    derpibooru.FILENAME_PREFIX: derpibooru.DerpibooruParser,
+    ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
+    twibooru.FILENAME_PREFIX: twibooru.TwibooruParser,
+    e621.FILENAME_PREFIX: e621.E621Parser,
+    furbooru.FILENAME_PREFIX: furbooru.FurbooruParser
+}
+class_by_domain_name = {
+    derpibooru.DerpibooruParser.get_domain_name_s(): derpibooru.DerpibooruParser,
+    ponybooru.PonybooruParser.get_domain_name_s(): ponybooru.PonybooruParser,
+    'twibooru.org': twibooru.TwibooruParser,
+    e621.E621Parser.get_domain_name_s(): e621.E621Parser,
+    furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser
+}
 
 def get_parser(url, use_medialib_db: bool):
-    class_by_prefix = {
-        derpibooru.FILENAME_PREFIX: derpibooru.DerpibooruParser,
-        ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
-        twibooru.FILENAME_PREFIX: twibooru.TwibooruParser,
-        e621.FILENAME_PREFIX: e621.E621Parser,
-        furbooru.FILENAME_PREFIX: furbooru.FurbooruParser
-    }
-    class_by_domain_name = {
-        derpibooru.DerpibooruParser.get_domain_name_s(): derpibooru.DerpibooruParser,
-        ponybooru.PonybooruParser.get_domain_name_s(): ponybooru.PonybooruParser,
-        'twibooru.org': twibooru.TwibooruParser,
-        e621.E621Parser.get_domain_name_s(): e621.E621Parser,
-        furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser
-    }
     raw_parser = None
     if url_pattern.match(url) is not None:
         for domain_name in class_by_domain_name:

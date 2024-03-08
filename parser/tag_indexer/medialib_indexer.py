@@ -5,13 +5,16 @@ from .tag_indexer import TagIndexer
 class MedialibTagIndexer(TagIndexer):
     @staticmethod
     def tag_register(tag_name, tag_category, tag_alias, connection):
-        tag_id = medialib_db.tags_indexer.check_tag_exists(tag_name, tag_category, connection)
+        tag_id = medialib_db.tags_indexer.get_tag_id_by_alias(
+            tag_alias, connection
+        )
         if tag_id is None:
             tag_id = medialib_db.tags_indexer.insert_new_tag(
                 tag_name, tag_category, tag_alias, connection
             )
         else:
-            tag_id = tag_id[0]
+            if type(tag_id) is tuple:
+                tag_id = tag_id[0]
         return tag_id
 
     def index(self):

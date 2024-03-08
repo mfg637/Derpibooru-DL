@@ -17,6 +17,7 @@ import parser
 import logging
 import pyimglib
 import derpibooru_dl
+import datamerge
 from derpibooru_dl import tagResponse
 
 derpibooru_dl.logging.init("server")
@@ -24,6 +25,7 @@ derpibooru_dl.logging.init("server")
 logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
+app.register_blueprint(datamerge.datamerge_blueprint)
 error_message = None
 
 map_list = list()
