@@ -34,6 +34,7 @@ class DownloadManager(abc.ABC):
         self.parser = _parser
         self._enable_rewriting = False
         self.source_file_data = None
+        self.skip_download: bool = False
 
     def is_rewriting_allowed(self):
         return ENABLE_REWRITING or self._enable_rewriting
@@ -215,9 +216,12 @@ class DownloadManager(abc.ABC):
             buffer = io.BytesIO(self.source_file_data)
             with PIL.Image.open(buffer) as img:
                 image_hash = pyimglib.calc_image_hash(img)
-        elif file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is None:
-            logger.debug("result: {}".format(result.__repr__()))
-            raise ValueError("self.source_file_data IS NONE")
+        elif file_type == parser.Parser.FileTypes.IMAGE and \
+                self.source_file_data is None:
+            if not self.skip_download:
+                logger.debug("result: {}".format(result.__repr__()))
+                self.parser.print_debug_info()
+                raise ValueError("self.source_file_data IS NONE")
 
         if config.use_medialib_db:
             logger.debug("medialib-db acquire lock")

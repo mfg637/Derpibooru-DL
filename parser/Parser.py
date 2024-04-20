@@ -27,6 +27,11 @@ class Parser(abc.ABC):
         self._url = url
         self._parsed_data = parsed_data
 
+    def print_debug_info(self):
+        print("origin name:", self.get_origin_name)
+        print("URL:", self._url)
+        print("parsed data", self._parsed_data)
+
     def _dump_parsed_data(self):
         if config.response_cache_dir is not None:
             config.response_cache_dir.mkdir(parents=True, exist_ok=True)

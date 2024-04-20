@@ -29,6 +29,9 @@ class TagIndexer(Parser):
             return self.index()
 
     # decorated methods
+    def print_debug_info(self):
+        return self._parser.print_debug_info()
+
     def parseJSON(self, url=None, _type=None) -> dict:
         if _type is not None:
             return self._parser.parseJSON(url, _type)

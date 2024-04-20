@@ -80,10 +80,12 @@ class TranscodeManager(DownloadManager):
                     src_filename, output_directory, name
                 )
                 if transcoder is not None:
-                    transcoder.transcode()
+                    return transcoder.transcode()
                 else:
                     self.download_file(src_filename, src_url)
+                    return 0, 0, 0, 0, src_filename
             elif config.enable_multiprocessing:
+                self.skip_download = True
                 if transcoded_file is not None:
                     return 0, 0, 0, 0, transcoded_file
                 else:
@@ -91,6 +93,8 @@ class TranscodeManager(DownloadManager):
         else:
             if not os.path.isfile(src_filename):
                 self.download_file(src_filename, src_url)
+            else:
+                self.skip_download = True
             return 0, 0, 0, 0, src_filename
 
     def _download_body(
