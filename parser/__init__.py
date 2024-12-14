@@ -1,7 +1,7 @@
 import re
 
 import parser.tag_indexer
-from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru, exceptions, tag_indexer
+from . import Parser, derpibooru, ponybooru, twibooru, e621, furbooru, tantabus, exceptions, tag_indexer
 
 
 url_pattern = re.compile(r"https?://")
@@ -12,14 +12,17 @@ class_by_prefix = {
     ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
     twibooru.FILENAME_PREFIX: twibooru.TwibooruParser,
     e621.FILENAME_PREFIX: e621.E621Parser,
-    furbooru.FILENAME_PREFIX: furbooru.FurbooruParser
+    furbooru.FILENAME_PREFIX: furbooru.FurbooruParser,
+    tantabus.FILENAME_PREFIX: tantabus.TantabusAIParser
 }
+
 class_by_domain_name = {
     derpibooru.DerpibooruParser.get_domain_name_s(): derpibooru.DerpibooruParser,
     ponybooru.PonybooruParser.get_domain_name_s(): ponybooru.PonybooruParser,
     'twibooru.org': twibooru.TwibooruParser,
     e621.E621Parser.get_domain_name_s(): e621.E621Parser,
-    furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser
+    furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser,
+    tantabus.TantabusAIParser.get_domain_name_s(): tantabus.TantabusAIParser
 }
 
 def get_parser(url, use_medialib_db: bool):

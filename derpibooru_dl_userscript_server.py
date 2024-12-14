@@ -232,6 +232,12 @@ def e621_handler():
     return fabric.handle()
 
 
+@app.route('/tantabus', methods=['POST', 'GET'])
+def tantabus_handler():
+    fabric = RouteFabric(parser.tantabus.TantabusAIParser)
+    return fabric.handle()
+
+
 if __name__ == '__main__':
     arg_parser = argparse.ArgumentParser()
     arg_parser.add_argument("--home-path", help="where to download image files", type=pathlib.Path, default=None)

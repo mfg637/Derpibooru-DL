@@ -14,13 +14,17 @@
 // @match       https://furbooru.org/images*
 // @match       https://furbooru.org/search
 // @match       https://furbooru.org/tags/*
+// @match       https://tantabus.ai/
+// @match       https://tantabus.ai/images*
+// @match       https://tantabus.ai/search
+// @match       https://tantabus.ai/tags/*
 // @match       https://e621.net/popular
 // @match       https://e621.net/favorites
 // @match       https://e621.net/posts
 // @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.3.0
+// @version     1.4.0
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -29,18 +33,42 @@ var url_head = 'http://localhost:5757';
 
 waiting_dl_button = null
 
+// TODO: FIX e621
+
+function get_url(){
+  const hostname = window.location.hostname;
+  let url = url_head;
+  switch (hostname) {
+    case "derpibooru.org":
+      break;
+    case 'twibooru.org':
+      url = url_head + "/twibooru";
+      break;
+    case "ponybooru.org":
+      url = url_head + "/ponybooru";
+      break;
+    case "e621.net":
+      url = url_head + "/e621";
+      break;
+    case "furbooru.org":
+      url = url_head + "/furbooru";
+      break;
+    case "tantabus.ai":
+      url = url_head + "/tantabus";
+      break;
+    default:
+      alert(`Implementation error: site ${hostname} is not implemented! (line 56)`)
+      break;
+  };
+  return url
+}
+
 function dl_button_click_handler(event){
   console.log(this.data);
   console.log(JSON.stringify(this.data));
-  let url = url_head;
-  if (document.domain === 'twibooru.org')
-    url = url_head + "/twibooru";
-  else if (document.domain === "ponybooru.org")
-    url = url_head + "/ponybooru";
-  else if (document.domain === "e621.net")
-    url = url_head + "/e621";
-  else if (document.domain === "furbooru.org")
-    url = url_head + "/furbooru";
+
+  const url = get_url();
+    
   GM.xmlHttpRequest({
     method: "POST",
     data: JSON.stringify(this.data),
@@ -58,36 +86,33 @@ function dl_button_click_handler(event){
 }
 
 function button_placer_default(dl_button, image_wrapper){
+  const hostname = window.location.hostname;
   dl_button.innerText='dl';
-  if (document.domain === "derpibooru.org"){
-    dl_button.href = url_head;
-    image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
-  }else if (document.domain === 'twibooru.org'){
-    dl_button.href = url_head + "/twibooru";
-    image_wrapper.getElementsByClassName('media-box__header')[0].getElementsByTagName('form')[0].appendChild(dl_button);
-  }else if (document.domain === "ponybooru.org"){
-    dl_button.href = url_head + "/ponybooru";
-    image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
-  }else if (document.domain === "furbooru.org"){
-    dl_button.href = url_head + "/furbooru";
-    image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
-  }else if (document.domain === "e621.net"){
-    dl_button.href = url_head + "/e621";
-    image_wrapper.appendChild(dl_button);
+  const url = get_url();
+  dl_button.href = url;
+  switch (hostname) {
+    case "ponybooru.org":
+    case "furbooru.org":
+    case "tantabus.ai":
+    case "derpibooru.org":
+      image_wrapper.getElementsByClassName('media-box__header')[0].appendChild(dl_button);
+      break;
+    case 'twibooru.org':
+      image_wrapper.getElementsByClassName('media-box__header')[0].getElementsByTagName('form')[0].appendChild(dl_button);
+      break;
+    case "e621.net":
+      image_wrapper.appendChild(dl_button);
+      break;
+    default:
+      alert(`Implementation error: site ${hostname} is not implemented! (line 102)`)
+      break;
   }
 }
 
 function button_placer_show_image(dl_button, unused_arg){
   dl_button.innerText='DDL';
-  if (document.domain === "derpibooru.org"){
-    dl_button.href = url_head;
-  }else if (document.domain === 'twibooru.org'){
-    dl_button.href = url_head + "/twibooru";
-  }else if (document.domain === "ponybooru.org"){
-    dl_button.href = url_head + "/ponybooru";
-  }else if (document.domain === "furbooru.org"){
-    dl_button.href = url_head + "/furbooru";
-  }
+  const url = get_url();
+  dl_button.href = url;
   document.getElementsByClassName('image-metabar')[0].appendChild(dl_button);
 }
 
@@ -116,11 +141,13 @@ function e621_image_handler(data_wrapper, button_placer, placing_place){
 }
 
 
+const hostname = window.location.hostname;
 if  (
-      (document.domain === "derpibooru.org") ||
-      (document.domain === 'twibooru.org') ||
-      (document.domain === "ponybooru.org") ||
-      (document.domain === "furbooru.org")
+      (hostname === "derpibooru.org") ||
+      (hostname === 'twibooru.org') ||
+      (hostname === "ponybooru.org") ||
+      (hostname === "furbooru.org") ||
+      (hostname === "tantabus.ai")
     )
 {
   image_wrappers = document.getElementsByClassName('media-box');
