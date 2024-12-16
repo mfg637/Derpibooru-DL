@@ -24,7 +24,7 @@
 // @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.4.0
+// @version     1.4.1
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -32,8 +32,6 @@
 var url_head = 'http://localhost:5757';
 
 waiting_dl_button = null
-
-// TODO: FIX e621
 
 function get_url(){
   const hostname = window.location.hostname;
@@ -166,8 +164,8 @@ if  (
       image_handler(data_wrapper, button_placer_show_image);
     }
   }
-}else if (document.domain === "e621.net"){
-  image_wrappers = document.getElementsByClassName('post-preview');
+}else if (hostname === "e621.net"){
+  image_wrappers = document.getElementsByClassName('thumbnail');
   if (image_wrappers.length > 0) {
     for (let i in image_wrappers) {
       if (!(image_wrappers[i] instanceof Element)) {
@@ -176,7 +174,7 @@ if  (
       e621_image_handler(
           image_wrappers[i],
           button_placer_default,
-          image_wrappers[i].getElementsByClassName("post-score")[0]
+          image_wrappers[i].childNodes[1]
       );
     }
   }
