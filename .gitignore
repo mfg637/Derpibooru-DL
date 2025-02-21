@@ -6,3 +6,7 @@ Thumbs.db
 browser/tmpcache/*
 .idea!/logs/
 /logs/*
+.code-workspace
+/node_modules
+.idea
+yarn.lock
