@@ -1,22 +1,22 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
 
-import multiprocessing
-import random
-
-import requests
-import os
+import argparse
 import json
 import logging
-import argparse
-
 import math
+import multiprocessing
+import os
+import parser
+import random
+import time
+
+import requests
 
 import download_manager
 import medialib_db
 import pyimglib
 from derpibooru_dl import tagResponse
-import parser
 
 try:
     import config
@@ -24,7 +24,8 @@ except ImportError as e:
     print('error importing config.py')
     raise e
 
-logging.basicConfig(level=logging.INFO, format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(process)dx%(thread)d::%(levelname)s::%(name)s::%(message)s")
 
 logger = logging.getLogger(__name__)
 
@@ -48,11 +49,15 @@ current_page = 1
 
 
 argument_parser = argparse.ArgumentParser()
-argument_parser.add_argument("n value", type=int, help="numeric value of some period type", default=3)
-argument_parser.add_argument("period", type=str, help="type of period", default="days")
-argument_parser.add_argument("--prompt", type=str, help="custom prompt to search", default="None")
+argument_parser.add_argument(
+    "n value", type=int, help="numeric value of some period type", default=3)
+argument_parser.add_argument(
+    "period", type=str, help="type of period", default="days")
+argument_parser.add_argument(
+    "--prompt", type=str, help="custom prompt to search", default="None")
 argument_parser.add_argument("--items-per-page", type=int, default=15)
-argument_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
+argument_parser.add_argument(
+    "--rewrite", help="force to rewrite existing files", action="store_true")
 args = argument_parser.parse_args()
 
 n_value = vars(args)['n value']
@@ -95,16 +100,29 @@ try:
                            "%26%26+my%3Aupvotes&key={key}"
                            "&page={page}&perpage={perpage}").format(**request)
         print("request url:", request_url)
-        request_data = requests.get(request_url)
+
         data = None
-        if request_data.status_code == 404:
-            raise IndexError("not founded \"{}\"".format(request_url))
-        try:
-            data = request_data.json()
-        except json.JSONDecodeError as e:
-            print("JSON decode error. HTTP status code:{} Raw data: {}".format(
+        trial_count = 3
+        error = None
+        while trial_count > 0:
+            try:
+                request_data = requests.get(request_url)
+                data = request_data.json()
+                if request_data.status_code == 404:
+                    raise IndexError("not founded \"{}\"".format(request_url))
+            except json.JSONDecodeError as e:
+                error = e
+                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                    request_data.status_code, request_data.text))
+                print("try again after 10 minutes")
+                time.sleep(600)
+                trial_count -= 1
+            else:
+                break
+        if data is None and error is not None:
+            logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
                 request_data.status_code, request_data.text))
-            raise e
+            raise error
 
         if current_page == 1 and period != "pages":
             pages = int(math.ceil(data['total'] / items_per_page))
