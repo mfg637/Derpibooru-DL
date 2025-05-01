@@ -24,12 +24,15 @@ FILENAME_PREFIX = 'db'
 ORIGIN = 'derpibooru'
 
 def make_connection():
-    return psycopg2.connect(
-        host="localhost",
-        database="derpibooru",
-        user=medialib_db.config.db_user,
-        password=medialib_db.config.db_password
-    )
+    try:
+        return psycopg2.connect(
+            host="localhost",
+            database="derpibooru",
+            user=medialib_db.config.db_user,
+            password=medialib_db.config.db_password
+        )
+    except psycopg2.OperationalError:
+        return None
 
 
 class DerpibooruParser(Parser.Parser):
@@ -159,15 +162,16 @@ class DerpibooruParser(Parser.Parser):
         data = None
         if self.get_origin_name() == ORIGIN:
             db_local_instance = make_connection()
-            content_founded = check_exists(id, db_local_instance)
-            duplicate_of = check_duplicates(id, db_local_instance)
-            if duplicate_of is not None:
-                logger.info("duplicate founded")
-                data = self.parseJSON(duplicate_of)
-            elif content_founded:
-                logger.info("content_founded")
-                data = generate_data(id, db_local_instance)
-            db_local_instance.close()
+            if db_local_instance is not None:
+                content_founded = check_exists(id, db_local_instance)
+                duplicate_of = check_duplicates(id, db_local_instance)
+                if duplicate_of is not None:
+                    logger.info("duplicate founded")
+                    data = self.parseJSON(duplicate_of)
+                elif content_founded:
+                    logger.info("content_founded")
+                    data = generate_data(id, db_local_instance)
+                db_local_instance.close()
         if data is None:
             request_url = 'https://{}/api/v1/json/{}/{}'.format(self.get_domain_name_s(), _type, urllib.parse.quote(str(id)))
             logger.debug("url: {}".format(url))
