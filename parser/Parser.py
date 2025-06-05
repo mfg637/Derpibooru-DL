@@ -148,7 +148,7 @@ class Parser(abc.ABC):
                 raise Exception(message)
 
             def handle_starttag(self, tag, attrs):
-                if tag == 'span':
+                if tag == 'div':
                     attributes = dict(attrs)
                     if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
                         tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
