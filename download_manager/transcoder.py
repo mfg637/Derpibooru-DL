@@ -22,10 +22,16 @@ class TranscodeManager(DownloadManager):
     def __init__(self, _parser: parser.Parser.Parser):
         super().__init__(_parser)
 
-    def in_memory_transcode(self, src_url, name, output_directory, force_lossless=False):
+    def in_memory_transcode(
+        self, src_url, name, output_directory, force_lossless=False
+    ):
         source = self.do_binary_request(src_url)
         transcoder = pyimglib.transcoding.get_memory_transcoder(
-            source, output_directory, name, force_lossless
+            source,
+            output_directory,
+            name,
+            force_lossless,
+            self.is_rewriting_allowed()
         )
         return transcoder.transcode()
 
