@@ -16,6 +16,7 @@ import config
 import medialib_db
 import parser
 import pyimglib
+import pyimglib.common
 
 ENABLE_REWRITING = False
 
@@ -41,6 +42,31 @@ class DownloadManager(abc.ABC):
 
     def enable_rewriting(self):
         self._enable_rewriting = True
+    
+    @staticmethod
+    def detect_media_type(outname, file_type) -> str:
+        media_type = None
+        if outname.suffix == ".srs":
+            f = open(outname, "r")
+            _data = json.load(f)
+            f.close()
+            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
+        else:
+            if file_type in {parser.Parser.FileTypes.IMAGE, parser.Parser.FileTypes.VECTOR_IMAGE}:
+                media_type = "image"
+            elif file_type == parser.Parser.FileTypes.ANIMATION:
+                media_type = "video-loop"
+            elif file_type == parser.Parser.FileTypes.VIDEO:
+                src_metadata = pyimglib.common.ffmpeg.probe(outname)
+                if pyimglib.common.ffmpeg.parser.test_videoloop(
+                    src_metadata
+                ):
+                    media_type = "video-loop"
+                else:
+                    media_type = "video"
+            else:
+                media_type = "image"
+        return media_type
 
     def medialib_db_register(
             self,
@@ -74,20 +100,7 @@ class DownloadManager(abc.ABC):
         if 'name' in data:
             _name = data['name']
         if outname is not None:
-            if outname.suffix == ".srs":
-                f = open(outname, "r")
-                _data = json.load(f)
-                f.close()
-                media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
-            else:
-                if file_type in {parser.Parser.FileTypes.IMAGE, parser.Parser.FileTypes.VECTOR_IMAGE}:
-                    media_type = "image"
-                elif file_type == parser.Parser.FileTypes.ANIMATION:
-                    media_type = "video-loop"
-                elif file_type == parser.Parser.FileTypes.VIDEO:
-                    media_type = "video"
-                else:
-                    media_type = "image"
+            media_type = self.detect_media_type(outname, file_type)
             _description = None
             content_id = None
             if "description" in data and len(data['description']):
@@ -121,6 +134,20 @@ class DownloadManager(abc.ABC):
                 if db_tag_id is None:
                     db_tag_id = medialib_db.tags_indexer.insert_new_tag(tag, _tag_category, None, connection)
                 medialib_db.connect_tag_by_id(db_content_id, db_tag_id, connection)
+
+    def medialib_db_update_content(
+        self,
+        connection,
+        content_info,
+        transcoding_result,
+        image_hash,
+        file_type: parser.Parser.FileTypes
+    ):
+        outname = transcoding_result[4]
+        media_type = self.detect_media_type(outname, file_type)
+        medialib_db.update_file_path(
+            content_info[0], outname, image_hash, media_type, connection
+        )
 
     def download_file(self, filename: pathlib.Path, src_url: str) -> None:
         logger.debug("download_file() call")
@@ -228,8 +255,12 @@ class DownloadManager(abc.ABC):
             medialib_db_lock.acquire(block=True)
             if content_info is not None:
                 if result is not None:
-                    medialib_db.update_file_path(
-                        content_info[0], result[4], image_hash, medialib_db_connection
+                    self.medialib_db_update_content(
+                        medialib_db_connection,
+                        content_info,
+                        result,
+                        image_hash,
+                        file_type
                     )
             else:
                 if result is not None:
