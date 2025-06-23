@@ -24,6 +24,7 @@ class TwibooruParser(Parser.Parser):
         filetype = Parser.Parser.identify_by_mimetype(self.get_data()["post"]["mime_type"])
         if filetype == FileTypes.IMAGE and "animated" in self.get_data()["post"]['tags']:
             filetype = FileTypes.ANIMATION
+        return filetype
     def get_origin_name(self):
         return ORIGIN
 
