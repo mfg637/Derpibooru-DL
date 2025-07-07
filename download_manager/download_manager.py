@@ -1,7 +1,9 @@
 import abc
+import dataclasses
 import io
 import json
 import logging
+import lzma
 import multiprocessing
 import os
 import pathlib
@@ -30,6 +32,12 @@ logger = logging.getLogger(__name__)
 medialib_db_lock: multiprocessing.Lock = multiprocessing.Lock()
 
 
+@dataclasses.dataclass
+class ComfyUIWorkflow:
+    prompt: dict
+    workflow: dict
+
+
 class DownloadManager(abc.ABC):
     def __init__(self, _parser: parser.Parser.Parser):
         self.parser = _parser
@@ -42,17 +50,62 @@ class DownloadManager(abc.ABC):
 
     def enable_rewriting(self):
         self._enable_rewriting = True
-    
+
     @staticmethod
-    def detect_media_type(outname, file_type) -> str:
+    def extract_attachments(srs_data):
+        plain_text_attachments: dict[str, str] = {}
+        json_attachments: dict[str, any] = {}
+        comfyUI_workflow: ComfyUIWorkflow | None = None
+        attachments = srs_data["content"]["attachment"]
+        if attachments:
+            if "prompt" in attachments and "workflow" in attachments:
+                comfyUI_workflow = ComfyUIWorkflow(
+                    json.loads(attachments["prompt"]),
+                    json.loads(attachments["workflow"]),
+                )
+            for key in attachments:
+                if (
+                    key in {"prompt", "workflow"}
+                    and comfyUI_workflow is not None
+                ):
+                    continue
+                else:
+                    parse_result = None
+                    try:
+                        parse_result = json.loads(attachments[key])
+                    except json.decoder.JSONDecodeError:
+                        plain_text_attachments[key] = attachments[key]
+                    if parse_result is not None:
+                        json_attachments[key] = parse_result
+        return plain_text_attachments, json_attachments, comfyUI_workflow
+
+    @staticmethod
+    def attachments_to_description(
+        description: str, plain_text_attachments: dict[str, str], update: bool
+    ) -> str:
+        _description = description
+        if _description is None:
+            _description = "Attachments:\n"
+        elif not update:
+            _description += "\n" + "="*16 + "\nAttachments:\n"
+        elif update:
+            return description
+        for key in plain_text_attachments:
+            _description += f"{key}: {plain_text_attachments[key]}\n"
+        return _description
+
+    @staticmethod
+    def detect_media_type(outname, file_type, srs_data=None) -> str:
         media_type = None
-        if outname.suffix == ".srs":
-            f = open(outname, "r")
-            _data = json.load(f)
-            f.close()
-            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[_data['content']['media-type']]
+        if srs_data is not None:
+            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[
+                srs_data['content']['media-type']
+            ]
         else:
-            if file_type in {parser.Parser.FileTypes.IMAGE, parser.Parser.FileTypes.VECTOR_IMAGE}:
+            if file_type in {
+                parser.Parser.FileTypes.IMAGE,
+                parser.Parser.FileTypes.VECTOR_IMAGE
+            }:
                 media_type = "image"
             elif file_type == parser.Parser.FileTypes.ANIMATION:
                 media_type = "video-loop"
@@ -67,6 +120,41 @@ class DownloadManager(abc.ABC):
             else:
                 media_type = "image"
         return media_type
+
+    @staticmethod
+    def add_file_attachments(
+        connection, content_id, outname, comfyUI_workflow, json_attachments
+    ):
+        if comfyUI_workflow:
+            binary_encoded_json = json.dumps(
+                comfyUI_workflow.workflow
+            ).encode("utf-8")
+            comfy_workflow_filepath = outname.with_stem(
+                outname.stem + "_comfy"
+            ).with_suffix(".json.xz")
+            with lzma.open(comfy_workflow_filepath, "wb") as f:
+                f.write(binary_encoded_json)
+            medialib_db.attachment.add_attachment(
+                connection,
+                content_id,
+                "json+xz",
+                comfy_workflow_filepath,
+                "ComfyUI Workflow",
+            )
+        if json_attachments:
+            binary_encoded_json = json.dumps(json_attachments).encode(
+                "utf-8"
+            )
+            json_filepath = outname.with_suffix(".json.xz")
+            with lzma.open(json_filepath, "wb") as f:
+                f.write(binary_encoded_json)
+            medialib_db.attachment.add_attachment(
+                connection,
+                content_id,
+                "json+xz",
+                json_filepath,
+                "JSON file",
+            )
 
     def medialib_db_register(
             self,
@@ -100,11 +188,25 @@ class DownloadManager(abc.ABC):
         if 'name' in data:
             _name = data['name']
         if outname is not None:
-            media_type = self.detect_media_type(outname, file_type)
+            _data = None
+            if outname.suffix == ".srs":
+                with open(outname, "r") as f:
+                    _data = json.load(f)
+            media_type = self.detect_media_type(outname, file_type, _data)
             _description = None
             content_id = None
             if "description" in data and len(data['description']):
                 _description = data['description']
+            plain_text_attachments: dict[str, str] = {}
+            json_attachments: dict[str, any] = {}
+            comfyUI_workflow: ComfyUIWorkflow | None = None
+            if _data is not None:
+                plain_text_attachments, json_attachments, comfyUI_workflow = \
+                    self.extract_attachments(_data)
+            if plain_text_attachments:
+                _description = self.attachments_to_description(
+                    _description, plain_text_attachments, False
+                )
             try:
                 content_id = medialib_db.srs_indexer.register(
                     pathlib.Path(outname),
@@ -118,11 +220,20 @@ class DownloadManager(abc.ABC):
                 )
             except Exception as e:
                 logger.exception(
-                    "Exception at content id={} from {}".format(data["id"], self.parser.get_origin_name())
+                    "Exception at content id={} from {}".format(
+                        data["id"], self.parser.get_origin_name()
+                    )
                 )
                 raise e
             if content_id is not None and image_hash is not None:
                 medialib_db.set_image_hash(content_id, image_hash, connection)
+            self.add_file_attachments(
+                connection,
+                content_id,
+                outname,
+                comfyUI_workflow,
+                json_attachments
+            )
 
     def medialib_db_update_tags(self, db_content_id, tags, connection):
         for tag_category in tags:
@@ -144,10 +255,57 @@ class DownloadManager(abc.ABC):
         file_type: parser.Parser.FileTypes
     ):
         outname = transcoding_result[4]
-        media_type = self.detect_media_type(outname, file_type)
+        _data = None
+        if outname.suffix == ".srs":
+            with open(outname, "r") as f:
+                _data = json.load(f)
+        media_type = self.detect_media_type(outname, file_type, _data)
+        plain_text_attachments: dict[str, str] = {}
+        json_attachments: dict[str, any] = {}
+        comfyUI_workflow: ComfyUIWorkflow | None = None
+        if _data is not None:
+            plain_text_attachments, json_attachments, comfyUI_workflow = \
+                self.extract_attachments(_data)
+        content_id = content_info[0]
         medialib_db.update_file_path(
-            content_info[0], outname, image_hash, media_type, connection
+            content_id, outname, image_hash, media_type, connection
         )
+        if plain_text_attachments:
+            content_metadata = medialib_db.content.get_content_metadata_by_id(
+                content_id, connection
+            )
+            description = self.attachments_to_description(
+                content_metadata.description,
+                plain_text_attachments,
+                True
+            )
+            if (
+                description is not None and
+                description != content_metadata.description
+            ):
+                medialib_db.content.content_update(
+                    content_id,
+                    content_metadata.title,
+                    content_metadata.hidden,
+                    description,
+                    connection
+                )
+        existing_attachments = \
+            medialib_db.attachment.get_attachments_for_content(
+                connection, content_id
+            )
+        if (
+            not existing_attachments and (
+                json_attachments or comfyUI_workflow
+            )
+        ):
+            self.add_file_attachments(
+                connection,
+                content_id,
+                outname,
+                comfyUI_workflow,
+                json_attachments
+            )
 
     def download_file(self, filename: pathlib.Path, src_url: str) -> None:
         logger.debug("download_file() call")
