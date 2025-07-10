@@ -52,11 +52,12 @@ class DownloadManager(abc.ABC):
         self._enable_rewriting = True
 
     @staticmethod
-    def extract_attachments(srs_data):
+    def extract_attachments(metadata):
         plain_text_attachments: dict[str, str] = {}
         json_attachments: dict[str, any] = {}
         comfyUI_workflow: ComfyUIWorkflow | None = None
-        attachments = srs_data["content"]["attachment"]
+        xmp_metadata: str | None = None
+        attachments = metadata
         if attachments:
             if "prompt" in attachments and "workflow" in attachments:
                 comfyUI_workflow = ComfyUIWorkflow(
@@ -70,14 +71,22 @@ class DownloadManager(abc.ABC):
                 ):
                     continue
                 else:
-                    parse_result = None
-                    try:
-                        parse_result = json.loads(attachments[key])
-                    except json.decoder.JSONDecodeError:
-                        plain_text_attachments[key] = attachments[key]
-                    if parse_result is not None:
-                        json_attachments[key] = parse_result
-        return plain_text_attachments, json_attachments, comfyUI_workflow
+                    if "XML::XMP" in key:
+                        xmp_metadata = attachments[key]
+                    else:
+                        parse_result = None
+                        try:
+                            parse_result = json.loads(attachments[key])
+                        except json.decoder.JSONDecodeError:
+                            plain_text_attachments[key] = attachments[key]
+                        if parse_result is not None:
+                            json_attachments[key] = parse_result
+        return (
+            plain_text_attachments,
+            json_attachments,
+            comfyUI_workflow,
+            xmp_metadata
+        )
 
     @staticmethod
     def attachments_to_description(
@@ -123,7 +132,12 @@ class DownloadManager(abc.ABC):
 
     @staticmethod
     def add_file_attachments(
-        connection, content_id, outname, comfyUI_workflow, json_attachments
+        connection,
+        content_id,
+        outname,
+        comfyUI_workflow,
+        json_attachments,
+        xmp_metadata: str | None
     ):
         if comfyUI_workflow:
             binary_encoded_json = json.dumps(
@@ -145,15 +159,26 @@ class DownloadManager(abc.ABC):
             binary_encoded_json = json.dumps(json_attachments).encode(
                 "utf-8"
             )
-            json_filepath = outname.with_suffix(".json.xz")
-            with lzma.open(json_filepath, "wb") as f:
+            xmp_filepath = outname.with_suffix(".json.xz")
+            with lzma.open(xmp_filepath, "wb") as f:
                 f.write(binary_encoded_json)
             medialib_db.attachment.add_attachment(
                 connection,
                 content_id,
                 "json+xz",
-                json_filepath,
+                xmp_filepath,
                 "JSON file",
+            )
+        if xmp_metadata:
+            xmp_filepath = outname.with_suffix(".xmp.xz")
+            with lzma.open(xmp_filepath, "wb") as f:
+                f.write(xmp_metadata.encode())
+            medialib_db.attachment.add_attachment(
+                connection,
+                content_id,
+                "xmp+xz",
+                xmp_filepath,
+                "XMP metadata",
             )
 
     def medialib_db_register(
@@ -164,6 +189,7 @@ class DownloadManager(abc.ABC):
             tags,
             file_type: parser.Parser.FileTypes,
             image_hash,
+            metadata: dict[str, str],
             connection
     ):
         if config.simulate:
@@ -200,9 +226,13 @@ class DownloadManager(abc.ABC):
             plain_text_attachments: dict[str, str] = {}
             json_attachments: dict[str, any] = {}
             comfyUI_workflow: ComfyUIWorkflow | None = None
-            if _data is not None:
-                plain_text_attachments, json_attachments, comfyUI_workflow = \
-                    self.extract_attachments(_data)
+            xmp_metadata: str | None = None
+            if metadata:
+                plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
+                    self.extract_attachments(metadata)
+            elif _data is not None:
+                plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
+                    self.extract_attachments(_data["content"]["attachment"])
             if plain_text_attachments:
                 _description = self.attachments_to_description(
                     _description, plain_text_attachments, False
@@ -232,7 +262,8 @@ class DownloadManager(abc.ABC):
                 content_id,
                 outname,
                 comfyUI_workflow,
-                json_attachments
+                json_attachments,
+                xmp_metadata
             )
 
     def medialib_db_update_tags(self, db_content_id, tags, connection):
@@ -252,7 +283,8 @@ class DownloadManager(abc.ABC):
         content_info,
         transcoding_result,
         image_hash,
-        file_type: parser.Parser.FileTypes
+        file_type: parser.Parser.FileTypes,
+        metadata: dict[str, str]
     ):
         outname = transcoding_result[4]
         _data = None
@@ -263,9 +295,13 @@ class DownloadManager(abc.ABC):
         plain_text_attachments: dict[str, str] = {}
         json_attachments: dict[str, any] = {}
         comfyUI_workflow: ComfyUIWorkflow | None = None
-        if _data is not None:
-            plain_text_attachments, json_attachments, comfyUI_workflow = \
-                self.extract_attachments(_data)
+        xmp_metadata: str | None = None
+        if metadata:
+            plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
+                self.extract_attachments(metadata)
+        elif _data is not None:
+            plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
+                self.extract_attachments(_data["content"]["attachment"])
         content_id = content_info[0]
         medialib_db.update_file_path(
             content_id, outname, image_hash, media_type, connection
@@ -304,7 +340,8 @@ class DownloadManager(abc.ABC):
                 content_id,
                 outname,
                 comfyUI_workflow,
-                json_attachments
+                json_attachments,
+                xmp_metadata
             )
 
     def download_file(self, filename: pathlib.Path, src_url: str) -> None:
@@ -407,6 +444,20 @@ class DownloadManager(abc.ABC):
                 logger.debug("result: {}".format(result.__repr__()))
                 self.parser.print_debug_info()
                 raise ValueError("self.source_file_data IS NONE")
+        image_format = self.parser.get_image_format(data)
+        metadata = {}
+        if (
+            self.source_file_data is None and
+            image_format in pyimglib.metadata.supported_formats
+        ):
+            source = self.do_binary_request(src_url)
+            metadata = pyimglib.metadata.get_metadata_from_source(
+                source, image_format
+            )
+        elif self.source_file_data is not None:
+            metadata = pyimglib.metadata.get_metadata_from_source(
+                self.source_file_data, image_format
+            )
 
         if config.use_medialib_db:
             logger.debug("medialib-db acquire lock")
@@ -418,7 +469,8 @@ class DownloadManager(abc.ABC):
                         content_info,
                         result,
                         image_hash,
-                        file_type
+                        file_type,
+                        metadata
                     )
             else:
                 if result is not None:
@@ -429,6 +481,7 @@ class DownloadManager(abc.ABC):
                         tags,
                         file_type,
                         image_hash,
+                        metadata,
                         medialib_db_connection
                     )
             medialib_db_connection.close()
