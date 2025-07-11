@@ -15,7 +15,7 @@ if config.do_transcode:
     import pyimglib.transcoding
     from PIL.Image import DecompressionBombError
 
-TRANSCODE_FILES = {'png', 'jpg', 'jpeg', 'gif', 'webm'}
+TRANSCODE_FILES = {'png', 'jpg', 'jpeg', 'gif', 'webm', 'svg'}
 
 
 class TranscodeManager(DownloadManager):
