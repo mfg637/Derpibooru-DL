@@ -24,7 +24,7 @@
 // @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.4.1
+// @version     1.4.2
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -99,7 +99,9 @@ function button_placer_default(dl_button, image_wrapper){
       image_wrapper.getElementsByClassName('media-box__header')[0].getElementsByTagName('form')[0].appendChild(dl_button);
       break;
     case "e621.net":
-      image_wrapper.appendChild(dl_button);
+      const button_wrapper = document.createElement("span");
+      button_wrapper.appendChild(dl_button);
+      image_wrapper.appendChild(button_wrapper);
       break;
     default:
       alert(`Implementation error: site ${hostname} is not implemented! (line 102)`)
