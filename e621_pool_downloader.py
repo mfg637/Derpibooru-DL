@@ -3,6 +3,7 @@
 
 import multiprocessing
 
+import psycopg2
 import requests
 import os
 import json
@@ -110,8 +111,8 @@ try:
         if album_artist is None:
             album_artist = parsed_tags["artist"].copy().pop()
 
-        set_id = medialib_db.tags_indexer.check_tag_exists(
-            pool_title, 'set', medialib_db_connection
+        set_id = medialib_db.tags_indexer.get_tag_id_by_alias(
+            "set: {}".format(pool_title), medialib_db_connection
         )
         if set_id is None:
             set_id = medialib_db.tags_indexer.insert_new_tag(
@@ -146,12 +147,29 @@ try:
 
         if content_info is not None:
             content_id = content_info[0]
-            medialib_db.add_tags_for_content_by_tag_ids(
-                content_id, [set_id,], medialib_db_connection
+            content_tags = medialib_db.get_tags_by_content_id(
+                content_id, False
             )
-            medialib_db.album.set_album_order(
-                album_id, content_id, album_order, medialib_db_connection
+            have_set_tag = False
+            if "set" in content_tags:
+                for current_set_id in content_tags["set"]:
+                    if current_set_id[0] == set_id:
+                        have_set_tag = True
+            if not have_set_tag:
+                medialib_db.add_tags_for_content_by_tag_ids(
+                    content_id, [set_id,], medialib_db_connection
+                )
+            content_albums = medialib_db.album.get_content_albums(
+                content_id, medialib_db_connection
             )
+            already_in_album = False
+            for current_album in content_albums:
+                if current_album[0] == album_id:
+                    already_in_album = True
+            if not already_in_album:
+                medialib_db.album.set_album_order(
+                    album_id, content_id, album_order, medialib_db_connection
+                )
             medialib_db_connection.commit()
             continue
         else:
