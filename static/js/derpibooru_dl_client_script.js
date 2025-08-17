@@ -24,7 +24,7 @@
 // @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     1.4.2
+// @version     1.4.3
 // @author      mfg637
 // @description 12.03.2021, 13:25:40
 // ==/UserScript==
@@ -85,9 +85,6 @@ function dl_button_click_handler(event){
 
 function button_placer_default(dl_button, image_wrapper){
   const hostname = window.location.hostname;
-  dl_button.innerText='dl';
-  const url = get_url();
-  dl_button.href = url;
   switch (hostname) {
     case "ponybooru.org":
     case "furbooru.org":
@@ -99,9 +96,7 @@ function button_placer_default(dl_button, image_wrapper){
       image_wrapper.getElementsByClassName('media-box__header')[0].getElementsByTagName('form')[0].appendChild(dl_button);
       break;
     case "e621.net":
-      const button_wrapper = document.createElement("span");
-      button_wrapper.appendChild(dl_button);
-      image_wrapper.appendChild(button_wrapper);
+      image_wrapper.appendChild(dl_button);
       break;
     default:
       alert(`Implementation error: site ${hostname} is not implemented! (line 102)`)
@@ -123,21 +118,48 @@ function image_handler(data_wrapper, button_placer, bp_arg=null){
   delete data.uris;
   let dl_button = document.createElement('a');
   dl_button.data = data;
+  dl_button.innerText='dl';
+  const url = get_url();
+  dl_button.href = url;
   dl_button.onclick = dl_button_click_handler;
   dl_button.style.fontWeight = 'Bold';
   button_placer(dl_button, bp_arg);
 }
 
 
-function e621_image_handler(data_wrapper, button_placer, placing_place){
+function dummy_styler(dl_button){return dl_button;}
+
+
+function e621_post_list_styler(dl_button){
+  dl_button.style.fontWeight = 'Bold';
+  dl_button.style.marginLeft = "0.5em";
+  const button_wrapper = document.createElement("span");
+  button_wrapper.appendChild(dl_button);
+  return button_wrapper;
+}
+
+
+function e621_post_view_styler(dl_button){
+  dl_button.style.fontWeight = 'Bold';
+  dl_button.style.marginLeft = "0.5em";
+  dl_button.classList.add("st-button", "kinetic");
+  const button_wrapper = document.createElement("div");
+  button_wrapper.appendChild(dl_button);
+  return button_wrapper;
+}
+
+
+function e621_image_handler(data_wrapper, placer, place, styler){
   let raw_data = data_wrapper.dataset, data = {};
   for (let key in raw_data){data[key]=raw_data[key];}
   let dl_button = document.createElement('a');
+  dl_button.innerText='dl';
   dl_button.data = data;
+  const url = get_url();
+  dl_button.href = url;
   dl_button.onclick = dl_button_click_handler;
-  dl_button.style.fontWeight = 'Bold';
-  dl_button.style.marginLeft = "0.5em";
-  button_placer(dl_button, placing_place);
+  let button_wrapper = styler(dl_button);
+  placer(button_wrapper, place);
 }
 
 
@@ -176,7 +198,8 @@ if  (
       e621_image_handler(
           image_wrappers[i],
           button_placer_default,
-          image_wrappers[i].childNodes[1]
+          image_wrappers[i].childNodes[1],
+          e621_post_list_styler
       );
     }
   }
@@ -185,7 +208,8 @@ if  (
     e621_image_handler(
       image_wrapper,
       button_placer_default,
-      document.getElementById("image-extra-controls")
+      document.getElementById("ptbr-wrapper"),
+      e621_post_view_styler
     )
   }
 }
