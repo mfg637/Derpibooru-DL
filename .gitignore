@@ -1,4 +1,3 @@
-config.py
 __pycache__
 .vscode
 Thumbs.db
@@ -10,3 +9,4 @@ browser/tmpcache/*
 /node_modules
 .idea
 yarn.lock
+.env
