@@ -1,0 +1,65 @@
+CREATE TYPE origin_name_type AS ENUM (
+    'derpibooru',
+    'ponybooru',
+    'furbooru',
+    'tantabus',
+    'twibooru',
+    'e621'
+);
+
+create type tag_categoty_type as enum (
+    'artist',       -- used for artist name
+    'prompter',     -- same as artist, but for ai generated images
+    'set',          -- unordered list of content
+    'copyright',    -- related to trademarks, company name, franchise name
+    'rating',       -- parental gudance rating:
+                    -- (SFW - G, suggestive - PG13, questionable - R, explicit - X, XXX,
+                    --  semi grimdark - approximatelly R, grimdark - X)
+    'species',
+    'character',    -- any character,
+                    -- including franchise character and original character
+    'character-group',  -- a group of characters, abstract or all together
+    'gender',
+    'comic',        -- if there is more than one page, album need to be created.
+    'art pack',     -- a type of set of content, where one theme is present.
+    'lore',         -- lore things, like season or episode name
+    'meta',         -- not about content itself, but other things, 
+                    -- like medium (for example, hi res), moderation policy
+                    -- (you may seen it at altboorus), etc.
+    'error',        -- type of meta tag, where something is wrong.
+                    -- for example: "fix me" tag indicates that
+                    -- image file, record in database, processing pipenile
+                    -- need to be fixed by using this content as a sample.
+                    -- another example: "source needed" is a derpibooru error tag
+    'style',        -- style or art technique, like sketch, or 3D.
+                    -- ai generated content don't fits it this category
+    'ai',           -- type of meta tag that indicates that generative ai were used
+                    -- somehow in content creation process.
+                    -- may contain data about what models or services were used.
+    'content'       -- this tag describes a content,
+                    -- like a mood of the character, or type of background
+);
+
+CREATE TABLE tag (
+    id          bigserial           primary key,
+    name        text                not null,
+    category    tag_categoty_type   not null,
+    UNIQUE (name, category)
+);
+
+CREATE TABLE origin_tag (
+    origin_name     origin_name_type                        not null,
+    origin_id       bigint                                  not null,
+    tag_name        text                                    not null,
+    tag_slug        text                                    null,
+    description     text                                    null,
+    short_desc      text                                    null,
+    category        text                                    null,
+    tag_id          bigint                                  not null,
+    last_update     timestamp DEFAULT CURRENT_TIMESTAMP     not null,
+    PRIMARY KEY (origin_name, origin_id),
+    FOREIGN KEY (tag_id) REFERENCES tag (id),
+    UNIQUE (origin_name, tag_name)
+);
+
+CREATE INDEX origin_tag_id_index ON origin_tag (tag_id);
