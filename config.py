@@ -12,13 +12,15 @@ webhost = host
 port = 5757
 
 # root of download directory (your collection)
-initial_dir = pathlib.Path(os.getenv(
-    "DDL_initial_dir", "*** insert your path here ***"
-))
+initial_dir = pathlib.Path(
+    os.getenv("DDL_initial_dir", "*** insert your path here ***")
+)
+
 
 class PathSpecification(enum.Enum):
     COLLECTION = enum.auto()
     DATE_DOWNLOADED = enum.auto()
+
 
 saving_path: PathSpecification = PathSpecification.COLLECTION
 
@@ -42,3 +44,12 @@ deleted_image_list_file_path = None
 
 # TODO: what is this option for?
 manual_start = False
+
+db_user = os.getenv("DDL_DB_USER", None)
+db_password = os.getenv("DDL_DB_PASSWORD", None)
+app_db_host = os.getenv("DDL_DB_HOST", None)
+app_db_prod = os.getenv("DDL_DB_PROD", None)
+app_db_test = os.getenv("DDL_DB_TEST", None)
+derpibooru_dump_db_host = os.getenv("DERPIBOORU_DUMP_HOST", None)
+derpibooru_dump_db_user = os.getenv("DERPIBOORU_DUMP_USER", db_user)
+derpibooru_dump_db_password = os.getenv("DERPIBOORU_DUMP_PASSWORD", db_password)
