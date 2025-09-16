@@ -1,0 +1,14 @@
+[tool.black]
+line-length = 80
+target-version = ['py313']  # выбери версию python, можно py311
+
+[tool.ruff]
+line-length = 80
+indent-width = 4
+extend-select = ["E", "W", "F"]  # базовые ошибки и предупреждения
+
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+pythonVersion = "3.13"
