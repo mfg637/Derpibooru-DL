@@ -115,3 +115,13 @@ def get_or_create_tag_id(
         cursor.close()
         connection.commit()
         return tag_id
+
+
+def clear_table(connection: connection_type):
+    sql_delete_command = "DELETE FROM tag"
+    sql_reset_counter = "ALTER SEQUENCE tag_id_seq RESTART WITH 1"
+    cursor = connection.cursor()
+    cursor.execute(sql_delete_command, tuple())
+    cursor.execute(sql_reset_counter, tuple())
+    cursor.close()
+    connection.commit()
