@@ -18,7 +18,6 @@ class OriginNameType(enum.StrEnum):
 @dataclasses.dataclass(frozen=True)
 class OriginTag:
     origin_name: OriginNameType
-    origin_id: int
     tag_name: str
     tag_slug: str | None
     description: str | None
@@ -31,7 +30,6 @@ class OriginTag:
 class OriginTagBuilder:
     def __init__(self):
         self.origin_name: OriginNameType | None = None
-        self.origin_id: int | None = None
         self.tag_name: str | None = None
         self.tag_slug: str | None = None
         self.description: str | None = None
@@ -45,8 +43,6 @@ class OriginTagBuilder:
             raise TypeError(
                 "OriginTagBuilder.origin_name is not OriginNameType"
             )
-        if type(self.origin_id) is not int:
-            raise TypeError("OriginTagBuilder.origin_id is not an integer")
         if type(self.tag_name) is not str:
             raise TypeError("OriginTagBuilder.tag_name is not string")
         if not (type(self.tag_slug) is str or self.tag_slug is None):
@@ -75,7 +71,6 @@ class OriginTagBuilder:
             )
         return OriginTag(
             self.origin_name,
-            self.origin_id,
             self.tag_name,
             self.tag_slug,
             self.description,
@@ -101,29 +96,6 @@ def get_by_tag_id(connection: connection_type, tag_id: int) -> list[OriginTag]:
     results = _get_by_tag_id(cursor, tag_id)
     cursor.close()
     return results
-
-
-def _get_by_origin_id(
-    cursor: cursor_type, origin: OriginNameType, origin_id: int
-) -> OriginTag | None:
-    sql_command = (
-        "SELECT * FROM origin_tag " "WHERE origin_name = %s AND origin_id = %s"
-    )
-    cursor.execute(sql_command, (str(origin), origin_id))
-    result = cursor.fetchone()
-    if result is None:
-        return None
-    else:
-        return OriginTag(OriginNameType(result[0]), *result[1:])
-
-
-def get_by_origin_id(
-    connection: connection_type, origin: OriginNameType, origin_id: int
-) -> OriginTag | None:
-    cursor = connection.cursor()
-    result = _get_by_origin_id(cursor, origin, origin_id)
-    cursor.close()
-    return result
 
 
 def _get_by_tag_name(
@@ -154,12 +126,11 @@ def _insert(cursor: cursor_type, origin_tag: OriginTag):
     if existing_tag is None:
         raise ValueError(f"Tag with ID = {origin_tag.tag_id} does not exists")
     if origin_tag.last_update is None:
-        sql_command = "INSERT INTO origin_tag VALUES (%s, %s, %s, %s, %s, %s, %s, %s, DEFAULT)"
+        sql_command = "INSERT INTO origin_tag VALUES (%s, %s, %s, %s, %s, %s, %s, DEFAULT)"
         cursor.execute(
             sql_command,
             (
                 str(origin_tag.origin_name),
-                origin_tag.origin_id,
                 origin_tag.tag_name,
                 origin_tag.tag_slug,
                 origin_tag.description,
@@ -170,13 +141,12 @@ def _insert(cursor: cursor_type, origin_tag: OriginTag):
         )
     else:
         sql_command = (
-            "INSERT INTO origin_tag VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+            "INSERT INTO origin_tag VALUES (%s, %s, %s, %s, %s, %s, %s, %s)"
         )
         cursor.execute(
             sql_command,
             (
                 str(origin_tag.origin_name),
-                origin_tag.origin_id,
                 origin_tag.tag_name,
                 origin_tag.tag_slug,
                 origin_tag.description,
@@ -197,8 +167,8 @@ def add_origin_tag(connection: connection_type, origin_tag: OriginTag):
 
 def add_if_not_exists(connection: connection_type, origin_tag: OriginTag):
     cursor = connection.cursor()
-    existing_tag = _get_by_origin_id(
-        cursor, origin_tag.origin_name, origin_tag.origin_id
+    existing_tag = _get_by_tag_name(
+        cursor, origin_tag.origin_name, origin_tag.tag_name
     )
     if existing_tag is None:
         _insert(cursor, origin_tag)

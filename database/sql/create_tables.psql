@@ -49,7 +49,6 @@ CREATE TABLE tag (
 
 CREATE TABLE origin_tag (
     origin_name     origin_name_type                        not null,
-    origin_id       bigint                                  not null,
     tag_name        text                                    not null,
     tag_slug        text                                    null,
     description     text                                    null,
@@ -57,9 +56,8 @@ CREATE TABLE origin_tag (
     category        text                                    null,
     tag_id          bigint                                  not null,
     last_update     timestamp DEFAULT CURRENT_TIMESTAMP     not null,
-    PRIMARY KEY (origin_name, origin_id),
-    FOREIGN KEY (tag_id) REFERENCES tag (id),
-    UNIQUE (origin_name, tag_name)
+    PRIMARY KEY (origin_name, tag_name),
+    FOREIGN KEY (tag_id) REFERENCES tag (id)
 );
 
 CREATE INDEX origin_tag_id_index ON origin_tag (tag_id);
