@@ -21,7 +21,6 @@ create type tag_categoty_type as enum (
     'character-group',  -- a group of characters, abstract or all together
     'gender',
     'comic',        -- if there is more than one page, album need to be created.
-    'art pack',     -- a type of set of content, where one theme is present.
     'lore',         -- lore things, like season or episode name
     'meta',         -- not about content itself, but other things, 
                     -- like medium (for example, hi res), moderation policy

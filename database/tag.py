@@ -15,7 +15,6 @@ class TagCategory(enum.StrEnum):
     CHARACTER_GROUP = "character-group"
     GENDER = "gender"
     COMIC = "comic"
-    ART_PACK = "art pack"
     LORE = "lore"
     META = "meta"
     ERROR = "error"
