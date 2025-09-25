@@ -210,3 +210,19 @@ def simulate_image_api(connection: connection_type, image_id: int):
         result["tag_ids"].append(tag.id)
     cursor.close()
     return {"image": result}
+
+
+def simulate_tag_api(connection: connection_type, tag_name: str) -> dict | None:
+    cursor = connection.cursor()
+    tag_info = _get_tag_by_name(cursor, tag_name)
+    cursor.close()
+    if tag_info is None:
+        return None
+    result = {
+        "name": tag_info.name,
+        "slug": tag_info.slug,
+        "description": tag_info.description,
+        "short_description": tag_info.short_description,
+        "category": tag_info.category,
+    }
+    return {"tag": result}
