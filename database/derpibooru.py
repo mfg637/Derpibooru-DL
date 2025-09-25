@@ -173,6 +173,7 @@ def simulate_image_api(connection: connection_type, image_id: int):
         "mime_type": image_data.image_mime_type,
         "format": image_data.image_format,
         "description": image_data.description,
+        "__tags": None,
     }
     created_at: datetime.datetime = image_data.created_at
     result["view_url"] = "https://derpicdn.net/img/view/{}/{}/{}/{}.{}".format(
@@ -203,6 +204,7 @@ def simulate_image_api(connection: connection_type, image_id: int):
             )
         )
     tags: list[Tag] = _get_tags_of_image(cursor, image_id)
+    result["__tags"] = tags
     for tag in tags:
         result["tags"].append(tag.name)
         result["tag_ids"].append(tag.id)
