@@ -1,33 +1,35 @@
 import abc
+import re
+import os
 import json
 import logging
 import pathlib
 import sys
-import enum
-import typing
 import database
+import time
+import urllib.parse
 from html.parser import HTMLParser
 
 from database import origin_tag
-import parser
-from parser import derpibooru
-from .Parser import Parser
+from .Parser import Parser, FileTypes
 
 import requests
 
-import config
 
 logger = logging.getLogger(__name__)
 
 
 class Philomena(Parser):
+    def __init__(self, url, parsed_data: dict | None = None):
+        super.__init__(url, parsed_data)
+        self.rate_limiter = self.make_rate_limiter()
+
     def parseHTML(self, image_id) -> dict[str, str]:
         """
         Parse tags by HTML page.
         :param image_id:
         :return: {"tag name 1": "tag category 1", …}
         """
-        global tags_parsed_data
         # philomena's API didn't provide method to get tag slug
         # image route also didn't contain that data
         # you either need a database dump or extract info from html
@@ -217,3 +219,198 @@ class Philomena(Parser):
             result[str(tag_info.category)].append(tag_info.tag_name)
         connection.close()
         return result
+
+    def get_raw_content_data(self):
+        return self.get_data()["image"]
+
+    def get_content_id(self) -> int:
+        result = int(self.get_raw_content_data()["id"])
+        if type(result) is int:
+            return result
+        else:
+            raise ValueError("Unable to convert content ID to integer")
+
+    @abc.abstractmethod
+    def custom_data_loading(
+        self, _id: int, request_type="images"
+    ) -> dict | None:
+        pass
+
+    def parseJSON(self, url=None, _type="images", trial_count=2) -> dict | None:
+        _id = None
+        if url is not None and type(url) is int:
+            _id = url
+        else:
+            _id = self.get_id_by_url(self._url)
+        if type(_id) is not int:
+            raise TypeError(f"ID: {_id} is not integer")
+        data = self.custom_data_loading(_id, _type)
+        if data is None:
+            request_url = "https://{}/api/v1/json/{}/{}".format(
+                self.get_domain_name_s(), _type, urllib.parse.quote(str(_id))
+            )
+            logger.debug("url: {}".format(url))
+            logger.info("parseJSON: {}".format(request_url))
+            self.rate_limiter.rate_limit(_type)
+            try:
+                request_data = requests.get(request_url)
+            except Exception as e:
+                print(e)
+                return
+            finally:
+                self.rate_limiter.increment_requests_count()
+            data = None
+            if request_data.status_code == 404:
+                raise IndexError('not found "{}"'.format(url))
+            try:
+                data = request_data.json()
+            except json.JSONDecodeError as e:
+                sleep_time_seconds = 5
+                sleep_time_text = "5 seconds"
+                if request_data.status_code == 500 or trial_count <= 1:
+                    sleep_time_seconds = 16 * 60
+                    sleep_time_text = "16 minutes"
+                if trial_count > 0:
+                    logger.warning(
+                        (
+                            "JSON decode error. "
+                            f"HTTP status code:{request_data.status_code} "
+                            f"Raw data: \n{request_data.text}"
+                        )
+                    )
+                    print(f"try again after {sleep_time_text}")
+                    time.sleep(sleep_time_seconds)
+                    return self.parseJSON(url, _type, trial_count - 1)
+                else:
+                    logger.error(
+                        (
+                            "JSON decode error. "
+                            f"HTTP status code:{request_data.status_code} "
+                            f"Raw data: \n{request_data.text}"
+                        )
+                    )
+                    raise e
+            while (
+                data is not None
+                and "duplicate_of" in data["image"]
+                and data["image"]["duplicate_of"] is not None
+            ):
+                data = self.parseJSON(str(data["image"]["duplicate_of"]))
+        if data is not None and "tags" not in data["image"]:
+            data["image"]["tags"] = []
+        self._parsed_data = data
+        return data
+
+    def parsehtml_get_image_route_name(self) -> str:
+        return "images"
+
+    def getTagNamesList(self) -> list[str]:
+        return self.get_data()["image"]["tags"]
+
+    def getID(self) -> str:
+        try:
+            return str(self.get_data()["image"]["id"])
+        except KeyError as e:
+            print(self.get_data())
+            raise e
+
+    def dataValidator(self, data):
+        if "image" not in data:
+            raise KeyError("data has no 'image'")
+        data = data["image"]
+        if "representations" not in data:
+            raise KeyError("data has no 'representations'")
+        if "full" not in data["representations"]:
+            raise KeyError("not found full representation")
+        if type(data["representations"]["full"]) is not str:
+            raise TypeError(
+                "data['representations']['full'] is not str: "
+                + data["representations"]["full"].__class__.__name__
+            )
+        if type(os.path.splitext(data["representations"]["full"])) is not tuple:
+            raise TypeError(
+                "os.path.splitext(data['representations']['full']) is not tuple: "
+                + os.path.splitext(
+                    data["representations"]["full"]
+                ).__class__.__name__
+            )
+        if (
+            type(os.path.splitext(data["representations"]["full"])[0])
+            is not str
+        ):
+            raise TypeError(
+                "os.path.splitext(data['representations']['full'])[0] is not str: "
+                + os.path.splitext(data["representations"]["full"])[
+                    0
+                ].__class__.__name__
+            )
+        if "format" not in data:
+            raise KeyError("data has no format property")
+        if type(data["format"]) is not str:
+            raise TypeError(
+                'data["format"] is not str: '
+                + data["format"].__class__.__name__
+            )
+        if "large" not in data["representations"]:
+            raise KeyError("not found large representation")
+
+    def check_is_takedowned(self, data):
+        return (
+            "deletion_reason" in data["image"]
+            and data["image"]["deletion_reason"] is not None
+        )
+
+    def get_takedowned_content_info(self, data):
+        return self.file_deleted_handing(
+            self.get_filename_prefix(), data["image"]["id"]
+        )
+
+    def get_content_source_url(self, data):
+        return (
+            os.path.splitext(data["image"]["representations"]["full"])[0]
+            + "."
+            + data["image"]["format"].lower()
+        )
+
+    def get_output_filename(
+        self, data, output_directory: pathlib.Path
+    ) -> tuple[str, pathlib.Path]:
+        data = data["image"]
+        name = ""
+        if "name" in data and data["name"] is not None:
+            name = "{}{} {}".format(
+                self.get_filename_prefix(),
+                data["id"],
+                re.sub(
+                    '[/\[\]:;|=*".?]', "", os.path.splitext(data["name"])[0]
+                ),
+            )
+        else:
+            name = "{}{}".format(self.get_filename_prefix(), data["id"])
+        return name, output_directory.joinpath(
+            "{}.{}".format(name, data["format"].lower())
+        )
+
+    def get_image_metadata(self, data):
+        return {
+            "title": data["image"]["name"],
+            "origin": self.get_origin_name(),
+            "id": data["image"]["id"],
+        }
+
+    def get_image_format(self, data):
+        return data["image"]["format"]
+
+    def get_big_thumbnail_url(self, data):
+        return data["image"]["representations"]["large"]
+
+    def identify_filetype(self) -> FileTypes:
+        filetype = Parser.identify_by_mimetype(
+            self.get_data()["image"]["mime_type"]
+        )
+        if (
+            filetype == FileTypes.IMAGE
+            and "animated" in self.get_data()["image"]["tags"]
+        ):
+            filetype = FileTypes.ANIMATION
+        return filetype

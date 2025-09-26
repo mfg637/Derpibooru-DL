@@ -1,13 +1,11 @@
 import abc
+import datetime
 import json
 import logging
 import pathlib
-import sys
+import time
 import enum
 import typing
-from html.parser import HTMLParser
-
-import requests
 
 import config
 
@@ -21,11 +19,60 @@ class FileTypes(enum.Enum):
     VIDEO = enum.auto()
 
 
+class RateLimiter(abc.ABC):
+    def __init__(self):
+        self.first_request_date: datetime.datetime | None = None
+        self.request_timeout_seconds: int | None = None
+        self.requests_count: int = 0
+        self.requests_limit: int = 0
+
+    @abc.abstractmethod
+    def rate_limit(self, request_type):
+        pass
+
+    def increment_requests_count(self):
+        self.requests_count += 1
+
+
+class DummyRateLimiter(RateLimiter):
+    def rate_limit(self, request_type):
+        self.requests_count = 0
+
+
+class OneRequestPerSecondRateLimiter(RateLimiter):
+    def rate_limit(self, request_type):
+        if self.first_request_date is not None:
+            current_timestamp = datetime.datetime.now()
+            time_pass: datetime.timedelta = (
+                current_timestamp - self.first_request_date
+            )
+            if self.request_timeout_seconds is None:
+                pass
+            elif time_pass.total_seconds() < self.request_timeout_seconds:
+                if self.requests_count >= self.requests_limit:
+                    waiting_time = (
+                        self.request_timeout_seconds - time_pass.total_seconds()
+                    )
+                    logger.info(f"sleeping for {waiting_time} seconds")
+                    time.sleep(waiting_time)
+                    self.requests_count = 0
+                    self.first_request_date = datetime.datetime.now()
+                    self.request_timeout_seconds = None
+            else:
+                self.requests_count = 0
+                self.first_request_date = datetime.datetime.now()
+                self.request_timeout_seconds = None
+        else:
+            self.first_request_date = datetime.datetime.now()
+        self.request_timeout_seconds = 1
+        self.requests_limit = 1
+
+
 class Parser(abc.ABC):
-    def __init__(self, url, parsed_data=None):
+    def __init__(self, url, parsed_data: dict | None = None):
         self._tag_indexer = None
         self._url = url
-        self._parsed_data = parsed_data
+        self._parsed_data: dict | None = parsed_data
 
     def print_debug_info(self):
         print("origin name:", self.get_origin_name)
@@ -81,10 +128,14 @@ class Parser(abc.ABC):
             ValueError("URL {} is {}".format(URL, type(URL)))
 
     @abc.abstractmethod
+    def get_content_id(self) -> int:
+        pass
+
+    @abc.abstractmethod
     def parseJSON(self, url=None, _type="images") -> dict | None:
         pass
 
-    def get_data(self):
+    def get_data(self) -> dict:
         if self._parsed_data is None:
             data = self._load_parsed_data()
             if data is None:
@@ -92,6 +143,8 @@ class Parser(abc.ABC):
                 self._parsed_data = data
                 if config.response_cache_dir is not None:
                     self._dump_parsed_data()
+            if data is None:
+                raise Exception("Unable to load data")
             return data
         else:
             return self._parsed_data
@@ -153,11 +206,11 @@ class Parser(abc.ABC):
         return 0, 0, 0, 0
 
     @abc.abstractmethod
-    def check_is_takedowned(self, data):
+    def check_is_takedowned(self, data) -> bool:
         pass
 
     @abc.abstractmethod
-    def get_takedowned_content_info(self, data):
+    def get_takedowned_content_info(self, data) -> tuple:
         pass
 
     @abc.abstractmethod
@@ -171,7 +224,7 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_image_metadata(self, data):
+    def get_image_metadata(self, data) -> dict:
         pass
 
     @abc.abstractmethod
@@ -206,4 +259,8 @@ class Parser(abc.ABC):
 
     @abc.abstractmethod
     def tags_processing(self) -> dict[str, list[str]]:
+        pass
+
+    @abc.abstractmethod
+    def make_rate_limiter(self) -> RateLimiter:
         pass

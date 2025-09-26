@@ -1,13 +1,14 @@
-from . import derpibooru
-
-FILENAME_PREFIX = 'fb'
-ORIGIN = 'furbooru'
+from . import philomena, Parser
 
 
-class FurbooruParser(derpibooru.DerpibooruParser):
+FILENAME_PREFIX = "fb"
+ORIGIN = "furbooru"
+
+
+class FurbooruParser(philomena.Philomena):
     @staticmethod
     def get_domain_name_s():
-        return 'furbooru.org'
+        return "furbooru.org"
 
     def get_filename_prefix(self):
         return FILENAME_PREFIX
@@ -20,3 +21,14 @@ class FurbooruParser(derpibooru.DerpibooruParser):
 
     def get_auto_copyright_tags(self):
         return set()
+
+    def custom_tag_processing(self):
+        return None
+
+    def custom_data_loading(
+        self, _id: int, request_type="images"
+    ) -> dict | None:
+        return None
+
+    def make_rate_limiter(self):
+        return Parser.OneRequestPerSecondRateLimiter()
