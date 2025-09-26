@@ -40,7 +40,11 @@ class Parser(abc.ABC):
             ).open("w")
             if self._parsed_data is None:
                 raise ValueError("self._parsed_data is None")
-            json.dump(self._parsed_data, f)
+            serialized_data: dict = self._parsed_data.copy()
+            for key in serialized_data:
+                if key[:2] == "__":
+                    serialized_data.pop(key)
+            json.dump(serialized_data, f)
             f.close()
 
     def _load_parsed_data(self):
@@ -61,7 +65,7 @@ class Parser(abc.ABC):
                         config.response_cache_dir,
                         self.get_filename_prefix(),
                         self.input_id,
-                        dump_file_path
+                        dump_file_path,
                     )
                 )
                 return self._parsed_data
@@ -70,14 +74,14 @@ class Parser(abc.ABC):
     @staticmethod
     def get_id_by_url(URL):
         if type(URL) is str:
-            return URL.split('?')[0].split('/')[-1]
+            return URL.split("?")[0].split("/")[-1]
         elif type(URL) is int:
             return URL
         else:
             ValueError("URL {} is {}".format(URL, type(URL)))
 
     @abc.abstractmethod
-    def parseJSON(self, url=None, _type="images") -> dict:
+    def parseJSON(self, url=None, _type="images") -> dict | None:
         pass
 
     def get_data(self):
@@ -101,7 +105,7 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def getTagList(self) -> list:
+    def getTagNamesList(self) -> list[str]:
         pass
 
     @abc.abstractmethod
@@ -113,69 +117,40 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_filename_prefix(self):
+    def get_filename_prefix(self) -> str:
         pass
 
     @abc.abstractmethod
-    def get_origin_name(self):
+    def get_origin_name(self) -> str:
         pass
 
-    def parseHTML(self, image_id) -> dict:
-        """
-        Parse tags by HTML page.
-        :param image_id:
-        :return: {"tag name 1": "tag category 1", …}
-        """
-        global tags_parsed_data
-        # derpibooru's API didn't provide method to get tag slug
-        # image route also didn't contain that data
-        tags_parsed_data = dict()
-        request_url = 'https://{}/{}/{}'.format(
-            self.get_domain_name(),
-            self.parsehtml_get_image_route_name(),
-            image_id
-        )
-        print("parseHTML", request_url, file=sys.stderr)
-        try:
-            request_data = requests.get(request_url)
-        except Exception as e:
-            print(e, file=sys.stderr)
-            return
-        raw_html = request_data.text
+    @abc.abstractmethod
+    def parseHTML(self, image_id) -> dict[str, str]:
+        pass
 
-        class TagsParser(HTMLParser):
-            def error(self, message):
-                raise Exception(message)
-
-            def handle_starttag(self, tag, attrs):
-                if tag in {'div', 'span'}:
-                    attributes = dict(attrs)
-                    if "data-tag-name" in attributes.keys() and "data-tag-category" in attributes.keys():
-                        tags_parsed_data[attributes["data-tag-name"]] = attributes["data-tag-category"]
-
-        parser = TagsParser()
-        parser.feed(raw_html)
-        return tags_parsed_data
-
-    def get_auto_copyright_tags(self):
-        return {"my little pony"}
-
+    def get_auto_copyright_tags(self) -> set[str]:
+        return set()
 
     def file_deleted_handing(self, prefix, _id):
         logging.exception("deleted image {}".format(_id))
         if config.deleted_image_list_file_path is not None:
-            deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
+            deleted_list_f = pathlib.Path(
+                config.deleted_image_list_file_path
+            ).open("a")
             parse_results = dict()
             try:
                 parse_results = self.parseHTML(_id)
             except Exception as e:
                 logger.exception("Some error was hapenned", e)
-            deleted_list_f.write("{}{}: {}\n".format(
-                prefix, _id, ", ".join([str(key) for key in parse_results.keys()])
-            ))
+            deleted_list_f.write(
+                "{}{}: {}\n".format(
+                    prefix,
+                    _id,
+                    ", ".join([str(key) for key in parse_results.keys()]),
+                )
+            )
             deleted_list_f.close()
         return 0, 0, 0, 0
-
 
     @abc.abstractmethod
     def check_is_takedowned(self, data):
@@ -190,7 +165,9 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_output_filename(self, data, output_directory) -> tuple[str, pathlib.Path]:
+    def get_output_filename(
+        self, data, output_directory
+    ) -> tuple[str, pathlib.Path]:
         pass
 
     @abc.abstractmethod
@@ -223,6 +200,10 @@ class Parser(abc.ABC):
             "image/apng": FileTypes.ANIMATION,
             "video/webm": FileTypes.VIDEO,
             "video/mp4": FileTypes.VIDEO,
-            "image/svg+xml": FileTypes.VECTOR_IMAGE
+            "image/svg+xml": FileTypes.VECTOR_IMAGE,
         }
         return MIMETYPE_ASSOCIATIONS[mime_type]
+
+    @abc.abstractmethod
+    def tags_processing(self) -> dict[str, list[str]]:
+        pass

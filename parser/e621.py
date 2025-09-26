@@ -7,6 +7,9 @@ import typing
 import urllib
 import urllib.parse
 
+import database
+from database.tag import TagCategory
+
 from . import exceptions
 from .Parser import FileTypes
 
@@ -17,8 +20,8 @@ import requests
 import config
 from . import Parser
 
-FILENAME_PREFIX = 'ef'
-ORIGIN = 'e621'
+FILENAME_PREFIX = "ef"
+ORIGIN = "e621"
 
 
 class E621Parser(Parser.Parser):
@@ -29,10 +32,15 @@ class E621Parser(Parser.Parser):
             "jpeg": FileTypes.IMAGE,
             "png": FileTypes.IMAGE,
             "gif": FileTypes.ANIMATION,
-            "webm": FileTypes.VIDEO
+            "webm": FileTypes.VIDEO,
         }
-        filetype = FILE_EXTENSION_ASSOCIATION[self._parsed_data['post']['file']['ext'].lower()]
-        if filetype == FileTypes.IMAGE and "animated" in self._parsed_data['post']['tags']['meta']:
+        filetype = FILE_EXTENSION_ASSOCIATION[
+            self._parsed_data["post"]["file"]["ext"].lower()
+        ]
+        if (
+            filetype == FileTypes.IMAGE
+            and "animated" in self._parsed_data["post"]["tags"]["meta"]
+        ):
             filetype = FileTypes.ANIMATION
         return filetype
 
@@ -44,13 +52,13 @@ class E621Parser(Parser.Parser):
 
     @staticmethod
     def get_domain_name_s():
-        return 'e621.net'
+        return "e621.net"
 
     def getTagList(self) -> list:
         pass
 
     def getID(self) -> str:
-        return str(self._parsed_data['post']["id"])
+        return str(self._parsed_data["post"]["id"])
 
     def dataValidator(self, data):
         pass
@@ -63,7 +71,7 @@ class E621Parser(Parser.Parser):
 
     def parseJSON(self, url=None, _type="posts", trial_count=2):
         headers = {
-            'User-Agent': 'Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)'
+            "User-Agent": "Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)"
         }
 
         id = None
@@ -71,84 +79,196 @@ class E621Parser(Parser.Parser):
             id = url
         else:
             id = self.get_id_by_url(self._url)
-        request_url = 'https://{}/{}/{}.json'.format(self.get_domain_name_s(), _type, urllib.parse.quote(str(id)))
+        request_url = "https://{}/{}/{}.json".format(
+            self.get_domain_name_s(), _type, urllib.parse.quote(str(id))
+        )
         if config.e621_login is not None and config.e621_API_KEY is not None:
-            request_url += "?login={}&api_key={}".format(config.e621_login, config.e621_API_KEY)
+            request_url += "?login={}&api_key={}".format(
+                config.e621_login, config.e621_API_KEY
+            )
         logger.info("parseJSON: {}".format(request_url))
         request_data = None
         try:
             request_data = requests.get(request_url, headers=headers)
         except json.JSONDecodeError as e:
             if trial_count > 0:
-                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
-                    request_data.status_code, request_data.text))
+                logger.warning(
+                    "JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                        request_data.status_code, request_data.text
+                    )
+                )
                 print("try again after 10 minutes")
                 time.sleep(600)
                 return self.parseJSON(url, _type, trial_count - 1)
             else:
-                logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
-                    request_data.status_code, request_data.text))
+                logger.error(
+                    "JSON decode error. HTTP status code:{} Raw data: \n{}".format(
+                        request_data.status_code, request_data.text
+                    )
+                )
                 raise e
         data = None
         if request_data.status_code == 404:
-            raise IndexError("not founded \"{}\"".format(url))
+            raise IndexError('not founded "{}"'.format(url))
         logger.debug("STATUS CODE: {}".format(request_data.status_code))
         try:
             data = request_data.json()
         except json.JSONDecodeError as e:
-            logger.error("JSON decode error. HTTP status code:{} Raw data: {}".format(
-                request_data.status_code, request_data.text))
+            logger.error(
+                "JSON decode error. HTTP status code:{} Raw data: {}".format(
+                    request_data.status_code, request_data.text
+                )
+            )
             raise e
         self._parsed_data = data
         return data
 
     def check_is_takedowned(self, data):
         # takedowned content example: https://e621.net/posts/1744852.json
-        return data['post']['flags']['deleted']
+        return data["post"]["flags"]["deleted"]
 
     def get_takedowned_content_info(self, data):
-        logging.exception("deleted image ef{}".format(data['post']['id']))
+        logging.exception("deleted image ef{}".format(data["post"]["id"]))
         if config.deleted_image_list_file_path is not None:
-            deleted_list_f = pathlib.Path(config.deleted_image_list_file_path).open("a")
-            general_tags_category = ("general", "species", "meta", "invalid", "lore")
+            deleted_list_f = pathlib.Path(
+                config.deleted_image_list_file_path
+            ).open("a")
+            general_tags_category = (
+                "general",
+                "species",
+                "meta",
+                "invalid",
+                "lore",
+            )
             for category in general_tags_category:
-                deleted_list_f.write("{}{}: {}\n".format(
-                    "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags'][category]])
-                ))
-            deleted_list_f.write("{}{}: character:{}\n".format(
-                "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags']['character']])
-            ))
-            deleted_list_f.write("{}{}: copyright:{}\n".format(
-                "ef", data['post']['id'], ", ".join([str(key) for key in data['post']['tags']['copyright']])
-            ))
+                deleted_list_f.write(
+                    "{}{}: {}\n".format(
+                        "ef",
+                        data["post"]["id"],
+                        ", ".join(
+                            [str(key) for key in data["post"]["tags"][category]]
+                        ),
+                    )
+                )
+            deleted_list_f.write(
+                "{}{}: character:{}\n".format(
+                    "ef",
+                    data["post"]["id"],
+                    ", ".join(
+                        [str(key) for key in data["post"]["tags"]["character"]]
+                    ),
+                )
+            )
+            deleted_list_f.write(
+                "{}{}: copyright:{}\n".format(
+                    "ef",
+                    data["post"]["id"],
+                    ", ".join(
+                        [str(key) for key in data["post"]["tags"]["copyright"]]
+                    ),
+                )
+            )
             deleted_list_f.close()
         return 0, 0, 0, 0
 
     def get_content_source_url(self, data):
-        return os.path.splitext(data['post']['file']['url'])[0] + '.' + data['post']['file']['ext'].lower()
+        return (
+            os.path.splitext(data["post"]["file"]["url"])[0]
+            + "."
+            + data["post"]["file"]["ext"].lower()
+        )
 
-    def get_output_filename(self, data, output_directory: pathlib.Path) -> tuple[str, pathlib.Path]:
-        data = data['post']
-        name = ''
-        print(data["id"], data['file']['url'], data['file']['ext'])
-        if data['file']['url'] is None or data['file']['ext'] is None:
+    def get_output_filename(
+        self, data, output_directory: pathlib.Path
+    ) -> tuple[str, pathlib.Path]:
+        data = data["post"]
+        name = ""
+        print(data["id"], data["file"]["url"], data["file"]["ext"])
+        if data["file"]["url"] is None or data["file"]["ext"] is None:
             print(data)
-        src_url = os.path.splitext(data['file']['url'])[0] + '.' + data['file']['ext'].lower()
+        src_url = (
+            os.path.splitext(data["file"]["url"])[0]
+            + "."
+            + data["file"]["ext"].lower()
+        )
         name = "{}{}".format(FILENAME_PREFIX, data["id"])
-        return name, output_directory.joinpath("{}.{}".format(name, data['file']['ext'].lower()))
+        return name, output_directory.joinpath(
+            "{}.{}".format(name, data["file"]["ext"].lower())
+        )
 
     def get_image_metadata(self, data):
         return {
             "title": None,
             "origin": self.get_origin_name(),
-            "id": data['post']["id"]
+            "id": data["post"]["id"],
         }
 
     def get_image_format(self, data):
-        return data['post']['file']['ext']
+        return data["post"]["file"]["ext"]
 
     def get_big_thumbnail_url(self, data):
-        return data['post']['sample']["url"]
+        return data["post"]["sample"]["url"]
 
     def get_raw_content_data(self):
         return self.get_data()["post"]
+
+    def tags_processing(self) -> dict[str, list[str]]:
+        connection = database.make_connection(database.DatabaseEnum.APP_PROD)
+        origin_tags_dict = self.get_raw_content_data()["tags"]
+        categories = database.tag.TagCategory
+        origin = database.origin_tag.OriginNameType.E621
+        category_translation_table: dict[str, categories] = {
+            "general": categories.CONTENT,
+            "artist": categories.ARTIST,
+            "copyright": categories.COPYRIGHT,
+            "character": categories.CHARACTER,
+            "species": categories.SPECIES,
+            "invalid": categories.ERROR,
+            "meta": categories.META,
+            "lore": categories.LORE,
+        }
+        result: dict[str, list[str]] = dict()
+        for origin_category in origin_tags_dict:
+            for origin_tag_name in origin_tags_dict[origin_category]:
+                origin_tag = database.origin_tag.get_by_tag_name(
+                    connection, origin, origin_tag_name
+                )
+                if origin_tag is None:
+                    tag_id = database.tag.get_or_create_tag_id(
+                        connection,
+                        origin_tag_name,
+                        category_translation_table[origin_category],
+                    )
+                    if tag_id is None:
+                        raise Exception("Failed to get tag id")
+                    origin_tag_builder = database.origin_tag.OriginTagBuilder()
+                    origin_tag_builder.tag_id = tag_id
+                    origin_tag_builder.tag_name = origin_tag_name
+                    origin_tag_builder.category = origin_category
+                    origin_tag_builder.origin_name = origin
+                    origin_tag_data = origin_tag_builder.build()
+                    database.origin_tag.add_if_not_exists(
+                        connection, origin_tag_data
+                    )
+                    tag_info = database.tag.get_tag_by_id(connection, tag_id)
+                    if tag_info is None:
+                        raise Exception("Failed to get tag info")
+                    if str(tag_info.category) not in result:
+                        result[str(tag_info.category)] = []
+                    result[str(tag_info.category)].append(tag_info.name)
+                else:
+                    tag_info = database.tag.get_tag_by_id(
+                        connection, origin_tag.tag_id
+                    )
+                    if tag_info is None:
+                        raise Exception(
+                            (
+                                "Database anomaly found on tag id = "
+                                f"{origin_tag.tag_id}"
+                            )
+                        )
+                    if str(tag_info.category) not in result:
+                        result[str(tag_info.category)] = []
+                    result[str(tag_info.category)].append(tag_info.name)
+        connection.close()
+        return result
