@@ -34,7 +34,8 @@ e621_API_KEY = os.getenv("E621_API_KEY", None)
 # derpibooru-dl.py gui on/off
 gui = False
 
-# TODO: what this option does?
+# this option used by download manager
+# this option indicates to use old file naming or the simplifies one
 source_name_as_file_name = True
 
 response_cache_dir = None
@@ -44,6 +45,8 @@ deleted_image_list_file_path = None
 
 # TODO: what is this option for?
 manual_start = False
+
+simulate = False
 
 db_user = os.getenv("DDL_DB_USER", None)
 db_password = os.getenv("DDL_DB_PASSWORD", None)

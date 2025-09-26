@@ -6,18 +6,14 @@ import pathlib
 
 import config
 import download_manager
-import medialib_db.common
 import parser
 import derpibooru_dl
 from derpibooru_dl import tagResponse
-import pyimglib
 import logging
 
 derpibooru_dl.logging.init("derpibooru_dl")
 logger = logging.getLogger(__name__)
 
-if config.do_transcode:
-    import pyimglib.transcoding
 
 id_list = []
 NO_GUI = False
@@ -27,26 +23,36 @@ arg_parser.add_argument("id", help="derpibooru image ID", nargs="*")
 arg_parser.add_argument(
     "--append",
     metavar="file",
-    type=argparse.FileType('r'),
+    type=argparse.FileType("r"),
     help="read IDs from text file (one line - one ID)",
-    default=None
+    default=None,
 )
-arg_parser.add_argument("--simulate", help="do not download actual image files", action="store_true")
-arg_parser.add_argument("--rewrite", help="force to rewrite existing files", action="store_true")
-arg_parser.add_argument("--no-gui", help="force to use CLI mode", action="store_true")
+# arg_parser.add_argument(
+# "--simulate", help="do not download actual image files", action="store_true")
+arg_parser.add_argument(
+    "--rewrite", help="force to rewrite existing files", action="store_true"
+)
+arg_parser.add_argument(
+    "--no-gui", help="force to use CLI mode", action="store_true"
+)
 arg_parser.add_argument(
     "--deleted-list",
     help="list of deleted image's ID and it's tags",
     type=pathlib.Path,
     default=None,
-    metavar="DELETED_LIST_FILE"
+    metavar="DELETED_LIST_FILE",
 )
-arg_parser.add_argument("--response-cache-dir", metavar="CACHE DIRECTORY", type=pathlib.Path, default=None)
 arg_parser.add_argument(
-    '-log',
-    '--loglevel',
-    default='warning',
-    help='Provide logging level. Example --loglevel debug, default=warning'
+    "--response-cache-dir",
+    metavar="CACHE DIRECTORY",
+    type=pathlib.Path,
+    default=None,
+)
+arg_parser.add_argument(
+    "-log",
+    "--loglevel",
+    default="warning",
+    help="Provide logging level. Example --loglevel debug, default=warning",
 )
 args = arg_parser.parse_args()
 
@@ -55,9 +61,8 @@ if args.loglevel:
 
 
 id_list = args.id.copy()
-rewrite = pyimglib.config.allow_rewrite = args.rewrite
+rewrite = args.rewrite
 download_manager.download_manager.ENABLE_REWRITING = rewrite
-config.simulate = args.simulate
 NO_GUI = args.no_gui
 config.deleted_image_list_file_path = args.deleted_list
 config.response_cache_dir = args.response_cache_dir
@@ -69,10 +74,10 @@ if args.append is not None:
 
 
 def download(url):
-    logger.debug('open connection')
+    logger.debug("open connection")
 
     try:
-        _parser: parser.tag_indexer.TagIndexer = parser.get_parser(url, config.use_medialib_db)
+        _parser: parser.Parser.Parser = parser.get_parser(url)
     except parser.exceptions.NotBoorusPrefixError as e:
         logger.exception("invalid prefix in {}".format(e.url))
         exit(1)
@@ -84,7 +89,8 @@ def download(url):
     except IndexError:
         exit(1)
 
-    parsed_tags: dict = _parser.tagIndex()
+    parsed_tags: dict = _parser.tags_processing()
+    print("parsed tags", parsed_tags)
     logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))
     outdir = tagResponse.find_folder(parsed_tags)
     logger.info("output directory: {}".format(outdir))
@@ -95,23 +101,21 @@ def download(url):
     dm.save_image_old_interface(outdir, data, parsed_tags)
 
 
-try:
-    if config.gui and not NO_GUI:
-        import tkinter
-        try:
-            from derpibooru_dl import gui
-            GUI = gui.GUI(id_list)
-        except tkinter.TclError:
-            config.gui = False
+if config.gui and not NO_GUI:
+    import tkinter
 
-    if not config.gui or NO_GUI:
-        if id_list:
-            dl_pool = download_manager.DownloadManager.create_pool(config.workers)
-            dl_pool.map(download, id_list, chunksize=1)
-        else:
-            while True:
-                print("id||url>", end="")
-                download(input())
-finally:
-    if config.do_transcode:
-        pyimglib.transcoding.statistics.log_stats()
+    try:
+        from derpibooru_dl import gui
+
+        GUI = gui.GUI(id_list)
+    except tkinter.TclError:
+        config.gui = False
+
+if not config.gui or NO_GUI:
+    if id_list:
+        dl_pool = download_manager.DownloadManager.create_pool(1)
+        dl_pool.map(download, id_list, chunksize=1)
+    else:
+        while True:
+            print("id||url>", end="")
+            download(input())

@@ -119,9 +119,13 @@ class Parser(abc.ABC):
         return None
 
     @staticmethod
-    def get_id_by_url(URL):
+    def get_id_by_url(URL) -> int:
         if type(URL) is str:
-            return URL.split("?")[0].split("/")[-1]
+            intval = int(URL.split("?")[0].split("/")[-1])
+            if type(intval) is int:
+                return intval
+            else:
+                raise ValueError("Can't convert value to int")
         elif type(URL) is int:
             return URL
         else:
@@ -258,7 +262,7 @@ class Parser(abc.ABC):
         return MIMETYPE_ASSOCIATIONS[mime_type]
 
     @abc.abstractmethod
-    def tags_processing(self) -> dict[str, list[str]]:
+    def tags_processing(self) -> dict[str, set[str]]:
         pass
 
     @abc.abstractmethod

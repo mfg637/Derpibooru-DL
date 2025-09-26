@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class Philomena(Parser):
     def __init__(self, url, parsed_data: dict | None = None):
-        super.__init__(url, parsed_data)
+        super().__init__(url, parsed_data)
         self.rate_limiter = self.make_rate_limiter()
 
     def parseHTML(self, image_id) -> dict[str, str]:
@@ -123,7 +123,7 @@ class Philomena(Parser):
         else:
             raise TypeError(f"Unexpected type: {type(tag_data)}")
 
-    def tags_processing(self) -> dict[str, list[str]]:
+    def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
         custom_processing_data = self.custom_tag_processing()
         known_tags: list[database.origin_tag.OriginTag] = []
@@ -131,12 +131,12 @@ class Philomena(Parser):
         if custom_processing_data is None:
             unknown_tags: list[str] = []
             tag_names = self.getTagNamesList()
-            for tag_info in tag_names:
+            for origin_tag_info in tag_names:
                 tag_data = database.origin_tag.get_by_tag_name(
-                    connection, origin, tag_info
+                    connection, origin, origin_tag_info
                 )
                 if tag_data is None:
-                    unknown_tags.append(tag_info)
+                    unknown_tags.append(origin_tag_info)
                 else:
                     known_tags.append(tag_data)
             if len(unknown_tags):
@@ -146,15 +146,15 @@ class Philomena(Parser):
                         database.DatabaseEnum.DERPIBOORU
                     )
                 tag_name_to_slug = self.parseHTML(self.getID())
-                for tag_info in unknown_tags:
+                for origin_tag_info in unknown_tags:
                     tag_data = None
                     if derpibooru_connection is not None:
                         tag_data = database.derpibooru.simulate_tag_api(
-                            derpibooru_connection, tag_info
+                            derpibooru_connection, origin_tag_info
                         )
                     if tag_data is None:
                         tag_data = self.parseJSON(
-                            url=tag_name_to_slug[tag_info], _type="tags"
+                            url=tag_name_to_slug[origin_tag_info], _type="tags"
                         )
                     if tag_data is None:
                         raise Exception("tag API error: no tag info")
@@ -212,11 +212,23 @@ class Philomena(Parser):
                     known_tags.append(origin_tag_data)
                 else:
                     known_tags.append(existing_origin_tag)
-        result: dict[str, list[str]] = dict()
-        for tag_info in known_tags:
+        result: dict[str, set[str]] = dict()
+        for origin_tag_info in known_tags:
+            tag_info = database.tag.get_tag_by_id(
+                connection, origin_tag_info.tag_id
+            )
+            if tag_info is None:
+                raise Exception("Fail to get tag info")
             if str(tag_info.category) not in result:
-                result[str(tag_info.category)] = []
-            result[str(tag_info.category)].append(tag_info.tag_name)
+                result[str(tag_info.category)] = set()
+            result[str(tag_info.category)].add(tag_info.name)
+        auto_tags = list(self.get_auto_copyright_tags())
+        copyright_category_name = str(database.tag.TagCategory.COPYRIGHT)
+        if len(auto_tags):
+            if copyright_category_name not in result:
+                result[copyright_category_name] = set()
+        for tag_name in auto_tags:
+            result[copyright_category_name].add(tag_name)
         connection.close()
         return result
 
