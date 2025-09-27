@@ -13,7 +13,6 @@ import database
 
 
 tag_categories = database.tag.TagCategory
-category = {k: str(k) for k in tag_categories}
 
 
 class FilesystemDirectoryManager(abc.ABC):
@@ -49,7 +48,7 @@ class TagBasedDirectory(FilesystemDirectoryManager):
                 in tags[tag_categories.CHARACTER_GROUP]
             ):
                 output_directory = output_directory.joinpath("cmc")
-            elif "shipping" in tags["content"]:
+            elif "content" in tags and "shipping" in tags["content"]:
                 output_directory = output_directory.joinpath("shipping")
             elif len(tags[tag_categories.CHARACTER]) == 1:
                 output_directory = output_directory.joinpath(
@@ -106,17 +105,19 @@ class TagBasedDirectory(FilesystemDirectoryManager):
                 and "my little pony" not in tags["copyright"]
             ):
                 output_directory = output_directory.joinpath("horse")
-            elif "vector" in tags["content"]:
+            elif "content" in tags and "vector" in tags["content"]:
                 output_directory = output_directory.joinpath("vector")
-            elif "screencap" in tags["content"]:
+            elif "content" in tags and "screencap" in tags["content"]:
                 output_directory = output_directory.joinpath("screencap")
-            elif {"simple background", "transparent background"} & tags[
-                "content"
-            ]:
+            elif (
+                "content" in tags
+                and {"simple background", "transparent background"}
+                & tags["content"]
+            ):
                 output_directory = output_directory.joinpath("f")
-            elif "wallpaper" in tags["content"]:
+            elif "content" in tags and "wallpaper" in tags["content"]:
                 output_directory = output_directory.joinpath("wallpaper")
-            elif "photo" in tags["content"]:
+            elif "content" in tags and "photo" in tags["content"]:
                 output_directory = output_directory.joinpath("photo")
 
         return output_directory
