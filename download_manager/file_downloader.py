@@ -25,3 +25,5 @@ class FileDownloader(DownloadManager):
             if not config.simulate:
                 self.download_file(src_filename, src_url)
                 return 0, 0, 0, 0, src_filename
+        elif os.path.isfile(src_filename):
+            self.skip_download = True
