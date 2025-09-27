@@ -250,13 +250,17 @@ class Philomena(Parser):
 
     def parseJSON(self, url=None, _type="images", trial_count=2) -> dict | None:
         _id = None
-        if url is not None and type(url) is int:
+        if url is not None:
             _id = url
         else:
             _id = self.get_id_by_url(self._url)
-        if type(_id) is not int:
-            raise TypeError(f"ID: {_id} is not integer")
-        data = self.custom_data_loading(_id, _type)
+        if _id is None:
+            raise TypeError(f"ID: {_id} is still None")
+        data: dict | None = None
+        if type(_id) is int:
+            data = self.custom_data_loading(_id, _type)
+        else:
+            logger.warning("url(id) is not int. Can't use custom data loading")
         if data is None:
             request_url = "https://{}/api/v1/json/{}/{}".format(
                 self.get_domain_name_s(), _type, urllib.parse.quote(str(_id))
@@ -304,13 +308,19 @@ class Philomena(Parser):
                     raise e
             while (
                 data is not None
+                and _type == "images"
                 and "duplicate_of" in data["image"]
                 and data["image"]["duplicate_of"] is not None
             ):
                 data = self.parseJSON(str(data["image"]["duplicate_of"]))
-        if data is not None and "tags" not in data["image"]:
+        if (
+            data is not None
+            and _type == "images"
+            and "tags" not in data["image"]
+        ):
             data["image"]["tags"] = []
-        self._parsed_data = data
+        if _type == "images":
+            self._parsed_data = data
         return data
 
     def parsehtml_get_image_route_name(self) -> str:
