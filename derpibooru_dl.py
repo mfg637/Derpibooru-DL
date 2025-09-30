@@ -117,6 +117,22 @@ if not config.gui or NO_GUI:
         dl_pool = download_manager.DownloadManager.create_pool(1)
         dl_pool.map(download, id_list, chunksize=1)
     else:
-        while True:
-            print("id||url>", end="")
-            download(input())
+        wait_for_command = True
+        while wait_for_command:
+            print("id || url> ", end="")
+            command = input()
+            if command in {"h", "help"}:
+                print("h[elp]   show help message")
+                print("q[uit]   exit from program")
+                print("exit     exit from program")
+                print("url or content id will be used for download")
+            elif command in {"q", "quit", "exit"}:
+                wait_for_command = False
+            else:
+                try:
+                    check_id = parser.Parser.Parser.get_id_by_url(command)
+                except ValueError:
+                    print("invalid input: url or content id expected")
+                    print("type h for help")
+                else:
+                    download(command)
