@@ -1,6 +1,5 @@
 import logging
-import os
-
+import pathlib
 import config
 from .download_manager import DownloadManager
 import parser
@@ -14,16 +13,15 @@ class FileDownloader(DownloadManager):
 
     def _download_body(
         self,
-        src_url,
-        name,
-        src_filename,
-        output_directory: str,
+        src_url: str,
+        name: str,
+        src_filename: pathlib.Path,
+        output_directory: pathlib.Path,
         data: dict,
-        tags,
+        tags: dict | None,
     ):
-        if self.is_rewriting_allowed() or not os.path.isfile(src_filename):
+        if self.is_rewriting_allowed() or not src_filename.is_file():
             if not config.simulate:
                 self.download_file(src_filename, src_url)
-                return 0, 0, 0, 0, src_filename
-        elif os.path.isfile(src_filename):
+        elif src_filename.is_file():
             self.skip_download = True

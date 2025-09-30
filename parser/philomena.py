@@ -388,12 +388,21 @@ class Philomena(Parser):
             self.get_filename_prefix(), data["image"]["id"]
         )
 
-    def get_content_source_url(self, data):
-        return (
-            os.path.splitext(data["image"]["representations"]["full"])[0]
-            + "."
-            + data["image"]["format"].lower()
+    def get_content_source_url(self, data) -> str:
+        representation_url_string = data["image"]["representations"]["full"]
+        representation_url_object = urllib.parse.urlparse(
+            representation_url_string
         )
+        url_path_component = pathlib.PurePosixPath(
+            representation_url_object.path
+        )
+        url_path_with_new_suffix = url_path_component.with_suffix(
+            ".{}".format(data["image"]["format"].lower())
+        )
+        new_representation_url = representation_url_object._replace(
+            path=str(url_path_with_new_suffix)
+        )
+        return urllib.parse.urlunparse(new_representation_url)
 
     def get_output_filename(
         self, data, output_directory: pathlib.Path

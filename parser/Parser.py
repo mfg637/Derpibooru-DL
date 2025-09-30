@@ -225,7 +225,7 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_content_source_url(self, data):
+    def get_content_source_url(self, data) -> str:
         pass
 
     @abc.abstractmethod

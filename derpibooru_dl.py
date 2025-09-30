@@ -76,8 +76,6 @@ if args.append is not None:
 
 
 def download(url):
-    logger.debug("open connection")
-
     try:
         _parser: parser.Parser.Parser = parser.get_parser(url)
     except parser.exceptions.NotBoorusPrefixError as e:
@@ -99,7 +97,7 @@ def download(url):
     dm = download_manager.make_download_manager(_parser)
     if rewrite:
         dm.enable_rewriting()
-    dm.save_image_old_interface(outdir, data, parsed_tags)
+    dm.download(outdir, data, parsed_tags)
 
 
 if config.gui and not NO_GUI:
@@ -114,8 +112,8 @@ if config.gui and not NO_GUI:
 
 if not config.gui or NO_GUI:
     if id_list:
-        dl_pool = download_manager.DownloadManager.create_pool(1)
-        dl_pool.map(download, id_list, chunksize=1)
+        for current_id in id_list:
+            download(current_id)
     else:
         wait_for_command = True
         while wait_for_command:
