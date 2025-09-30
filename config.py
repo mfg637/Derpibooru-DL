@@ -34,9 +34,11 @@ e621_API_KEY = os.getenv("E621_API_KEY", None)
 # derpibooru-dl.py gui on/off
 gui = False
 
-# this option used by download manager
-# this option indicates to use old file naming or the simplifies one
+# this option indicates to use file name from API or not
+# affected on philomena based boorus
 source_name_as_file_name = True
+
+max_name_length = 128
 
 response_cache_dir = None
 

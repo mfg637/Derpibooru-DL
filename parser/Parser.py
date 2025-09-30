@@ -6,6 +6,7 @@ import pathlib
 import time
 import enum
 import typing
+import pathvalidate
 
 import config
 
@@ -130,6 +131,12 @@ class Parser(abc.ABC):
             return URL
         else:
             ValueError("URL {} is {}".format(URL, type(URL)))
+
+    @staticmethod
+    def sanitise_filename(filename):
+        name = pathvalidate.sanitize_filename(filename)
+        name = name.replace("&", "-amp-")
+        return name
 
     @abc.abstractmethod
     def get_content_id(self) -> int:

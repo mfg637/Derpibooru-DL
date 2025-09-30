@@ -10,7 +10,6 @@ import pathlib
 import sys
 import threading
 
-import pathvalidate
 import requests
 
 import config
@@ -151,12 +150,6 @@ class DownloadManager(abc.ABC):
             initargs=(medialib_db_lock,),
         )
 
-    @staticmethod
-    def fix_filename(filename):
-        name = pathvalidate.sanitize_filename(filename)
-        name = name.replace("&", "-amp-")
-        return name
-
     def download(
         self, output_directory: pathlib.Path, data: dict, tags: dict = None
     ):
@@ -166,8 +159,6 @@ class DownloadManager(abc.ABC):
         if self.parser.check_is_takedowned(data):
             return self.parser.get_takedowned_content_info(data)
 
-        medialib_db_connection = None
-        content_info = None
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
 
@@ -176,13 +167,6 @@ class DownloadManager(abc.ABC):
             data, output_directory
         )
 
-        if config.source_name_as_file_name:
-            name = DownloadManager.fix_filename(name)
-        else:
-            name = "{}{}".format(
-                self.parser.get_filename_prefix(), self.parser.getID()
-            )
-
         logger.info("filename: {}".format(src_filename))
         logger.debug("image_url: {}".format(src_url))
 
@@ -190,7 +174,6 @@ class DownloadManager(abc.ABC):
             src_url, name, src_filename, output_directory, data, tags
         )
 
-        image_hash = None
         file_type: parser.Parser.FileTypes = self.parser.identify_filetype()
         if (
             file_type == parser.Parser.FileTypes.IMAGE
@@ -200,8 +183,6 @@ class DownloadManager(abc.ABC):
                 logger.debug("result: {}".format(result.__repr__()))
                 self.parser.print_debug_info()
                 raise ValueError("self.source_file_data IS NONE")
-        image_format = self.parser.get_image_format(data)
-        metadata = {}
         logger.info(
             "Done downloading: {}{}".format(
                 self.parser.get_filename_prefix(), self.parser.getID()
@@ -220,8 +201,6 @@ class DownloadManager(abc.ABC):
         name, src_filename = self.parser.get_output_filename(
             data, output_directory
         )
-
-        name = DownloadManager.fix_filename(name)
 
         logger.info("filename: {}".format(src_filename))
         logger.debug("image_url: {}".format(src_url))

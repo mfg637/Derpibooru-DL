@@ -14,6 +14,7 @@ from database import origin_tag
 from .Parser import Parser, FileTypes
 
 import requests
+import config
 
 
 logger = logging.getLogger(__name__)
@@ -399,16 +400,21 @@ class Philomena(Parser):
     ) -> tuple[str, pathlib.Path]:
         data = data["image"]
         name = ""
-        if "name" in data and data["name"] is not None:
+        if (
+            "name" in data
+            and data["name"] is not None
+            and config.source_name_as_file_name
+        ):
             name = "{}{} {}".format(
                 self.get_filename_prefix(),
                 data["id"],
                 re.sub(
-                    '[/\[\]:;|=*".?]', "", os.path.splitext(data["name"])[0]
-                ),
+                    r'[/\[\]:;|=*".?]', "", os.path.splitext(data["name"])[0]
+                )[: config.max_name_length],
             )
         else:
             name = "{}{}".format(self.get_filename_prefix(), data["id"])
+        name = Parser.sanitise_filename(name)
         return name, output_directory.joinpath(
             "{}.{}".format(name, data["format"].lower())
         )
