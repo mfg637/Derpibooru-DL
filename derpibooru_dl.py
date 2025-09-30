@@ -11,7 +11,9 @@ import derpibooru_dl
 from derpibooru_dl import tagResponse
 import logging
 
-derpibooru_dl.logging.init("derpibooru_dl")
+root_logger = logging.getLogger()
+derpibooru_dl.logging.init(root_logger, "derpibooru_dl")
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,13 +53,13 @@ arg_parser.add_argument(
 arg_parser.add_argument(
     "-log",
     "--loglevel",
-    default="warning",
-    help="Provide logging level. Example --loglevel debug, default=warning",
+    default="notset",
+    help="Provide logging level. Example --loglevel debug, default=notset",
 )
 args = arg_parser.parse_args()
 
 if args.loglevel:
-    logger.setLevel(level=args.loglevel.upper())
+    root_logger.setLevel(level=args.loglevel.upper())
 
 
 id_list = args.id.copy()
@@ -90,7 +92,6 @@ def download(url):
         exit(1)
 
     parsed_tags: dict = _parser.tags_processing()
-    print("parsed tags", parsed_tags)
     logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))
     outdir = tagResponse.find_folder(parsed_tags)
     logger.info("output directory: {}".format(outdir))
