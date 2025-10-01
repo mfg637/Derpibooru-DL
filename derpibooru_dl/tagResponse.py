@@ -30,13 +30,14 @@ class TagBasedDirectory(FilesystemDirectoryManager):
             output_directory = output_directory.joinpath("mlp")
         elif "species" in tags:
             if "gryphon" in tags["species"]:
-                output_directory = output_directory.joinpath("g6")
+                output_directory = output_directory.joinpath("g7")
             elif "horse" in tags["species"]:
                 output_directory = output_directory.joinpath("horses")
 
-        for mlp_generation_tag in {"g1", "g2", "g3", "g5"}:
-            if mlp_generation_tag in tags[tag_categories.COPYRIGHT]:
-                output_directory.joinpath(mlp_generation_tag)
+        if tag_categories.COPYRIGHT in tags:
+            for mlp_generation_tag in {"g1", "g2", "g3", "g5"}:
+                if mlp_generation_tag in tags[tag_categories.COPYRIGHT]:
+                    output_directory.joinpath(mlp_generation_tag)
 
         # rules for characters
         if tag_categories.CHARACTER in tags:
