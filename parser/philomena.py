@@ -255,7 +255,9 @@ class Philomena(Parser):
     ) -> dict | None:
         pass
 
-    def parseJSON(self, url=None, _type="images", trial_count=2) -> dict | None:
+    def parseJSON(
+        self, url=None, _type="images", trial_count=2, **query_params
+    ) -> dict | None:
         _id = None
         if url is not None:
             _id = url
@@ -269,9 +271,20 @@ class Philomena(Parser):
         else:
             logger.warning("url(id) is not int. Can't use custom data loading")
         if data is None:
-            request_url = "https://{}/api/v1/json/{}/{}".format(
-                self.get_domain_name_s(), _type, urllib.parse.quote(str(_id))
+            url_path = (
+                pathlib.PurePosixPath("/api/v1/json/")
+                .joinpath(_type)
+                .joinpath(urllib.parse.quote(str(_id)))
             )
+            request_url_object = urllib.parse.ParseResult(
+                "https",
+                self.get_domain_name_s(),
+                str(url_path),
+                "",
+                urllib.parse.urlencode(query_params),
+                "",
+            )
+            request_url = urllib.parse.urlunparse(request_url_object)
             logger.debug("url: {}".format(url))
             logger.info("parseJSON: {}".format(request_url))
             self.rate_limiter.rate_limit(_type)
