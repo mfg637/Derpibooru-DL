@@ -98,8 +98,14 @@ class Philomena(Parser):
             elif category == "origin":
                 if name.startswith("artist:"):
                     return name.removeprefix("artist:"), categories.ARTIST
+                elif name.startswith("creator:"):
+                    return name.removeprefix("creator:"), categories.ARTIST
                 elif name.startswith("prompter:"):
                     return name.removeprefix("prompter:"), categories.PROMPTER
+                elif name.startswith("generator:"):
+                    return name, categories.AI
+                elif name in {"ai generated", "ai composition", "ai assisted"}:
+                    return name, categories.AI
                 else:
                     return name, categories.ARTIST
             elif category == "rating":
