@@ -132,6 +132,8 @@ class Philomena(Parser):
 
     def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
+        if connection is None:
+            raise Exception("Failed to connect to applicatio database")
         custom_processing_data = self.custom_tag_processing()
         known_tags: list[database.origin_tag.OriginTag] = []
         origin = database.origin_tag.OriginNameType(self.get_origin_name())
@@ -150,7 +152,8 @@ class Philomena(Parser):
                 derpibooru_connection = None
                 if origin is database.origin_tag.OriginNameType.DERPIBOORU:
                     derpibooru_connection = database.make_connection(
-                        database.DatabaseEnum.DERPIBOORU
+                        database.DatabaseEnum.DERPIBOORU,
+                        none_if_error=True
                     )
                 tag_name_to_slug = self.parseHTML(self.getID())
                 for origin_tag_info in unknown_tags:

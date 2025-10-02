@@ -2,6 +2,7 @@ import config
 import enum
 import psycopg2
 import psycopg2.extensions
+import psycopg2.errors
 
 
 class DatabaseEnum(enum.Enum):
@@ -11,31 +12,36 @@ class DatabaseEnum(enum.Enum):
 
 
 def make_connection(
-    database: DatabaseEnum = DatabaseEnum.APP_PROD,
-) -> psycopg2.extensions.connection:
-    if database is DatabaseEnum.APP_PROD:
-        return psycopg2.connect(
-            host=config.app_db_host,
-            database=config.app_db_prod,
-            user=config.db_user,
-            password=config.db_password,
-        )
-    elif database is DatabaseEnum.APP_TEST:
-        return psycopg2.connect(
-            host=config.app_db_host,
-            database=config.app_db_test,
-            user=config.db_user,
-            password=config.db_password,
-        )
-    elif database is DatabaseEnum.DERPIBOORU:
-        return psycopg2.connect(
-            host=config.derpibooru_dump_db_host,
-            database="derpibooru",
-            user=config.derpibooru_dump_db_user,
-            password=config.derpibooru_dump_db_password,
-        )
-    else:
-        raise ValueError(f"Unknown database: {database.__repr__()}")
+    database: DatabaseEnum = DatabaseEnum.APP_PROD, none_if_error: bool = False
+) -> psycopg2.extensions.connection | None:
+    try:
+        if database is DatabaseEnum.APP_PROD:
+            return psycopg2.connect(
+                host=config.app_db_host,
+                database=config.app_db_prod,
+                user=config.db_user,
+                password=config.db_password,
+            )
+        elif database is DatabaseEnum.APP_TEST:
+            return psycopg2.connect(
+                host=config.app_db_host,
+                database=config.app_db_test,
+                user=config.db_user,
+                password=config.db_password,
+            )
+        elif database is DatabaseEnum.DERPIBOORU:
+            return psycopg2.connect(
+                host=config.derpibooru_dump_db_host,
+                database="derpibooru",
+                user=config.derpibooru_dump_db_user,
+                password=config.derpibooru_dump_db_password,
+            )
+        else:
+            raise ValueError(f"Unknown database: {database.__repr__()}")
+    except psycopg2.OperationalError as e:
+        if none_if_error:
+            return None
+        raise e
 
 
 def sanitize_string(input_str: str | None) -> str | None:
