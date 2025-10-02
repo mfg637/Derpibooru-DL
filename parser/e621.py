@@ -248,7 +248,7 @@ class E621Parser(Parser.Parser):
                 if origin_tag is None:
                     tag_id = database.tag.get_or_create_tag_id(
                         connection,
-                        origin_tag_name,
+                        origin_tag_name.replace("_", " "),
                         category_translation_table[origin_category],
                     )
                     if tag_id is None:
@@ -283,6 +283,10 @@ class E621Parser(Parser.Parser):
                         result[str(tag_info.category)] = set()
                     result[str(tag_info.category)].add(tag_info.name)
         connection.close()
+        RATING_NAME = {"s": "safe", "q": "questionable", "e": "explicit"}
+        result[categories.RATING] = {
+            RATING_NAME[self.get_raw_content_data()["rating"]],
+        }
         return result
 
     def get_content_id(self) -> int:
