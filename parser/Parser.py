@@ -130,7 +130,7 @@ class Parser(abc.ABC):
         elif type(URL) is int:
             return URL
         else:
-            ValueError("URL {} is {}".format(URL, type(URL)))
+            raise ValueError("URL {} is {}".format(URL, type(URL)))
 
     @staticmethod
     def sanitise_filename(filename):

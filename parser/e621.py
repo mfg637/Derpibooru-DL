@@ -1,6 +1,5 @@
 import json
 import logging
-import os
 import pathlib
 import time
 import typing
@@ -8,23 +7,25 @@ import urllib
 import urllib.parse
 
 import database
-from database.tag import TagCategory
 
-from . import exceptions
 from .Parser import FileTypes
-
-logger = logging.getLogger(__name__)
 
 import requests
 
 import config
 from . import Parser
 
+
+logger = logging.getLogger(__name__)
+
 FILENAME_PREFIX = "ef"
 ORIGIN = "e621"
 
 
 class E621Parser(Parser.Parser):
+    def __init__(self, url, parsed_data: dict | None = None):
+        super().__init__(url, parsed_data)
+        self.rate_limiter = Parser.OneRequestPerSecondRateLimiter()
 
     def identify_filetype(self) -> FileTypes:
         FILE_EXTENSION_ASSOCIATION: typing.Final[dict[str, FileTypes]] = {
@@ -35,17 +36,17 @@ class E621Parser(Parser.Parser):
             "webm": FileTypes.VIDEO,
         }
         filetype = FILE_EXTENSION_ASSOCIATION[
-            self._parsed_data["post"]["file"]["ext"].lower()
+            self.get_data()["post"]["file"]["ext"].lower()
         ]
         if (
             filetype == FileTypes.IMAGE
-            and "animated" in self._parsed_data["post"]["tags"]["meta"]
+            and "animated" in self.get_data()["post"]["tags"]["meta"]
         ):
             filetype = FileTypes.ANIMATION
         return filetype
 
     def parsehtml_get_image_route_name(self) -> str:
-        pass
+        raise NotImplementedError()
 
     def get_domain_name(self) -> str:
         return E621Parser.get_domain_name_s()
@@ -54,11 +55,8 @@ class E621Parser(Parser.Parser):
     def get_domain_name_s():
         return "e621.net"
 
-    def getTagList(self) -> list:
-        pass
-
     def getID(self) -> str:
-        return str(self._parsed_data["post"]["id"])
+        return str(self.get_data()["post"]["id"])
 
     def dataValidator(self, data):
         pass
@@ -86,6 +84,7 @@ class E621Parser(Parser.Parser):
             request_url += "?login={}&api_key={}".format(
                 config.e621_login, config.e621_API_KEY
             )
+        self.rate_limiter.rate_limit(_type)
         logger.info("parseJSON: {}".format(request_url))
         request_data = None
         try:
@@ -107,6 +106,8 @@ class E621Parser(Parser.Parser):
                     )
                 )
                 raise e
+        finally:
+            self.rate_limiter.increment_requests_count()
         data = None
         if request_data.status_code == 404:
             raise IndexError('not founded "{}"'.format(url))
@@ -172,11 +173,20 @@ class E621Parser(Parser.Parser):
         return 0, 0, 0, 0
 
     def get_content_source_url(self, data):
-        return (
-            os.path.splitext(data["post"]["file"]["url"])[0]
-            + "."
-            + data["post"]["file"]["ext"].lower()
+        representation_url_string = data["post"]["file"]["url"]
+        representation_url_object = urllib.parse.urlparse(
+            representation_url_string
         )
+        url_path_component = pathlib.PurePosixPath(
+            representation_url_object.path
+        )
+        url_path_with_new_suffix = url_path_component.with_suffix(
+            ".{}".format(data["post"]["file"]["ext"].lower())
+        )
+        new_representation_url = representation_url_object._replace(
+            path=str(url_path_with_new_suffix)
+        )
+        return urllib.parse.urlunparse(new_representation_url)
 
     def get_output_filename(
         self, data, output_directory: pathlib.Path
@@ -186,11 +196,6 @@ class E621Parser(Parser.Parser):
         print(data["id"], data["file"]["url"], data["file"]["ext"])
         if data["file"]["url"] is None or data["file"]["ext"] is None:
             print(data)
-        src_url = (
-            os.path.splitext(data["file"]["url"])[0]
-            + "."
-            + data["file"]["ext"].lower()
-        )
         name = "{}{}".format(FILENAME_PREFIX, data["id"])
         return name, output_directory.joinpath(
             "{}.{}".format(name, data["file"]["ext"].lower())
@@ -212,12 +217,14 @@ class E621Parser(Parser.Parser):
     def get_raw_content_data(self):
         return self.get_data()["post"]
 
-    def tags_processing(self) -> dict[str, list[str]]:
+    def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
+        if connection is None:
+            raise Exception("Failed to connect to database")
         origin_tags_dict = self.get_raw_content_data()["tags"]
         categories = database.tag.TagCategory
         origin = database.origin_tag.OriginNameType.E621
-        category_translation_table: dict[str, categories] = {
+        category_translation_table: dict[str, database.tag.TagCategory] = {
             "general": categories.CONTENT,
             "artist": categories.ARTIST,
             "copyright": categories.COPYRIGHT,
@@ -227,7 +234,7 @@ class E621Parser(Parser.Parser):
             "meta": categories.META,
             "lore": categories.LORE,
         }
-        result: dict[str, list[str]] = dict()
+        result: dict[str, set[str]] = dict()
         for origin_category in origin_tags_dict:
             for origin_tag_name in origin_tags_dict[origin_category]:
                 origin_tag = database.origin_tag.get_by_tag_name(
@@ -254,8 +261,8 @@ class E621Parser(Parser.Parser):
                     if tag_info is None:
                         raise Exception("Failed to get tag info")
                     if str(tag_info.category) not in result:
-                        result[str(tag_info.category)] = []
-                    result[str(tag_info.category)].append(tag_info.name)
+                        result[str(tag_info.category)] = set()
+                    result[str(tag_info.category)].add(tag_info.name)
                 else:
                     tag_info = database.tag.get_tag_by_id(
                         connection, origin_tag.tag_id
@@ -268,7 +275,23 @@ class E621Parser(Parser.Parser):
                             )
                         )
                     if str(tag_info.category) not in result:
-                        result[str(tag_info.category)] = []
-                    result[str(tag_info.category)].append(tag_info.name)
+                        result[str(tag_info.category)] = set()
+                    result[str(tag_info.category)].add(tag_info.name)
         connection.close()
         return result
+
+    def get_content_id(self) -> int:
+        return self.get_data()["id"]
+
+    def getTagNamesList(self) -> list[str]:
+        tags = self.get_data()["tags"]
+        result = []
+        for category in tags:
+            result.append(tags[category])
+        return result
+
+    def parseHTML(self, image_id) -> dict[str, str]:
+        raise NotImplementedError("Not supported by E621")
+
+    def make_rate_limiter(self) -> Parser.RateLimiter:
+        return Parser.OneRequestPerSecondRateLimiter()
