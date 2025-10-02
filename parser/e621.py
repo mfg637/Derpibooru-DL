@@ -4,6 +4,7 @@ import pathlib
 import time
 import typing
 import urllib
+import base64
 import urllib.parse
 
 import database
@@ -71,6 +72,12 @@ class E621Parser(Parser.Parser):
         headers = {
             "User-Agent": "Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)"
         }
+        if config.e621_login is not None and config.e621_API_KEY is not None:
+            auth_string = f"{config.e621_login}:{config.e621_API_KEY}"
+            auth_base64 = base64.b64encode(auth_string.encode("utf-8")).decode(
+                "utf-8"
+            )
+            headers["Authorization"] = f"Basic {auth_base64}"
 
         id = None
         if url is not None:
@@ -80,10 +87,6 @@ class E621Parser(Parser.Parser):
         request_url = "https://{}/{}/{}.json".format(
             self.get_domain_name_s(), _type, urllib.parse.quote(str(id))
         )
-        if config.e621_login is not None and config.e621_API_KEY is not None:
-            request_url += "?login={}&api_key={}".format(
-                config.e621_login, config.e621_API_KEY
-            )
         self.rate_limiter.rate_limit(_type)
         logger.info("parseJSON: {}".format(request_url))
         request_data = None
@@ -174,6 +177,8 @@ class E621Parser(Parser.Parser):
 
     def get_content_source_url(self, data):
         representation_url_string = data["post"]["file"]["url"]
+        if representation_url_string is None:
+            raise Exception("Access denied by e621")
         representation_url_object = urllib.parse.urlparse(
             representation_url_string
         )
