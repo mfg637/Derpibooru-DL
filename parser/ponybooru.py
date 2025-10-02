@@ -35,6 +35,8 @@ class PonybooruParser(philomena.Philomena):
 
     def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
+        if connection is None:
+            raise Exception("Failed to connect to application database")
         known_tags: list[database.origin_tag.OriginTag] = []
         origin = database.origin_tag.OriginNameType.PONYBOORU
         unknown_tags: list[str] = []

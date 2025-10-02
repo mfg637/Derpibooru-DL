@@ -1,147 +1,350 @@
-import datetime
-import json
 import logging
-import os
-import pathlib
-import re
+import datetime
 import time
-
+import urllib.parse
+import pathlib
 import requests
-
-from . import Parser
-from .Parser import FileTypes
-
-FILENAME_PREFIX = 'tb'
-ORIGIN = 'twibooru'
+import json
+import database
+import os
+import re
+import config
+from . import philomena, Parser
 
 logger = logging.getLogger(__name__)
 
-requests_remain = 60
-reset_time = datetime.datetime.utcnow()
+FILENAME_PREFIX = "tb"
+ORIGIN = "twibooru"
 
-class TwibooruParser(Parser.Parser):
-    def identify_filetype(self) -> FileTypes:
-        filetype = Parser.Parser.identify_by_mimetype(self.get_data()["post"]["mime_type"])
-        if filetype == FileTypes.IMAGE and "animated" in self.get_data()["post"]['tags']:
-            filetype = FileTypes.ANIMATION
-        return filetype
+
+class TwibooruRateLimiter(Parser.RateLimiter):
+    def rate_limit(self, request_type):
+        if self.first_request_date is not None:
+            current_timestamp = datetime.datetime.now()
+            time_pass: datetime.timedelta = (
+                current_timestamp - self.first_request_date
+            )
+            if self.request_timeout_seconds is None:
+                pass
+            elif time_pass.total_seconds() < self.request_timeout_seconds:
+                if self.requests_count >= self.requests_limit:
+                    waiting_time = (
+                        self.request_timeout_seconds - time_pass.total_seconds()
+                    )
+                    logger.info(f"sleeping for {waiting_time} seconds")
+                    time.sleep(waiting_time)
+                    self.requests_count = 0
+                    self.first_request_date = datetime.datetime.now()
+                    self.request_timeout_seconds = None
+            else:
+                self.requests_count = 0
+                self.first_request_date = datetime.datetime.now()
+                self.request_timeout_seconds = None
+        else:
+            self.first_request_date = datetime.datetime.now()
+        self.request_timeout_seconds = 60
+        if request_type == "search":
+            self.requests_limit = 10
+        elif self.request_timeout_seconds is not None:
+            self.requests_limit = min(self.requests_limit, 60)
+        else:
+            self.requests_limit = 60
+
+    def update_rate_limit(self, response_headers):
+        self.requests_limit = int(response_headers["x-rl"])
+        self.requests_count = self.requests_limit - int(
+            response_headers["x-rl-remain"]
+        )
+
+
+class TwibooruParser(philomena.Philomena):
+    @staticmethod
+    def get_domain_name_s():
+        return "twibooru.org"
+
+    def get_filename_prefix(self):
+        return FILENAME_PREFIX
+
     def get_origin_name(self):
         return ORIGIN
 
-    def get_filename_prefix(self):
-        return 'tb'
-
-    def getID(self) -> str:
-        try:
-            return str(self._parsed_data["post"]["id"])
-        except KeyError as e:
-            self.file_deleted_handing(FILENAME_PREFIX, self.input_id)
-            raise e
-
-    def getTagList(self) -> list:
-        return self.get_data()["post"]['tags']
-
-    def parsehtml_get_image_route_name(self) -> str:
-        return 'posts'
-
     def get_domain_name(self) -> str:
-        return 'twibooru.org'
+        return TwibooruParser.get_domain_name_s()
+
+    def custom_tag_processing(self):
+        return None
+
+    def custom_data_loading(
+        self, _id: int, request_type="images"
+    ) -> dict | None:
+        return None
+
+    def get_auto_copyright_tags(self) -> set[str]:
+        return {"my little pony"}
+
+    def make_rate_limiter(self):
+        return TwibooruRateLimiter()
+
+    def parseJSON(
+        self, url=None, _type="posts", trial_count=2, **query_params
+    ) -> dict | None:
+        _id = None
+        if url is not None:
+            _id = url
+        else:
+            _id = self.get_id_by_url(self._url)
+        if _id is None:
+            raise TypeError(f"ID: {_id} is still None")
+        data: dict | None = None
+        if data is None:
+            url_path = (
+                pathlib.PurePosixPath("/api/v3/")
+                .joinpath(_type)
+                .joinpath(urllib.parse.quote(str(_id)))
+            )
+            request_url_object = urllib.parse.ParseResult(
+                "https",
+                self.get_domain_name_s(),
+                str(url_path),
+                "",
+                urllib.parse.urlencode(query_params),
+                "",
+            )
+            request_url = urllib.parse.urlunparse(request_url_object)
+            logger.debug("url: {}".format(url))
+            logger.info("parseJSON: {}".format(request_url))
+            self.rate_limiter.rate_limit(_type)
+            try:
+                request_data = requests.get(request_url)
+            except Exception as e:
+                self.rate_limiter.increment_requests_count()
+                print(e)
+                return
+            else:
+                self.rate_limiter.increment_requests_count()
+                if isinstance(self.rate_limiter, TwibooruRateLimiter):
+                    self.rate_limiter.update_rate_limit(request_data.headers)
+            data = None
+            if request_data.status_code == 404:
+                raise IndexError('not found "{}"'.format(url))
+            try:
+                data = request_data.json()
+            except json.JSONDecodeError as e:
+                sleep_time_seconds = 5
+                sleep_time_text = "5 seconds"
+                if request_data.status_code == 500 or trial_count <= 1:
+                    sleep_time_seconds = 16 * 60
+                    sleep_time_text = "16 minutes"
+                if trial_count > 0:
+                    logger.warning(
+                        (
+                            "JSON decode error. "
+                            f"HTTP status code:{request_data.status_code} "
+                            f"Raw data: \n{request_data.text}"
+                        )
+                    )
+                    print(f"try again after {sleep_time_text}")
+                    time.sleep(sleep_time_seconds)
+                    return self.parseJSON(url, _type, trial_count - 1)
+                else:
+                    logger.error(
+                        (
+                            "JSON decode error. "
+                            f"HTTP status code:{request_data.status_code} "
+                            f"Raw data: \n{request_data.text}"
+                        )
+                    )
+                    raise e
+            while (
+                data is not None
+                and _type == "posts"
+                and "duplicate_of" in data["post"]
+                and data["post"]["duplicate_of"] is not None
+            ):
+                data = self.parseJSON(str(data["post"]["duplicate_of"]))
+        if data is not None and _type == "posts" and "tags" not in data["post"]:
+            data["post"]["tags"] = []
+        if _type == "post":
+            self._parsed_data = data
+        return data
+
+    def tags_processing(self) -> dict[str, set[str]]:
+        connection = database.make_connection(database.DatabaseEnum.APP_PROD)
+        if connection is None:
+            raise Exception("Failed to connect to application database")
+        known_tags: list[database.origin_tag.OriginTag] = []
+        origin = database.origin_tag.OriginNameType.TWIBOORU
+        unknown_tags: list[str] = []
+        tag_names = self.getTagNamesList()
+        for origin_tag_info in tag_names:
+            tag_data = database.origin_tag.get_by_tag_name(
+                connection, origin, origin_tag_info
+            )
+            if tag_data is None:
+                unknown_tags.append(origin_tag_info)
+            else:
+                known_tags.append(tag_data)
+        if len(unknown_tags):
+            for origin_tag_info in unknown_tags:
+                tag_data = None
+                if tag_data is None:
+                    tag_data = self.parseJSON(
+                        url="tags", _type="search", q=origin_tag_info
+                    )
+                if tag_data is None:
+                    raise Exception("tag API error: no tag info")
+                tag_data_adapter = {"tag": tag_data["tags"][0]}
+                ddl_tag_name, ddl_tag_category = (
+                    self.translate_origin_tag_to_tags(tag_data_adapter)
+                )
+                tag_id = database.tag.get_or_create_tag_id(
+                    connection, ddl_tag_name, ddl_tag_category
+                )
+                if tag_id is None:
+                    raise Exception("Failed to add a new tag")
+                origin_tag_builder = database.origin_tag.OriginTagBuilder()
+                origin_tag_builder.tag_id = tag_id
+                origin_tag_builder.origin_name = origin
+                origin_tag_builder.tag_name = tag_data["tags"][0]["name"]
+                origin_tag_builder.tag_slug = tag_data["tags"][0]["slug"]
+                origin_tag_builder.description = tag_data["tags"][0][
+                    "description"
+                ]
+                origin_tag_builder.short_description = tag_data["tags"][0][
+                    "short_description"
+                ]
+                origin_tag_builder.category = tag_data["tags"][0]["category"]
+                origin_tag_data = origin_tag_builder.build()
+                database.origin_tag.add_if_not_exists(
+                    connection, origin_tag_data
+                )
+                known_tags.append(origin_tag_data)
+        result: dict[str, set[str]] = dict()
+        for origin_tag_info in known_tags:
+            tag_info = database.tag.get_tag_by_id(
+                connection, origin_tag_info.tag_id
+            )
+            if tag_info is None:
+                raise Exception("Fail to get tag info")
+            if str(tag_info.category) not in result:
+                result[str(tag_info.category)] = set()
+            result[str(tag_info.category)].add(tag_info.name)
+        auto_tags = list(self.get_auto_copyright_tags())
+        copyright_category_name = str(database.tag.TagCategory.COPYRIGHT)
+        if len(auto_tags):
+            if copyright_category_name not in result:
+                result[copyright_category_name] = set()
+        for tag_name in auto_tags:
+            result[copyright_category_name].add(tag_name)
+        connection.close()
+        return result
+
+    def parseHTML(self, image_id) -> dict[str, str]:
+        raise Exception("ParseHTML is disabled for Twibooru")
 
     def dataValidator(self, data):
-        if 'view_url' not in data["post"]:
-            raise KeyError("data has no \'image\'")
-        if "format" not in data["post"]:
-            raise KeyError("data has no original_format property")
-        if 'representations' not in data["post"]:
-            raise KeyError("data has no \'representations\'")
-        if 'large' not in data["post"]['representations']:
+        if "post" not in data:
+            raise KeyError("data has no 'post'")
+        data = data["post"]
+        if "representations" not in data:
+            raise KeyError("data has no 'representations'")
+        if "full" not in data["representations"]:
+            raise KeyError("not found full representation")
+        if type(data["representations"]["full"]) is not str:
+            raise TypeError(
+                "data['representations']['full'] is not str: "
+                + data["representations"]["full"].__class__.__name__
+            )
+        if type(os.path.splitext(data["representations"]["full"])) is not tuple:
+            raise TypeError(
+                "os.path.splitext(data['representations']['full']) is not tuple: "
+                + os.path.splitext(
+                    data["representations"]["full"]
+                ).__class__.__name__
+            )
+        if (
+            type(os.path.splitext(data["representations"]["full"])[0])
+            is not str
+        ):
+            raise TypeError(
+                "os.path.splitext(data['representations']['full'])[0] is not str: "
+                + os.path.splitext(data["representations"]["full"])[
+                    0
+                ].__class__.__name__
+            )
+        if "format" not in data:
+            raise KeyError("data has no format property")
+        if type(data["format"]) is not str:
+            raise TypeError(
+                'data["format"] is not str: '
+                + data["format"].__class__.__name__
+            )
+        if "large" not in data["representations"]:
             raise KeyError("not found large representation")
 
     def check_is_takedowned(self, data):
-        return 'deletion_reason' in data["post"] and data["post"]['deletion_reason'] is not None
+        return (
+            "deletion_reason" in data["post"]
+            and data["post"]["deletion_reason"] is not None
+        )
 
     def get_takedowned_content_info(self, data):
-        return self.file_deleted_handing(FILENAME_PREFIX, data['post']['id'])
+        return self.file_deleted_handing(
+            self.get_filename_prefix(), data["post"]["id"]
+        )
 
-    def get_content_source_url(self, data):
-        src_url = os.path.splitext(data["post"]["view_url"])[0] + '.' + data["post"]["format"]
-        src_url = re.sub(r'\%', '', src_url)
-        return src_url
+    def get_content_source_url(self, data) -> str:
+        representation_url_string = data["post"]["representations"]["full"]
+        representation_url_object = urllib.parse.urlparse(
+            representation_url_string
+        )
+        url_path_component = pathlib.PurePosixPath(
+            representation_url_object.path
+        )
+        url_path_with_new_suffix = url_path_component.with_suffix(
+            ".{}".format(data["post"]["format"].lower())
+        )
+        new_representation_url = representation_url_object._replace(
+            path=str(url_path_with_new_suffix)
+        )
+        return urllib.parse.urlunparse(new_representation_url)
 
-    def get_output_filename(self, data, output_directory: pathlib.Path) -> tuple[str, pathlib.Path]:
-        name = ''
-        if 'name' in data["post"] and data["post"]['name'] is not None:
-            name = "tb{} {}".format(
-                data["post"]["id"],
-                re.sub('[/\[\]:;|=*".?]', '', os.path.splitext(data["post"]["name"])[0])
+    def get_output_filename(
+        self, data, output_directory: pathlib.Path
+    ) -> tuple[str, pathlib.Path]:
+        data = data["post"]
+        name = ""
+        if (
+            "name" in data
+            and data["name"] is not None
+            and config.source_name_as_file_name
+        ):
+            name = "{}{} {}".format(
+                self.get_filename_prefix(),
+                data["id"],
+                re.sub(
+                    r'[/\[\]:;|=*".?]', "", os.path.splitext(data["name"])[0]
+                )[: config.max_name_length],
             )
         else:
-            name = str(data["id"])
-        return name, output_directory.joinpath("{}.{}".format(name, data["post"]["format"]))
+            name = "{}{}".format(self.get_filename_prefix(), data["id"])
+        name = Parser.Parser.sanitise_filename(name)
+        return name, output_directory.joinpath(
+            "{}.{}".format(name, data["format"].lower())
+        )
 
     def get_image_metadata(self, data):
         return {
             "title": data["post"]["name"],
             "origin": self.get_origin_name(),
-            "id": data["post"]["id"]
+            "id": data["post"]["id"],
         }
 
     def get_image_format(self, data):
         return data["post"]["format"]
 
     def get_big_thumbnail_url(self, data):
-        return data["post"]['representations']["large"]
+        return data["image"]["representations"]["large"]
 
     def get_raw_content_data(self):
         return self.get_data()["post"]
-
-    def parseJSON(self, _type="images", trial_count=2):
-        global reset_time
-        global requests_remain
-
-        current_time_utc = datetime.datetime.utcnow()
-        if current_time_utc >= reset_time:
-            requests_remain = 60
-        while requests_remain == 0:
-            print("requests exhausted. Wait for 30 seconds")
-            time.sleep(30)
-            current_time_utc = datetime.datetime.utcnow()
-            if current_time_utc >= reset_time:
-                requests_remain = 60
-        self.input_id = self.get_id_by_url(self._url)
-        request_url = 'https://twibooru.org/api/v3/posts/{}'.format(str(self.input_id))
-        print("parseJSON", request_url)
-        request_data = None
-        try:
-            request_data = requests.get(request_url)
-        except Exception as e:
-            print(e)
-            return
-        requests_remain = int(request_data.headers['x-rl-remain'])
-        reset_time = datetime.datetime.strptime(request_data.headers['x-rl-reset'], "%Y-%m-%d %H:%M:%S %Z")
-        if request_data.status_code == 429:
-            print("requests exhausted. Wait for 10 minutes")
-            time.sleep(600)
-            return self.parseJSON(type, trial_count - 1)
-        print(requests_remain, "requests remain until reset")
-        try:
-            data = request_data.json()
-        except json.JSONDecodeError as e:
-            if trial_count > 0:
-                logger.warning("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
-                    request_data.status_code, request_data.text))
-                print("try again after 10 minutes")
-                time.sleep(600)
-                return self.parseJSON(type, trial_count-1)
-            else:
-                logger.error("JSON decode error. HTTP status code:{} Raw data: \n{}".format(
-                    request_data.status_code, request_data.text))
-                raise e
-        while "duplicate_of" in data:
-            data = self.parseJSON(str(data["post"]["duplicate_of"]))
-        if 'tags' not in data["post"]:
-            data["post"]['tags'] = ""
-        self._parsed_data = data
-        return data
-
-

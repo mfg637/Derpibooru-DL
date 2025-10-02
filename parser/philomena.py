@@ -152,8 +152,7 @@ class Philomena(Parser):
                 derpibooru_connection = None
                 if origin is database.origin_tag.OriginNameType.DERPIBOORU:
                     derpibooru_connection = database.make_connection(
-                        database.DatabaseEnum.DERPIBOORU,
-                        none_if_error=True
+                        database.DatabaseEnum.DERPIBOORU, none_if_error=True
                     )
                 tag_name_to_slug = self.parseHTML(self.getID())
                 for origin_tag_info in unknown_tags:
@@ -350,11 +349,11 @@ class Philomena(Parser):
         return "images"
 
     def getTagNamesList(self) -> list[str]:
-        return self.get_data()["image"]["tags"]
+        return self.get_raw_content_data()["tags"]
 
     def getID(self) -> str:
         try:
-            return str(self.get_data()["image"]["id"])
+            return str(self.get_raw_content_data()["id"])
         except KeyError as e:
             print(self.get_data())
             raise e
@@ -465,11 +464,11 @@ class Philomena(Parser):
 
     def identify_filetype(self) -> FileTypes:
         filetype = Parser.identify_by_mimetype(
-            self.get_data()["image"]["mime_type"]
+            self.get_raw_content_data()["mime_type"]
         )
         if (
             filetype == FileTypes.IMAGE
-            and "animated" in self.get_data()["image"]["tags"]
+            and "animated" in self.get_raw_content_data()["tags"]
         ):
             filetype = FileTypes.ANIMATION
         return filetype
