@@ -3,8 +3,6 @@
 import argparse
 import pathlib
 import random
-import time
-import urllib.parse
 import flask
 import json
 import traceback
@@ -14,22 +12,97 @@ import download_manager
 import parser
 import logging
 import derpibooru_dl
+import enum
+import typing
 from derpibooru_dl import tagResponse
 
-derpibooru_dl.logging.init("server")
-
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.NOTSET)
+derpibooru_dl.logging.init(root_logger, "server")
 logger = logging.getLogger(__name__)
 
 app = flask.Flask(__name__)
 error_message = None
 
-map_list = list()
 
-executed_tasks_titles = []
-executing_tasks = []
+class TaskStatus(enum.StrEnum):
+    AWAITING = "awaiting"
+    EXECUTING = "executing"
+    DONE = "done"
 
+
+class Task:
+    def __init__(
+        self,
+        dm: download_manager.DownloadManager,
+        out_dir: pathlib.Path,
+        data: dict,
+        parsed_tags: dict[str, set[str]],
+    ):
+        self.dm = dm
+        self.outdir = out_dir
+        self.data = data
+        self.parsed_tags = parsed_tags
+        self.status = TaskStatus.AWAITING
+        self.title = "{}{}".format(
+            dm.parser.get_filename_prefix(), dm.parser.getID()
+        )
+
+    def __str__(self):
+        return self.title
+
+    def __repr__(self):
+        return f"Task {self.title}: {self.status}"
+
+    def get_title(self):
+        return self.title
+
+    def is_ready(self):
+        return self.status is TaskStatus.DONE
+
+    def execute(self):
+        self.status = TaskStatus.EXECUTING
+        self.dm.download(self.outdir, self.data, self.parsed_tags)
+        self.status = TaskStatus.DONE
+
+
+awaiting_tasks_list: list[Task] = list()
+
+
+class TaskManager:
+    def __init__(self):
+        self.task_list: list[Task] = []
+
+    def set_tasks(self, tasks: list[Task]):
+        random.shuffle(tasks)
+        del self.task_list
+        self.task_list = tasks
+
+    def execute_tasks(self):
+        for task in self.task_list:
+            task.execute()
+
+    def make_status_report(self) -> list[dict[str, typing.Any]]:
+        report = []
+        for task in self.task_list:
+            report.append(
+                {"title": task.get_title(), "is_done": task.is_ready()}
+            )
+        return report
+
+    def __str__(self):
+        task_list = [task.__str__() for task in self.task_list]
+        task_list_str = ", ".join(task_list)
+        return f"TaskManager[{task_list_str}]"
+
+    def __repr__(self):
+        task_list = [task.__repr__() for task in self.task_list]
+        task_list_str = ", ".join(task_list)
+        return f"TaskManager[{task_list_str}]"
+
+
+task_manager = TaskManager()
 downloader_thread = threading.Thread()
-
 
 FILE_SUFFIX_BY_MIME_TYPE = {
     "image/png": "png",
@@ -42,69 +115,38 @@ FILE_SUFFIX_BY_MIME_TYPE = {
 FILE_SUFFIX_LIST = [".png", ".jpg", ".gif", ".webm", ".mp4", ".svg"]
 
 
-# TODO: avoid using workers pool
-dl_pool = download_manager.DownloadManager.create_pool(config.workers)
-
-
-def append2queue_and_start_download(*args):
+def append2queue_and_start_download(
+    dm: download_manager.DownloadManager,
+    out_dir: pathlib.Path,
+    data: dict,
+    parsed_tags: dict[str, set[str]],
+):
     global downloader_thread
-    map_list.append(args)
+    logger.debug('Starting "append2queue_and_start_download"')
+    awaiting_tasks_list.append(Task(dm, out_dir, data, parsed_tags))
     if not config.manual_start:
+        logger.debug("not manual start")
         if not downloader_thread.is_alive():
+            logger.debug("downloading thread is not live")
             downloader_thread = threading.Thread(target=async_downloader)
             downloader_thread.start()
-    logger.info("download queue now contains {} requests".format(len(map_list)))
+    logger.info(
+        "download queue now contains {} requests".format(
+            len(awaiting_tasks_list)
+        )
+    )
 
 
 def async_downloader():
-    global executing_tasks
-    global executed_tasks_titles
-    while len(map_list):
-        local_map_list = map_list.copy()
-        random.shuffle(local_map_list)
-        map_list.clear()
+    logger.debug(
+        f"awaiting_tasks_list contains {len(awaiting_tasks_list)} tasks"
+    )
+    while len(awaiting_tasks_list):
+        local_map_list = awaiting_tasks_list.copy()
+        task_manager.set_tasks(local_map_list)
+        awaiting_tasks_list.clear()
         logger.info("processing {} requests".format(len(local_map_list)))
-        executing_tasks.clear()
-        executed_tasks_titles.clear()
-        for task_arguments in local_map_list:
-            dm: download_manager.DownloadManager = task_arguments[0]
-            executed_tasks_titles.append(
-                "{}{}".format(
-                    dm.parser.get_filename_prefix(), dm.parser.getID()
-                )
-            )
-        # results = dl_pool.map(download_manager.save_call, local_map_list, chunksize=1)
-        results = []
-
-        for task_arguments in local_map_list:
-            task = dl_pool.apply_async(
-                download_manager.save_call, (task_arguments,)
-            )
-            executing_tasks.append(task)
-
-        is_done = False
-        tasks_number = len(executing_tasks)
-        prev_tasks_ready = 0
-        while not is_done:
-            tasks_ready = 0
-            is_done = True
-            for task in executing_tasks:
-                if task.ready():
-                    tasks_ready += 1
-                else:
-                    is_done = False
-            if tasks_ready != prev_tasks_ready:
-                logger.info(
-                    "ready {} tasks of {} total".format(
-                        tasks_ready, tasks_number
-                    )
-                )
-                prev_tasks_ready = tasks_ready
-            if not is_done:
-                time.sleep(0.5)
-
-        for task in executing_tasks:
-            results.append(task.get())
+        task_manager.execute_tasks()
 
     logger.info("Download is done! Waiting for new requests.")
 
@@ -121,13 +163,10 @@ def do_download():
 
 @app.route("/get_status.json")
 def make_status_report():
-    response_generator = zip(executed_tasks_titles, executing_tasks)
-    response_document = []
-    for i in response_generator:
-        response_document.append({"title": i[0], "is_done": i[1].ready()})
-    response = flask.Response(json.dumps(response_document))
-    response.headers["content-type"] = "application/json"
-    return response
+    response_document: list[dict[str, typing.Any]] = (
+        task_manager.make_status_report()
+    )
+    return flask.jsonify(response_document)
 
 
 class RouteFabric:
@@ -137,21 +176,18 @@ class RouteFabric:
     def handle(self):
         global error_message
         try:
-            content_id: int = flask.request.args.get("id", None, int)
+            content_id: int | None = flask.request.args.get("id", None, int)
             enable_rewriting: bool = flask.request.args.get(
                 "rewrite", False, bool
             )
             download_original_data: bool = flask.request.args.get(
                 "dl_orig", False, bool
             )
-            if error_message is not None and not download_original_data:
-                return error_message
-            content_title: str = flask.request.args.get("title", None, str)
             print("content_id", content_id)
             content: dict | None = None
             if content_id is None:
                 content = json.loads(flask.request.data.decode("utf-8"))
-            _parser: parser.tag_indexer.TagIndexer | None = None
+            _parser: parser.Parser.Parser | None = None
             logger.debug("received content: {}".format(content.__repr__()))
             if content_id is not None:
                 pass
@@ -161,10 +197,9 @@ class RouteFabric:
                 content_id = content["imageId"]
             elif "id" in content:
                 content_id = content["id"]
-            # TODO: remove decorator
-            _parser = parser.tag_indexer.decorate(
-                self._parser, config.use_medialib_db, content_id
-            )
+            _parser = self._parser(content_id)
+            if _parser is None:
+                raise Exception("Failed to create a parser")
             if not download_original_data:
                 logger.info(
                     "Request for download: {}{}".format(
@@ -172,46 +207,50 @@ class RouteFabric:
                     )
                 )
             data = _parser.parseJSON()
+            if data is None:
+                raise Exception(
+                    (
+                        f"Can't parse origin {_parser.get_origin_name()} "
+                        f"with id = {content_id}"
+                    )
+                )
             logger.debug("received data: {}".format(data.__repr__()))
-            parsed_tags = _parser.tagIndex()
+            parsed_tags = _parser.tags_processing()
+            logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))
             out_dir = tagResponse.find_folder(parsed_tags)
+            logger.info(f"output directory: {out_dir}")
             _parser.dataValidator(data)
             dm = download_manager.make_download_manager(_parser)
             if enable_rewriting:
                 dm.enable_rewriting()
-            if download_original_data:
-                original_data = dm.download_original_data(
-                    out_dir, data, parsed_tags
-                )
-                response = flask.Response(response=original_data["data"])
-                name = original_data["name"]
-                if content_title is not None:
-                    for suffix in FILE_SUFFIX_LIST:
-                        if suffix in content_title:
-                            content_title = content_title.replace(suffix, "")
-                    name = "{}{} {}.{}".format(
-                        _parser.get_filename_prefix(),
-                        _parser.getID(),
-                        content_title.replace("-amp-", "&").replace(
-                            "-eq-", "="
-                        ),
-                        FILE_SUFFIX_BY_MIME_TYPE[original_data["mime"]],
-                    )
-                response.headers["content-disposition"] = (
-                    'attachment; filename="{}"'.format(urllib.parse.quote(name))
-                )
-                response.headers["content-type"] = original_data["mime"]
-                return response
-            else:
+            if error_message is None:
                 append2queue_and_start_download(dm, out_dir, data, parsed_tags)
-                if flask.request.method == "POST":
-                    return "OK"
-                else:
-                    return flask.render_template("response_ok.html")
+            serializable_parsed_tags: dict[str, list[str]] = {
+                category: list(parsed_tags[category])
+                for category in parsed_tags
+            }
+            response_data = {
+                "origin_name": _parser.get_origin_name(),
+                "origin_domain_name": _parser.get_domain_name(),
+                "origin_content_id": _parser.get_content_id(),
+                "tags": serializable_parsed_tags,
+                "output_directory": str(out_dir),
+                "output_filename": str(
+                    _parser.get_output_filename(data, out_dir)[1]
+                ),
+                "image_format": _parser.get_image_format(data),
+                "status": "OK" if error_message is None else error_message,
+                "raw_data": _parser.get_raw_content_data(),
+            }
+            response_object = flask.jsonify(response_data)
+            if error_message is not None:
+                response_object.status_code = 500
+            return response_object
         except Exception:
             error_message = traceback.format_exc()
             print(error_message)
-            return error_message
+            response_data = {"status": error_message}
+            return flask.jsonify(response_data, status_code=500)
 
 
 @app.route("/", methods=["POST", "GET"])
@@ -259,11 +298,17 @@ if __name__ == "__main__":
         type=pathlib.Path,
         default=None,
     )
-    arg_parser.add_argument("--test-medialib-db", action="store_true")
+    arg_parser.add_argument(
+        "-log",
+        "--loglevel",
+        default="notset",
+        help="Provide logging level. Example --loglevel debug, default=notset",
+    )
     args = arg_parser.parse_args()
     if args.home_path is not None:
         config.initial_dir = str(args.home_path)
-    download_manager.download_manager.TEST_MEDIALIB = args.test_medialib_db
+    if args.loglevel:
+        root_logger.setLevel(level=args.loglevel.upper())
     try:
         print("accepting requests")
         print(

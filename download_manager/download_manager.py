@@ -86,29 +86,6 @@ class DownloadManager(abc.ABC):
             )
         )
 
-    def download_original_data(
-        self,
-        output_directory: pathlib.Path,
-        data: dict,
-        tags: dict | None = None,
-    ):
-        src_url = self.parser.get_content_source_url(data)
-        name, src_filename = self.parser.get_output_filename(
-            data, output_directory
-        )
-
-        logger.info("filename: {}".format(src_filename))
-        logger.debug("image_url: {}".format(src_url))
-
-        request_data = requests.get(src_url)
-        result = {
-            "mime": request_data.headers.get("content-type"),
-            "data": request_data.content,
-            "name": name,
-        }
-
-        return result
-
     def do_binary_request(self, url):
         logger.debug("do_binary_request() call, url={}".format(url))
         request_data = requests.get(url)
