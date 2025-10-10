@@ -30,6 +30,10 @@ def make_connection(
                 password=config.db_password,
             )
         elif database is DatabaseEnum.DERPIBOORU:
+            if none_if_error and config.derpibooru_dump_db_host is None:
+                return None
+            elif config.derpibooru_dump_db_host is None:
+                raise ValueError("config.derpibooru_dump_db_host is not set")
             return psycopg2.connect(
                 host=config.derpibooru_dump_db_host,
                 database="derpibooru",
