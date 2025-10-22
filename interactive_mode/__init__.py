@@ -1,37 +1,7 @@
 import abc
 import typing
 import collections.abc
-
-
-T = typing.TypeVar("T", covariant=False)
-
-
-class ArgumentType(abc.ABC, typing.Generic[T]):
-    def __init__(self, type_label: str):
-        self.type_label: str = type_label
-
-    @abc.abstractmethod
-    def parse_input(self, raw_value: str) -> T:
-        pass
-
-    def __str__(self):
-        return self.type_label
-
-
-class StringArgument(ArgumentType[str]):
-    def __init__(self):
-        super().__init__("str")
-
-    def parse_input(self, raw_value: str):
-        return raw_value
-
-
-class IntegerArgument(ArgumentType[int]):
-    def __init__(self):
-        super().__init__("int")
-
-    def parse_input(self, raw_value: str):
-        return int(raw_value)
+from . import types
 
 
 class Command(abc.ABC):
@@ -40,15 +10,19 @@ class Command(abc.ABC):
         command_name: str,
         command_aliases: list[str],
         command_description: str,
-        required_arguments: dict[str, ArgumentType],
-        optional_arguments: dict[str, ArgumentType],
+        required_arguments: dict[str, types.ArgumentType],
+        optional_arguments: dict[str, types.ArgumentType],
         args_position: list[str],
     ):
         self.name = command_name
         self.aliases = command_aliases
         self.description = command_description
-        self.required_arguments: dict[str, ArgumentType] = required_arguments
-        self.optional_arguments: dict[str, ArgumentType] = optional_arguments
+        self.required_arguments: dict[str, types.ArgumentType] = (
+            required_arguments
+        )
+        self.optional_arguments: dict[str, types.ArgumentType] = (
+            optional_arguments
+        )
         argument_names_awaiting = set(
             [argument_name for argument_name in self.required_arguments]
         )
@@ -113,7 +87,7 @@ class ShowHelpCommand(Command):
             ],
             "Show help mesage",
             {},
-            {"command_name": StringArgument()},
+            {"command_name": types.StringArgument()},
             [],
         )
         self.commands_list: list[Command] | None = None
@@ -157,7 +131,7 @@ class ShowHelpCommand(Command):
         required_arguments_str: list[str] = []
         optional_arguments_str: list[str] = []
         for argument_name in command_object.args_position:
-            argument_type: ArgumentType | None = (
+            argument_type: types.ArgumentType | None = (
                 command_object.required_arguments.get(argument_name, None)
             )
             if argument_type is None:
@@ -219,7 +193,10 @@ class InteractiveEnvironment:
             if i == 0:
                 command_name = argument
             else:
-                if "=" in argument:
+                if (
+                    "=" in argument
+                    and types.url_regex.fullmatch(argument) is None
+                ):
                     argument_name, argument_value = argument.split(
                         "=", maxsplit=1
                     )
@@ -266,4 +243,7 @@ class InteractiveEnvironment:
                 self.parse_command(user_input)
             )
             command = command_by_name_or_alias[command_name]
-            command.execute(*required_arguments, **optional_arguments)
+            try:
+                command.execute(*required_arguments, **optional_arguments)
+            except ValueError as e:
+                print("Error:", e)
