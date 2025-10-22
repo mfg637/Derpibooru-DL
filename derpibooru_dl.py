@@ -10,6 +10,8 @@ import parser
 import derpibooru_dl
 from derpibooru_dl import tagResponse
 import logging
+import interactive_mode
+import re
 
 root_logger = logging.getLogger()
 derpibooru_dl.logging.init(root_logger, "derpibooru_dl")
@@ -19,6 +21,7 @@ logger = logging.getLogger(__name__)
 
 id_list = []
 NO_GUI = False
+id_type_regex = re.compile(r"^([a-z]{2})?\d+$")
 
 arg_parser = argparse.ArgumentParser()
 arg_parser.add_argument("id", help="derpibooru image ID", nargs="*")
@@ -110,27 +113,62 @@ if config.gui and not NO_GUI:
     except tkinter.TclError:
         config.gui = False
 
+
+class ContentIdString(interactive_mode.types.ArgumentType[str]):
+    def __init__(self):
+        super().__init__("content_id")
+
+    def parse_input(self, raw_value: str):
+        test = id_type_regex.fullmatch(raw_value)
+        if test is None:
+            raise ValueError("Value is not content id")
+        return raw_value
+
+
+class DownloadByUrl(interactive_mode.Command):
+    def __init__(self):
+        super().__init__(
+            command_name="url",
+            command_aliases=[],
+            command_description="Donload by HTTPS URL",
+            required_arguments={"url": interactive_mode.types.HttpsUrlString()},
+            optional_arguments={},
+            args_position=["url"],
+        )
+
+    def execute(self, *required_arguments, **optional_arguments):
+        arguments = self.arguments_processing(
+            *required_arguments, **optional_arguments
+        )
+        url: str = arguments["url"]
+        download(url)
+
+
+class DownloadById(interactive_mode.Command):
+    def __init__(self):
+        super().__init__(
+            command_name="id",
+            command_aliases=[],
+            command_description="Donload by content id",
+            required_arguments={"id": ContentIdString()},
+            optional_arguments={},
+            args_position=["id"],
+        )
+
+    def execute(self, *required_arguments, **optional_arguments):
+        arguments = self.arguments_processing(
+            *required_arguments, **optional_arguments
+        )
+        content_id: str = arguments["id"]
+        download(content_id)
+
+
 if not config.gui or NO_GUI:
     if id_list:
         for current_id in id_list:
             download(current_id)
     else:
-        wait_for_command = True
-        while wait_for_command:
-            print("id || url> ", end="")
-            command = input()
-            if command in {"h", "help"}:
-                print("h[elp]   show help message")
-                print("q[uit]   exit from program")
-                print("exit     exit from program")
-                print("url or content id will be used for download")
-            elif command in {"q", "quit", "exit"}:
-                wait_for_command = False
-            else:
-                try:
-                    check_id = parser.Parser.Parser.get_id_by_url(command)
-                except ValueError:
-                    print("invalid input: url or content id expected")
-                    print("type h for help")
-                else:
-                    download(command)
+        im = interactive_mode.InteractiveEnvironment("id || url> ")
+        im.add_command(DownloadByUrl())
+        im.add_command(DownloadById())
+        im.start()
