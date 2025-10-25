@@ -31,7 +31,10 @@ class StringArgument(ArgumentType[str]):
         super().__init__("str")
 
     def parse_input(self, raw_value: str):
-        return raw_value
+        if type(raw_value) is str:
+            return raw_value
+        else:
+            raise ValueError("Value is not string")
 
 
 class IntegerArgument(ArgumentType[int]):
