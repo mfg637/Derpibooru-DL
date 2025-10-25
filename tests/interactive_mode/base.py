@@ -44,3 +44,37 @@ class TestArgumentsProcessing(unittest.TestCase):
     def test_wrong_positional_argument(self):
         with self.assertRaises(ValueError):
             self.command.arguments_processing("3", name=True)
+
+
+class TestInteractiveEnvironment(unittest.TestCase):
+    def setUp(self):
+        self.ie = interactive_mode.InteractiveEnvironment()
+
+    def test_command_parse(self):
+        command_name, required_arguments, optional_arguments = (
+            self.ie.parse_command("foo 4 name=Alex")
+        )
+        self.assertEqual("foo", command_name)
+        self.assertListEqual(required_arguments, ["4"])
+        self.assertDictEqual(optional_arguments, {"name": "Alex"})
+
+    def test_url_parse(self):
+        command_name, required_arguments, optional_arguments = (
+            self.ie.parse_command(
+                "bar https://derpibooru.org/images/1237702?sort[]=0.9944201&sort[]=1237702&sd=desc&sf=random%3A3923451479&q=sb+%26%26+ts"
+            )
+        )
+        self.assertEqual(command_name, "bar")
+        self.assertListEqual(
+            required_arguments,
+            [
+                "https://derpibooru.org/images/1237702?sort[]=0.9944201&sort[]=1237702&sd=desc&sf=random%3A3923451479&q=sb+%26%26+ts"
+            ],
+        )
+
+    def test_command_names(self):
+        command = DummyCommand()
+        command_names = self.ie.get_command_by_name_or_alias([command])
+        self.assertDictEqual(
+            command_names, {"dummy_command": command, "dummy": command}
+        )
