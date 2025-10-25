@@ -77,3 +77,22 @@ class TestUrlRegex(unittest.TestCase):
             "https://derpibooru.org/images/252754?sort[]=0.9957869&sort[]=252754&sd=desc&sf=random%3A3923451479&q=sb+%26%26+ts"
         )
         self.assertIsNotNone(test_image_with_parameters)
+
+
+class TestIntParameter(unittest.TestCase):
+    def setUp(self):
+        self.int_type = types.IntegerArgument()
+
+    def test_positive(self):
+        self.assertEqual(self.int_type.parse_input("192"), 192)
+
+    def test_negative(self):
+        self.assertEqual(self.int_type.parse_input("-12"), -12)
+
+    def test_float(self):
+        with self.assertRaises(ValueError):
+            self.int_type.parse_input("1.2")
+
+    def test_NaN(self):
+        with self.assertRaises(ValueError):
+            self.int_type.parse_input("this is not a number")
