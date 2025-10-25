@@ -1,7 +1,7 @@
 import abc
 import typing
 import collections.abc
-from . import types
+from . import types, exceptions
 
 
 class Command(abc.ABC):
@@ -46,7 +46,7 @@ class Command(abc.ABC):
         self, *required_arguments, **optional_arguments: str
     ) -> dict[str, typing.Any]:
         if len(required_arguments) != len(self.args_position):
-            raise Exception(
+            raise exceptions.MissingRequiredArgument(
                 (
                     f"Command {self.name} "
                     f"expects {len(self.args_position)} "
