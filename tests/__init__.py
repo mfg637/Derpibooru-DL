@@ -4,3 +4,10 @@ from .database import (
     TestOriginTagTable,
     TestDerpibooruDumpDB,
 )
+
+from .interactive_mode import (
+    TestUrlRegex,
+    TestIntParameter,
+    TestArgumentsProcessing,
+    TestInteractiveEnvironment,
+)
