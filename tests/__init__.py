@@ -8,6 +8,8 @@ from .database import (
 from .interactive_mode import (
     TestUrlRegex,
     TestIntParameter,
+    TestStringParamerer,
+    TestStringEnumParameter,
     TestArgumentsProcessing,
     TestInteractiveEnvironment,
 )

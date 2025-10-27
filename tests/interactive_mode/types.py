@@ -1,4 +1,5 @@
 import unittest
+import enum
 from interactive_mode import types
 
 
@@ -96,3 +97,41 @@ class TestIntParameter(unittest.TestCase):
     def test_NaN(self):
         with self.assertRaises(ValueError):
             self.int_type.parse_input("this is not a number")
+
+
+class TestStringParamerer(unittest.TestCase):
+    def setUp(self):
+        self.str_type = types.StringArgument()
+
+    def test_string(self):
+        test_string = "Lorem ipsum"
+        result_string = self.str_type.parse_input(test_string)
+        self.assertEqual(test_string, result_string)
+
+    def test_not_string(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input(True)
+
+
+class TestEnum(enum.StrEnum):
+    A = "a"
+    B = "b"
+    CD = "cd"
+
+
+class TestStringEnumParameter(unittest.TestCase):
+    def setUp(self):
+        self.str_type = types.StringEnumType(TestEnum)
+
+    def test_positive(self):
+        test_string = "a"
+        result_string = self.str_type.parse_input(test_string)
+        self.assertEqual(test_string, result_string)
+
+    def test_negative(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input("ab")
+
+    def test_not_string(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input(True)

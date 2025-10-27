@@ -1,6 +1,7 @@
 import typing
 import abc
 import re
+import enum
 import urllib.parse
 
 
@@ -91,3 +92,25 @@ class HttpsUrlString(ArgumentType[str]):
             raise ValueError("Value is not URL")
         else:
             return urllib.parse.urlunparse(urllib.parse.urlparse(raw_value))
+
+
+class StringEnumType(ArgumentType[str]):
+    def __init__(self, enum_type: type[enum.StrEnum]):
+        enum_elements: list[str] = []
+        for enum_element in enum_type:
+            enum_elements.append(str(enum_elements))
+        enum_str = ", ".join(enum_elements)
+        super().__init__(f"str[{enum_str}]")
+        self.enum_type = enum_type
+        self._enum_str = enum_str
+
+    def parse_input(self, raw_value: str):
+        if type(raw_value) is str:
+            if raw_value in self.enum_type:
+                return raw_value
+            else:
+                raise ValueError(
+                    f"Value {raw_value} not in set ({self._enum_str})"
+                )
+        else:
+            raise ValueError("Value is not string")
