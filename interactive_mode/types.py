@@ -127,3 +127,20 @@ class ExistingFilePath(ArgumentType[pathlib.Path]):
             return path
         else:
             raise ValueError("File path is not exists")
+
+
+true_literal_strings: set[str] = {"True", "true", "t", "yes", "y", "Yes", "Y"}
+false_listeral_strings: set[str] = {"False", "false", "f", "no", "n", "No", "N"}
+
+
+class BooleanType(ArgumentType[bool]):
+    def __init__(self):
+        super().__init__("bool")
+
+    def parse_input(self, raw_value: str):
+        if raw_value in true_literal_strings:
+            return True
+        elif raw_value in false_listeral_strings:
+            return False
+        else:
+            raise ValueError("Value is not true or false literal")
