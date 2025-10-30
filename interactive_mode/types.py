@@ -99,7 +99,7 @@ class StringEnumType(ArgumentType[str]):
     def __init__(self, enum_type: type[enum.StrEnum]):
         enum_elements: list[str] = []
         for enum_element in enum_type:
-            enum_elements.append(str(enum_elements))
+            enum_elements.append(str(enum_element))
         enum_str = ", ".join(enum_elements)
         super().__init__(f"str[{enum_str}]")
         self.enum_type = enum_type
