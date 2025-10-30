@@ -1,3 +1,4 @@
+import pathlib
 import unittest
 import enum
 from interactive_mode import types
@@ -135,3 +136,18 @@ class TestStringEnumParameter(unittest.TestCase):
     def test_not_string(self):
         with self.assertRaises(ValueError):
             self.str_type.parse_input(True)
+
+
+class TestExistingFilePath(unittest.TestCase):
+    def setUp(self):
+        self.path_type = types.ExistingFilePath()
+
+    def test_file_exists(self):
+        path = self.path_type.parse_input(
+            "tests/interactive_mode/file exists test.txt"
+        )
+        self.assertIsInstance(path, pathlib.Path)
+
+    def test_file_does_exists(self):
+        with self.assertRaises(ValueError):
+            self.path_type.parse_input("this file does not exists")

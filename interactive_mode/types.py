@@ -2,6 +2,7 @@ import typing
 import abc
 import re
 import enum
+import pathlib
 import urllib.parse
 
 
@@ -114,3 +115,15 @@ class StringEnumType(ArgumentType[str]):
                 )
         else:
             raise ValueError("Value is not string")
+
+
+class ExistingFilePath(ArgumentType[pathlib.Path]):
+    def __init__(self):
+        super().__init__("Path")
+
+    def parse_input(self, raw_value: str):
+        path = pathlib.Path(raw_value)
+        if path.exists():
+            return path
+        else:
+            raise ValueError("File path is not exists")

@@ -10,6 +10,7 @@ from .interactive_mode import (
     TestIntParameter,
     TestStringParamerer,
     TestStringEnumParameter,
+    TestExistingFilePath,
     TestArgumentsProcessing,
     TestInteractiveEnvironment,
 )

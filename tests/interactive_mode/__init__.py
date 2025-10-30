@@ -3,5 +3,6 @@ from .types import (
     TestIntParameter,
     TestStringParamerer,
     TestStringEnumParameter,
+    TestExistingFilePath,
 )
 from .base import TestArgumentsProcessing, TestInteractiveEnvironment
