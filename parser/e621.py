@@ -290,10 +290,10 @@ class E621Parser(Parser.Parser):
         return result
 
     def get_content_id(self) -> int:
-        return self.get_data()["id"]
+        return self.get_raw_content_data()["id"]
 
     def getTagNamesList(self) -> list[str]:
-        tags = self.get_data()["tags"]
+        tags = self.get_raw_content_data()["tags"]
         result = []
         for category in tags:
             result.append(tags[category])
