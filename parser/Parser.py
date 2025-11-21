@@ -122,7 +122,10 @@ class Parser(abc.ABC):
     @staticmethod
     def get_id_by_url(URL) -> int:
         if type(URL) is str:
-            intval = int(URL.split("?")[0].split("/")[-1])
+            try:
+                intval = int(URL.split("?")[0].split("/")[-1])
+            except ValueError:
+                raise ValueError("Invalid URL or content id")
             if type(intval) is int:
                 return intval
             else:
