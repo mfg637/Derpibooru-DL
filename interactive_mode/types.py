@@ -1,4 +1,5 @@
 import typing
+import collections.abc
 import abc
 import re
 import enum
@@ -14,6 +15,21 @@ url_regex = re.compile(
 https_url_regex = re.compile(
     r"^(https:\/\/[a-zA-Z0-9\.]+)(:\d+)?(\/[\w\.]*)*(\?(([\w\-\[\]])+=([\w\-\%\.\+])+)?(\&[\w\-\[\]]+=[\w_\-\%\.\+]+)*)?\#?([\w\-]+)?$"
 )
+
+
+class MutableUserDefined:
+    pass
+
+
+Mutable = typing.Union[
+    collections.abc.MutableMapping,
+    collections.abc.MutableSequence,
+    collections.abc.MutableSet,
+    bytearray,
+    MutableUserDefined,
+]
+
+Pointer = typing.Optional[Mutable]
 
 
 class ArgumentType(abc.ABC, typing.Generic[T]):
