@@ -39,7 +39,7 @@ class Command(abc.ABC):
             raise ValueError("There is argument names without argument types.")
 
     @abc.abstractmethod
-    def execute(self, *required_arguments, **positional_arguments):
+    def execute(self, *required_arguments, **optional_arguments):
         pass
 
     def arguments_processing(
@@ -176,12 +176,32 @@ class InteractiveEnvironment:
         self.commands_list: list[Command] = []
         self.awaiting_commands: bool = False
         self.prompt = prompt
+        self._context: types.Pointer = None
 
     def quit_callback(self):
         self.awaiting_commands = False
 
     def add_command(self, command: Command):
         self.commands_list.append(command)
+
+    def clear_context(self):
+        self._context = None
+
+    @property
+    def context(self) -> types.Pointer:
+        """The context property."""
+        return self._context
+
+    @context.setter
+    def context(self, value: types.Pointer):
+        if isinstance(value, types.Pointer):
+            self._context = value
+        else:
+            raise TypeError("Object for pointer must be Mutable or None")
+
+    @context.deleter
+    def context(self):
+        self._context = None
 
     @staticmethod
     def parse_command(user_input: str):
@@ -238,7 +258,10 @@ class InteractiveEnvironment:
             )
         )
         while self.awaiting_commands:
-            user_input = input(self.prompt)
+            prompt = self.prompt
+            if self.context is not None:
+                prompt = f"{str(self.context)}> "
+            user_input = input(prompt)
             command_name, required_arguments, optional_arguments = (
                 self.parse_command(user_input)
             )
