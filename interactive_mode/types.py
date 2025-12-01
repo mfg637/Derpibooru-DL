@@ -4,6 +4,7 @@ import abc
 import re
 import enum
 import pathlib
+import getpass
 import urllib.parse
 
 
@@ -43,6 +44,12 @@ class ArgumentType(abc.ABC, typing.Generic[T]):
     def __str__(self):
         return self.type_label
 
+    def input(self, prompt: typing.Optional[str] = None) -> str:
+        if prompt is None:
+            return input()
+        else:
+            return input(prompt)
+
 
 class StringArgument(ArgumentType[str]):
     def __init__(self):
@@ -53,6 +60,36 @@ class StringArgument(ArgumentType[str]):
             return raw_value
         else:
             raise ValueError("Value is not string")
+
+
+class PasswordArgument(StringArgument):
+    def __init__(self, double_check: bool = False):
+        super().__init__()
+        self.type_label = "password"
+        self.double_check = double_check
+
+    def input(self, prompt: typing.Optional[str] = None) -> str:
+        if prompt is None:
+            value = getpass.getpass("")
+            if self.double_check:
+                value_check = getpass.getpass("(type again)")
+                if value == value_check:
+                    return value
+                else:
+                    raise ValueError("Passwords Mismatch")
+            else:
+                return value
+        else:
+            value = getpass.getpass(prompt)
+            if self.double_check:
+                print("Type password again.")
+                value_check = getpass.getpass(prompt)
+                if value == value_check:
+                    return value
+                else:
+                    raise ValueError("Passwords Mismatch")
+            else:
+                return value
 
 
 class IntegerArgument(ArgumentType[int]):
