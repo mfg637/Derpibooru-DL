@@ -265,7 +265,11 @@ class InteractiveEnvironment:
             command_name, required_arguments, optional_arguments = (
                 self.parse_command(user_input)
             )
-            command = command_by_name_or_alias[command_name]
+            try:
+                command = command_by_name_or_alias[command_name]
+            except KeyError:
+                print("Error: Command not found")
+                continue
             try:
                 command.execute(*required_arguments, **optional_arguments)
             except ValueError as e:
