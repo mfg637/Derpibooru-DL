@@ -10,3 +10,4 @@ browser/tmpcache/*
 .idea
 yarn.lock
 .env
+config.json
