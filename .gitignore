@@ -10,3 +10,5 @@ browser/tmpcache/*
 /node_modules
 .idea
 yarn.lock
+Derpibooru-DL.code-workspace
+.python-version
