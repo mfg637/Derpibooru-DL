@@ -11,3 +11,5 @@ browser/tmpcache/*
 yarn.lock
 .env
 config.json
+Derpibooru-DL.code-workspace
+.python-version
