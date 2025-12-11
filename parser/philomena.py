@@ -20,10 +20,107 @@ from .Parser import FileTypes, Parser
 logger = logging.getLogger(__name__)
 
 
+class TagParsingStrategy(abc.ABC):
+    @abc.abstractmethod
+    def parse_unknow_tags(
+        self, unknown_tags: list[str], parser, origin, connection
+    ) -> list[origin_tag.OriginTag]:
+        return []
+
+
+class HTML_TagParse(TagParsingStrategy):
+    def parse_unknow_tags(
+        self, unknown_tags: list[str], parser, origin, connection
+    ) -> list[origin_tag.OriginTag]:
+        result: list[origin_tag.OriginTag] = []
+        derpibooru_connection = None
+        if origin is database.origin_tag.OriginNameType.DERPIBOORU:
+            derpibooru_connection = database.make_connection(
+                database.DatabaseEnum.DERPIBOORU, none_if_error=True
+            )
+        tag_name_to_slug = parser.parseHTML(parser.getID())
+        for origin_tag_info in unknown_tags:
+            tag_data = None
+            if derpibooru_connection is not None:
+                tag_data = database.derpibooru.simulate_tag_api(
+                    derpibooru_connection, origin_tag_info
+                )
+            if tag_data is None:
+                tag_data = parser.parseJSON(
+                    url=tag_name_to_slug[origin_tag_info], _type="tags"
+                )
+            if tag_data is None:
+                raise Exception("tag API error: no tag info")
+            ddl_tag_name, ddl_tag_category = (
+                parser.translate_origin_tag_to_tags(tag_data)
+            )
+            tag_id = database.tag.get_or_create_tag_id(
+                connection, ddl_tag_name, ddl_tag_category
+            )
+            if tag_id is None:
+                raise Exception("Failed to add a new tag")
+            origin_tag_builder = database.origin_tag.OriginTagBuilder()
+            origin_tag_builder.tag_id = tag_id
+            origin_tag_builder.origin_name = origin
+            origin_tag_builder.tag_name = tag_data["tag"]["name"]
+            origin_tag_builder.tag_slug = tag_data["tag"]["slug"]
+            origin_tag_builder.description = tag_data["tag"]["description"]
+            origin_tag_builder.short_description = tag_data["tag"][
+                "short_description"
+            ]
+            origin_tag_builder.category = tag_data["tag"]["category"]
+            origin_tag_data = origin_tag_builder.build()
+            origin_tag.add_if_not_exists(connection, origin_tag_data)
+            result.append(origin_tag_data)
+        if derpibooru_connection is not None:
+            derpibooru_connection.close()
+        return result
+
+
+class API_TagSearch(TagParsingStrategy):
+    def parse_unknow_tags(
+        self, unknown_tags: list[str], parser, origin, connection
+    ) -> list[origin_tag.OriginTag]:
+        result: list[origin_tag.OriginTag] = []
+        for origin_tag_info in unknown_tags:
+            tag_data = parser.parseJSON(
+                url="tags", _type="search", q=origin_tag_info
+            )
+            if tag_data is None:
+                raise Exception("tag API error: no tag info")
+            tag_data_adapter = {"tag": tag_data["tags"][0]}
+            ddl_tag_name, ddl_tag_category = (
+                parser.translate_origin_tag_to_tags(tag_data_adapter)
+            )
+            tag_id = database.tag.get_or_create_tag_id(
+                connection, ddl_tag_name, ddl_tag_category
+            )
+            if tag_id is None:
+                raise Exception("Failed to add a new tag")
+            origin_tag_builder = database.origin_tag.OriginTagBuilder()
+            origin_tag_builder.tag_id = tag_id
+            origin_tag_builder.origin_name = origin
+            origin_tag_builder.tag_name = tag_data["tags"][0]["name"]
+            origin_tag_builder.tag_slug = tag_data["tags"][0]["slug"]
+            origin_tag_builder.description = tag_data["tags"][0]["description"]
+            origin_tag_builder.short_description = tag_data["tags"][0][
+                "short_description"
+            ]
+            origin_tag_builder.category = tag_data["tags"][0]["category"]
+            origin_tag_data = origin_tag_builder.build()
+            database.origin_tag.add_if_not_exists(connection, origin_tag_data)
+            result.append(origin_tag_data)
+        return result
+
+
 class Philomena(Parser):
     def __init__(self, url, parsed_data: dict | None = None):
         super().__init__(url, parsed_data)
         self.rate_limiter = self.make_rate_limiter()
+        if self.enable_html_parsing():
+            self.tag_parsing_strategy: TagParsingStrategy = HTML_TagParse()
+        else:
+            self.tag_parsing_strategy: TagParsingStrategy = API_TagSearch()
 
     def parseHTML(self, image_id) -> dict[str, str]:
         """
@@ -130,10 +227,14 @@ class Philomena(Parser):
         else:
             raise TypeError(f"Unexpected type: {type(tag_data)}")
 
+    @abc.abstractmethod
+    def enable_html_parsing(self) -> bool:
+        return False
+
     def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
         if connection is None:
-            raise Exception("Failed to connect to applicatio database")
+            raise Exception("Failed to connect to application database")
         custom_processing_data = self.custom_tag_processing()
         known_tags: list[database.origin_tag.OriginTag] = []
         origin = database.origin_tag.OriginNameType(self.get_origin_name())
@@ -149,49 +250,11 @@ class Philomena(Parser):
                 else:
                     known_tags.append(tag_data)
             if len(unknown_tags):
-                derpibooru_connection = None
-                if origin is database.origin_tag.OriginNameType.DERPIBOORU:
-                    derpibooru_connection = database.make_connection(
-                        database.DatabaseEnum.DERPIBOORU, none_if_error=True
+                known_tags.extend(
+                    self.tag_parsing_strategy.parse_unknow_tags(
+                        unknown_tags, self, origin, connection
                     )
-                tag_name_to_slug = self.parseHTML(self.getID())
-                for origin_tag_info in unknown_tags:
-                    tag_data = None
-                    if derpibooru_connection is not None:
-                        tag_data = database.derpibooru.simulate_tag_api(
-                            derpibooru_connection, origin_tag_info
-                        )
-                    if tag_data is None:
-                        tag_data = self.parseJSON(
-                            url=tag_name_to_slug[origin_tag_info], _type="tags"
-                        )
-                    if tag_data is None:
-                        raise Exception("tag API error: no tag info")
-                    ddl_tag_name, ddl_tag_category = (
-                        self.translate_origin_tag_to_tags(tag_data)
-                    )
-                    tag_id = database.tag.get_or_create_tag_id(
-                        connection, ddl_tag_name, ddl_tag_category
-                    )
-                    if tag_id is None:
-                        raise Exception("Failed to add a new tag")
-                    origin_tag_builder = database.origin_tag.OriginTagBuilder()
-                    origin_tag_builder.tag_id = tag_id
-                    origin_tag_builder.origin_name = origin
-                    origin_tag_builder.tag_name = tag_data["tag"]["name"]
-                    origin_tag_builder.tag_slug = tag_data["tag"]["slug"]
-                    origin_tag_builder.description = tag_data["tag"][
-                        "description"
-                    ]
-                    origin_tag_builder.short_description = tag_data["tag"][
-                        "short_description"
-                    ]
-                    origin_tag_builder.category = tag_data["tag"]["category"]
-                    origin_tag_data = origin_tag_builder.build()
-                    origin_tag.add_if_not_exists(connection, origin_tag_data)
-                    known_tags.append(origin_tag_data)
-                if derpibooru_connection is not None:
-                    derpibooru_connection.close()
+                )
         else:
             for derpibooru_tag in custom_processing_data:
                 existing_origin_tag = database.origin_tag.get_by_tag_name(

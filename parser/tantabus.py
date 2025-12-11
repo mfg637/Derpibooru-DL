@@ -32,3 +32,5 @@ class TantabusAIParser(philomena.Philomena):
     def make_rate_limiter(self):
         return Parser.OneRequestPerSecondRateLimiter()
 
+    def enable_html_parsing(self) -> bool:
+        return True

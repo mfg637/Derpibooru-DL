@@ -122,3 +122,6 @@ class DerpibooruParser(philomena.Philomena):
                     )
             db_local_instance.close()
         return data
+
+    def enable_html_parsing(self) -> bool:
+        return True
