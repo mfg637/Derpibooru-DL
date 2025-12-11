@@ -473,7 +473,10 @@ class SaveConfig(interactive_mode.Command):
                 if entry.value is not None and (
                     entry.write_required or write_defaults
                 ):
-                    serialisable_config[entry.name_in_config] = entry.value
+                    value = entry.value
+                    if isinstance(value, pathlib.Path):
+                        value = str(value)
+                    serialisable_config[entry.name_in_config] = value
 
         if serialisable_config:
             try:
@@ -503,10 +506,7 @@ def load_config() -> None:
         group_entry_names = set(group_entries)
         entry_match_found = group_entry_names & config_file_keys
         for entry_name in entry_match_found:
-            value = config_data[entry_name]
-            if isinstance(value, pathlib.Path):
-                value = str(value)
-            group_entries[entry_name].set_value(value)
+            group_entries[entry_name].set_value(config_data[entry_name])
 
 
 load_config()
