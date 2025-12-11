@@ -1,21 +1,21 @@
 import abc
-import re
-import os
 import json
 import logging
+import os
 import pathlib
+import re
 import sys
-import database
 import time
 import urllib.parse
 from html.parser import HTMLParser
-
-from database import origin_tag
-from .Parser import Parser, FileTypes
-
+import typing
 import requests
-import config
 
+import config
+import database
+from database import origin_tag
+
+from .Parser import FileTypes, Parser
 
 logger = logging.getLogger(__name__)
 
@@ -254,7 +254,7 @@ class Philomena(Parser):
     @abc.abstractmethod
     def custom_data_loading(
         self, _id: int, request_type="images"
-    ) -> dict | None:
+    ) -> dict[str, dict[str, typing.Any]] | None:
         pass
 
     def parseJSON(

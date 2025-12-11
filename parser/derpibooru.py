@@ -1,7 +1,7 @@
 import datetime
 import logging
 import time
-
+import typing
 import psycopg2
 
 import database
@@ -17,7 +17,9 @@ ORIGIN = "derpibooru"
 
 def make_connection():
     try:
-        return database.make_connection(database.DatabaseEnum.DERPIBOORU)
+        return database.make_connection(
+            database.DatabaseEnum.DERPIBOORU, none_if_error=True
+        )
     except psycopg2.OperationalError:
         return None
 
@@ -97,7 +99,9 @@ class DerpibooruParser(philomena.Philomena):
     def make_rate_limiter(self) -> DerpibooruRateLimiter:
         return DerpibooruRateLimiter()
 
-    def custom_data_loading(self, _id: int, request_type="images"):
+    def custom_data_loading(
+        self, _id: int, request_type="images"
+    ) -> dict[str, dict[str, typing.Any]] | None:
         db_local_instance = make_connection()
         data: dict | None = None
         if db_local_instance is not None:
