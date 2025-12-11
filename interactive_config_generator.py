@@ -501,7 +501,10 @@ def load_config() -> None:
         group_entry_names = set(group_entries)
         entry_match_found = group_entry_names & config_file_keys
         for entry_name in entry_match_found:
-            group_entries[entry_name].set_value(config_data[entry_name])
+            value = config_data[entry_name]
+            if isinstance(value, pathlib.Path):
+                value = str(value)
+            group_entries[entry_name].set_value(value)
 
 
 load_config()
