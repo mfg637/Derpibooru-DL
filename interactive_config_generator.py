@@ -477,8 +477,10 @@ class SaveConfig(interactive_mode.Command):
 
         if serialisable_config:
             try:
+                # avoid writing corrupted config
+                commit = json.dumps(serialisable_config)
                 with config_file_json.open("w") as f:
-                    json.dump(serialisable_config, f)
+                    f.write(commit)
             except Exception as e:
                 raise e
             else:
