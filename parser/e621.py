@@ -8,14 +8,13 @@ import base64
 import urllib.parse
 
 import database
-
+import file_format
 from .Parser import FileTypes
 
 import requests
 
 import config
 from . import Parser
-
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +218,7 @@ class E621Parser(Parser.Parser):
     def get_big_thumbnail_url(self, data):
         return data["post"]["sample"]["url"]
 
-    def get_raw_content_data(self):
+    def get_raw_content_data(self) -> dict:
         return self.get_data()["post"]
 
     def tags_processing(self) -> dict[str, set[str]]:
@@ -304,3 +303,7 @@ class E621Parser(Parser.Parser):
 
     def make_rate_limiter(self) -> Parser.RateLimiter:
         return Parser.OneRequestPerSecondRateLimiter()
+
+    def get_mime_type(self) -> str:
+        ext = self.get_raw_content_data()["file"]["ext"]
+        return file_format.MIME_BY_EXTENSION[f".{ext}"]

@@ -304,7 +304,7 @@ class Philomena(Parser):
         connection.close()
         return result
 
-    def get_raw_content_data(self):
+    def get_raw_content_data(self) -> dict:
         return self.get_data()["image"]
 
     def get_content_id(self) -> int:
@@ -535,3 +535,6 @@ class Philomena(Parser):
         ):
             filetype = FileTypes.ANIMATION
         return filetype
+
+    def get_mime_type(self) -> str:
+        return self.get_raw_content_data()["mime_type"]

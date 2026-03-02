@@ -11,7 +11,6 @@ import abc
 
 import database
 
-
 tag_categories = database.tag.TagCategory
 
 
@@ -19,6 +18,11 @@ class FilesystemDirectoryManager(abc.ABC):
     @abc.abstractmethod
     def choose_folder(self, tags: dict[str, set]) -> pathlib.Path:
         pass
+
+
+class PlaneDirectory(FilesystemDirectoryManager):
+    def choose_folder(self, tags: dict[str, set]) -> pathlib.Path:
+        return pathlib.Path(config.initial_dir)
 
 
 class TagBasedDirectory(FilesystemDirectoryManager):
@@ -145,6 +149,8 @@ def find_folder(parsed_tags: dict[str, set]):
         dir_manager = TagBasedDirectory()
     elif config.saving_path == config.PathSpecification.DATE_DOWNLOADED:
         dir_manager = DateBasedDirectory()
+    elif config.saving_path == config.PathSpecification.PLANE_STORAGE:
+        dir_manager = PlaneDirectory()
 
     if dir_manager is None:
         raise ValueError(

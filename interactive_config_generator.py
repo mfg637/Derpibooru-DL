@@ -215,6 +215,19 @@ class RequiredEnvStringConfigEntry(ConfigEntry[str]):
         return os.getenv(self.env_name, None)
 
 
+class OptionalEnvIntegerConfigEntry(ConfigEntry[int]):
+    def __init__(self, name: str, name_in_config: str, env_name: str):
+        self.env_name = env_name
+        super().__init__(name, types.StringArgument(), False, name_in_config)
+
+    def set_default_value(self):
+        raw_value = os.getenv(self.env_name, None)
+        if raw_value is None:
+            return None
+        else:
+            return int(raw_value)
+
+
 class OptionalEnvPasswordConfigEntry(ConfigEntry[str]):
     def __init__(self, name: str, name_in_config: str, env_name: str):
         self.env_name = env_name
@@ -332,6 +345,13 @@ database_settings.add_entry(
     )
 )
 
+medialib_settings = ConfigEntriesGroup("medialib_settings")
+medialib_settings.add_entry(
+    OptionalEnvStringConfigEntry("host", "medialib host name", "MEDIALIB_HOST")
+)
+medialib_settings.add_entry(
+    OptionalEnvIntegerConfigEntry("port", "medialib port", "MEDIALIB_PORT")
+)
 
 cm = ConfigManager()
 cm.add_group(server_settings)
@@ -339,6 +359,7 @@ cm.add_group(filesystem_settings)
 cm.add_group(api_keys)
 cm.add_group(ui_settings)
 cm.add_group(database_settings)
+cm.add_group(medialib_settings)
 
 
 class ShowGroupsCommand(interactive_mode.Command):

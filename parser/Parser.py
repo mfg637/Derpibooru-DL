@@ -250,7 +250,7 @@ class Parser(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def get_raw_content_data(self):
+    def get_raw_content_data(self) -> dict:
         pass
 
     @abc.abstractmethod
@@ -277,4 +277,8 @@ class Parser(abc.ABC):
 
     @abc.abstractmethod
     def make_rate_limiter(self) -> RateLimiter:
+        pass
+
+    @abc.abstractmethod
+    def get_mime_type(self) -> str:
         pass

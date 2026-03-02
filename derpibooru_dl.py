@@ -12,6 +12,7 @@ from derpibooru_dl import tagResponse
 import logging
 import interactive_mode
 import re
+import medialib_service
 
 root_logger = logging.getLogger()
 derpibooru_dl.logging.init(root_logger, "derpibooru_dl")
@@ -101,6 +102,7 @@ def download(url):
     if rewrite:
         dm.enable_rewriting()
     dm.download(outdir, data, parsed_tags)
+    medialib_service.prepare_and_send_result(dm, parsed_tags, data, outdir)
 
 
 if config.gui and not NO_GUI:

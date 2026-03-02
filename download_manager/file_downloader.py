@@ -3,6 +3,7 @@ import pathlib
 import config
 from .download_manager import DownloadManager
 import parser
+from medialib_service import check_exists
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +21,11 @@ class FileDownloader(DownloadManager):
         data: dict,
         tags: dict | None,
     ):
-        if self.is_rewriting_allowed() or not src_filename.is_file():
+        if config.use_medialib and check_exists(
+            self.parser.get_origin_name(), str(self.parser.get_content_id())
+        ):
+            self.skip_download = True
+        elif self.is_rewriting_allowed() or not src_filename.is_file():
             if not config.simulate:
                 self.download_file(src_filename, src_url)
         elif src_filename.is_file():

@@ -14,7 +14,9 @@ import logging
 import derpibooru_dl
 import enum
 import typing
+import medialib_service
 from derpibooru_dl import tagResponse
+from pathlib import Path
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.NOTSET)
@@ -63,6 +65,34 @@ class Task:
     def execute(self):
         self.status = TaskStatus.EXECUTING
         self.dm.download(self.outdir, self.data, self.parsed_tags)
+        medialib_service.prepare_and_send_result(
+            self.dm, self.parsed_tags, self.data, self.outdir
+        )
+        # if config.use_medialib and not self.dm.skip_download:
+        #     serializable_parsed_tags: dict[str, list[str]] = {
+        #         category: list(self.parsed_tags[category])
+        #         for category in self.parsed_tags
+        #     }
+        #     raw_data: dict = self.dm.parser.get_raw_content_data()
+        #     content_title = raw_data.get("name", "")
+        #     content_description = raw_data.get("description", "")
+        #     response_data = {
+        #         "origin_name": self.dm.parser.get_origin_name(),
+        #         "origin_content_id": self.dm.parser.get_content_id(),
+        #         "tags": serializable_parsed_tags,
+        #         "output_filename": str(
+        #             self.dm.parser.get_output_filename(self.data, self.outdir)[
+        #                 1
+        #             ]
+        #         ),
+        #         "title": content_title,
+        #         "description": content_description,
+        #         "mime_type": self.dm.parser.get_mime_type(),
+        #     }
+        #     status_message, is_ok = medialib_service.send_result(response_data)
+        #     if is_ok:
+        #         file_path = Path(response_data["output_filename"])
+        #         file_path.unlink()
         self.status = TaskStatus.DONE
 
 
@@ -229,6 +259,7 @@ class RouteFabric:
                 category: list(parsed_tags[category])
                 for category in parsed_tags
             }
+            raw_data: dict = _parser.get_raw_content_data()
             response_data = {
                 "origin_name": _parser.get_origin_name(),
                 "origin_domain_name": _parser.get_domain_name(),
@@ -240,7 +271,7 @@ class RouteFabric:
                 ),
                 "image_format": _parser.get_image_format(data),
                 "status": "OK" if error_message is None else error_message,
-                "raw_data": _parser.get_raw_content_data(),
+                "raw_data": raw_data,
             }
             response_object = flask.jsonify(response_data)
             if error_message is not None:
