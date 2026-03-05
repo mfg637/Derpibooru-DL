@@ -152,7 +152,9 @@ def get_tags_of_image(connection: connection_type, image_id: int) -> list[Tag]:
     return results
 
 
-def simulate_image_api(connection: connection_type, image_id: int):
+def simulate_image_api(
+    connection: connection_type, image_id: int, cdn_domain_name="derpicdn.net"
+):
     cursor = connection.cursor()
     is_hidden = _get_image_hidden(cursor, image_id)
     if is_hidden is not None:
@@ -176,7 +178,8 @@ def simulate_image_api(connection: connection_type, image_id: int):
         "__tags": None,
     }
     created_at: datetime.datetime = image_data.created_at
-    result["view_url"] = "https://derpicdn.net/img/view/{}/{}/{}/{}.{}".format(
+    result["view_url"] = "https://{}/img/view/{}/{}/{}/{}.{}".format(
+        cdn_domain_name,
         created_at.year,
         created_at.month,
         created_at.day,
@@ -194,7 +197,8 @@ def simulate_image_api(connection: connection_type, image_id: int):
         "thumb_tiny",
     ):
         result["representations"][repr_name] = (
-            "https://derpicdn.net/img/{}/{}/{}/{}/{}.{}".format(
+            "https://{}/img/{}/{}/{}/{}/{}.{}".format(
+                cdn_domain_name,
                 created_at.year,
                 created_at.month,
                 created_at.day,

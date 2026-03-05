@@ -9,6 +9,7 @@ class DatabaseEnum(enum.Enum):
     APP_PROD = enum.auto()
     APP_TEST = enum.auto()
     DERPIBOORU = enum.auto()
+    TANTABUS = enum.auto()
 
 
 def make_connection(
@@ -37,6 +38,17 @@ def make_connection(
             return psycopg2.connect(
                 host=config.derpibooru_dump_db_host,
                 database="derpibooru",
+                user=config.derpibooru_dump_db_user,
+                password=config.derpibooru_dump_db_password,
+            )
+        elif database is DatabaseEnum.TANTABUS:
+            if none_if_error and config.derpibooru_dump_db_host is None:
+                return None
+            elif config.derpibooru_dump_db_host is None:
+                raise ValueError("config.derpibooru_dump_db_host is not set")
+            return psycopg2.connect(
+                host=config.derpibooru_dump_db_host,
+                database="tantabus",
                 user=config.derpibooru_dump_db_user,
                 password=config.derpibooru_dump_db_password,
             )
