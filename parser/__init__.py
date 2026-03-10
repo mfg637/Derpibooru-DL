@@ -11,7 +11,6 @@ from . import (
     exceptions,
 )
 
-
 url_pattern = re.compile(r"https?://")
 filename_prefix_pattern = re.compile(r"[a-z]{2}\d+")
 
@@ -22,6 +21,15 @@ class_by_prefix = {
     e621.FILENAME_PREFIX: e621.E621Parser,
     furbooru.FILENAME_PREFIX: furbooru.FurbooruParser,
     tantabus.FILENAME_PREFIX: tantabus.TantabusAIParser,
+}
+
+name_by_prefix = {
+    derpibooru.FILENAME_PREFIX: derpibooru.ORIGIN,
+    ponybooru.FILENAME_PREFIX: ponybooru.ORIGIN,
+    twibooru.FILENAME_PREFIX: twibooru.ORIGIN,
+    e621.FILENAME_PREFIX: e621.ORIGIN,
+    furbooru.FILENAME_PREFIX: furbooru.ORIGIN,
+    tantabus.FILENAME_PREFIX: tantabus.ORIGIN,
 }
 
 class_by_domain_name = {
@@ -51,3 +59,12 @@ def get_parser(url):
     else:
         parser = derpibooru.DerpibooruParser(url)
     return parser
+
+
+def parse_prefixed_id(prefixed_id: str) -> tuple[str, str] | None:
+    if filename_prefix_pattern.match(prefixed_id) is not None:
+        for prefix in class_by_prefix:
+            if prefix in prefixed_id:
+                name = name_by_prefix[prefix]
+                content_id = prefixed_id[2:]
+                return name, content_id

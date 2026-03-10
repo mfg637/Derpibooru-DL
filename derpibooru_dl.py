@@ -6,13 +6,11 @@ import pathlib
 
 import config
 import download_manager
-import parser
 import derpibooru_dl
-from derpibooru_dl import tagResponse
+from derpibooru_dl import download
 import logging
 import interactive_mode
 import re
-import medialib_service
 
 root_logger = logging.getLogger()
 derpibooru_dl.logging.init(root_logger, "derpibooru_dl")
@@ -79,32 +77,6 @@ if args.append is not None:
     args.append.close()
 
 
-def download(url):
-    try:
-        _parser: parser.Parser.Parser = parser.get_parser(url)
-    except parser.exceptions.NotBoorusPrefixError as e:
-        logger.exception("invalid prefix in {}".format(e.url))
-        exit(1)
-    except parser.exceptions.SiteNotSupported as e:
-        logger.exception("Site not supported {}".format(e.url))
-        exit(1)
-    try:
-        data = _parser.get_data()
-    except IndexError:
-        exit(1)
-
-    parsed_tags: dict = _parser.tags_processing()
-    logger.debug("parsed tags: {}".format(parsed_tags.__repr__()))
-    outdir = tagResponse.find_folder(parsed_tags)
-    logger.info("output directory: {}".format(outdir))
-
-    dm = download_manager.make_download_manager(_parser)
-    if rewrite:
-        dm.enable_rewriting()
-    dm.download(outdir, data, parsed_tags)
-    medialib_service.prepare_and_send_result(dm, parsed_tags, data, outdir)
-
-
 if config.gui and not NO_GUI:
     import tkinter
 
@@ -143,7 +115,7 @@ class DownloadByUrl(interactive_mode.Command):
             *required_arguments, **optional_arguments
         )
         url: str = arguments["url"]
-        download(url)
+        download(url, rewrite)
 
 
 class DownloadById(interactive_mode.Command):
@@ -162,7 +134,7 @@ class DownloadById(interactive_mode.Command):
             *required_arguments, **optional_arguments
         )
         content_id: str = arguments["id"]
-        download(content_id)
+        download(content_id, rewrite)
 
 
 if not config.gui or NO_GUI:

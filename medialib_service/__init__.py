@@ -1,7 +1,6 @@
 import requests
 import json
 import config
-from download_manager.download_manager import DownloadManager
 from pathlib import Path
 
 
@@ -30,7 +29,7 @@ def send_result(payload: dict) -> tuple[str, bool]:
 
 
 def prepare_and_send_result(
-    dm: DownloadManager,
+    dm,
     parsed_tags: dict[str, set[str]],
     data: dict,
     outdir: Path,
@@ -54,6 +53,33 @@ def prepare_and_send_result(
         status_message, is_ok = send_result(payload)
         if is_ok:
             file_path = Path(payload["file_path"])
+            file_path.unlink()
+
+
+def prepare_for_import(
+    dm: DownloadManager,
+    parsed_tags: dict[str, set[str]],
+    file_path: Path,
+    remove_if_success: bool,
+):
+    if config.use_medialib and not dm.skip_download:
+        serializable_parsed_tags: dict[str, list[str]] = {
+            category: list(parsed_tags[category]) for category in parsed_tags
+        }
+        raw_data: dict = dm.parser.get_raw_content_data()
+        content_title = raw_data.get("name", "")
+        content_description = raw_data.get("description", "")
+        payload = {
+            "origin_name": dm.parser.get_origin_name(),
+            "origin_id": dm.parser.get_content_id(),
+            "tags": json.dumps(serializable_parsed_tags),
+            "file_path": file_path,
+            "title": content_title,
+            "description": content_description,
+            "mime_type": dm.parser.get_mime_type(),
+        }
+        status_message, is_ok = send_result(payload)
+        if is_ok and remove_if_success:
             file_path.unlink()
 
 
