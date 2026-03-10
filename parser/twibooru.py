@@ -1,11 +1,11 @@
 import logging
 import datetime
+from dateutil import tz
 import time
 import urllib.parse
 import pathlib
 import requests
 import json
-import database
 import os
 import re
 import config
@@ -17,29 +17,42 @@ FILENAME_PREFIX = "tb"
 ORIGIN = "twibooru"
 
 
+RESET_PERIOD = datetime.timedelta(minutes=1)
+LIMITER_BIAS = datetime.timedelta(seconds=30)
+
+
 class TwibooruRateLimiter(Parser.RateLimiter):
+    def __init__(self):
+        super().__init__()
+        self.reset_time: datetime.datetime | None = None
+        self.requests_remaining: int = 60
+
     def rate_limit(self, request_type):
         if self.first_request_date is not None:
             current_timestamp = datetime.datetime.now()
             time_pass: datetime.timedelta = (
                 current_timestamp - self.first_request_date
             )
-            if self.request_timeout_seconds is None:
+            if self.reset_time is None:
                 pass
-            elif time_pass.total_seconds() < self.request_timeout_seconds:
-                if self.requests_count >= self.requests_limit:
-                    waiting_time = (
-                        self.request_timeout_seconds - time_pass.total_seconds()
-                    )
+            elif current_timestamp < self.reset_time:
+                if not self.requests_remaining:
+                    waiting_time = self.reset_time - current_timestamp
                     logger.info(f"sleeping for {waiting_time} seconds")
-                    time.sleep(waiting_time)
+                    time.sleep(waiting_time.total_seconds())
                     self.requests_count = 0
+                    self.requests_remaining = -1
                     self.first_request_date = datetime.datetime.now()
                     self.request_timeout_seconds = None
+                    self.reset_time = self.first_request_date + RESET_PERIOD
             else:
                 self.requests_count = 0
                 self.first_request_date = datetime.datetime.now()
                 self.request_timeout_seconds = None
+                self.requests_remaining = 60
+                self.reset_time = (
+                    self.first_request_date + RESET_PERIOD + LIMITER_BIAS
+                )
         else:
             self.first_request_date = datetime.datetime.now()
         self.request_timeout_seconds = 60
@@ -50,11 +63,26 @@ class TwibooruRateLimiter(Parser.RateLimiter):
         else:
             self.requests_limit = 60
 
+    @staticmethod
+    def parse_utc_time(utcdatetimestring: str) -> datetime.datetime:
+        date_str = utcdatetimestring.replace(" UTC", "")
+        dt_naive = datetime.datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        dt_utc = dt_naive.replace(tzinfo=datetime.timezone.utc)
+        local_tz = tz.gettz()
+        dt_local = dt_utc.astimezone(local_tz)
+        return dt_local.replace(tzinfo=None)
+
     def update_rate_limit(self, response_headers):
-        self.requests_limit = int(response_headers["x-rl"])
-        self.requests_count = self.requests_limit - int(
-            response_headers["x-rl-remain"]
+        self.reset_time = (
+            self.parse_utc_time(response_headers["x-rl-reset"]) + LIMITER_BIAS
         )
+        self.requests_limit = min(
+            int(response_headers["x-rl"]), self.requests_limit
+        )
+        self.requests_remaining = min(
+            int(response_headers["x-rl-remain"]), self.requests_remaining
+        )
+        self.requests_count = self.requests_limit - self.requests_remaining
 
 
 class TwibooruParser(philomena.Philomena):
