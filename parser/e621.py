@@ -237,6 +237,7 @@ class E621Parser(Parser.Parser):
             "invalid": categories.ERROR,
             "meta": categories.META,
             "lore": categories.LORE,
+            "contributor": categories.CREATOR,
         }
         result: dict[str, set[str]] = dict()
         for origin_category in origin_tags_dict:

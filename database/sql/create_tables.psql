@@ -8,6 +8,7 @@ CREATE TYPE origin_name_type AS ENUM (
 );
 
 create type tag_categoty_type as enum (
+    'creator',
     'artist',       -- used for artist name
     'prompter',     -- same as artist, but for ai generated images
     'set',          -- unordered list of content

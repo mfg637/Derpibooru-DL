@@ -5,6 +5,7 @@ from psycopg2.extensions import cursor as cursor_type
 
 
 class TagCategory(enum.StrEnum):
+    CREATOR = "creator"
     ARTIST = "artist"
     PROMPTER = "prompter"
     SET = "set"
