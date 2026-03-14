@@ -34,6 +34,7 @@ class E621Parser(Parser.Parser):
             "png": FileTypes.IMAGE,
             "gif": FileTypes.ANIMATION,
             "webm": FileTypes.VIDEO,
+            "webp": FileTypes.VIDEO,
         }
         filetype = FILE_EXTENSION_ASSOCIATION[
             self.get_data()["post"]["file"]["ext"].lower()
