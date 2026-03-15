@@ -24,7 +24,7 @@
 // @match       https://e621.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     2.0
+// @version     2.0.1
 // @author      mfg637
 // @description Script parses page content and adds download button to it.
 // ==/UserScript==
@@ -223,7 +223,7 @@ if (
       e621_image_handler(
         image_wrappers[i],
         button_placer_default,
-        image_wrappers[i].childNodes[1],
+        image_wrappers[i].children[1].children[0],
         e621_post_list_styler,
       );
     }
