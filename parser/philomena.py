@@ -78,17 +78,17 @@ class HTML_TagParse(TagParsingStrategy):
 
 
 class API_TagSearch(TagParsingStrategy):
-    def parse_unknow_tags(
-        self, unknown_tags: list[str], parser, origin, connection
-    ) -> list[origin_tag.OriginTag]:
-        result: list[origin_tag.OriginTag] = []
-        for origin_tag_info in unknown_tags:
-            tag_data = parser.parseJSON(
-                url="tags", _type="search", q=origin_tag_info
-            )
-            if tag_data is None:
-                raise Exception("tag API error: no tag info")
-            tag_data_adapter = {"tag": tag_data["tags"][0]}
+    def find_tag(self, raw_data, tag_name: str, parser, origin, connection):
+        if raw_data is None:
+            raise Exception("tag API error: no tag info")
+        if "tags" not in raw_data:
+            print("unexpected response", raw_data)
+            raise Exception("tag API error: no tag info")
+        found_tags = []
+        expected_tag = None
+        for current_tag in raw_data["tags"]:
+            found_tags.append(current_tag)
+            tag_data_adapter = {"tag": current_tag}
             ddl_tag_name, ddl_tag_category = (
                 parser.translate_origin_tag_to_tags(tag_data_adapter)
             )
@@ -100,16 +100,34 @@ class API_TagSearch(TagParsingStrategy):
             origin_tag_builder = database.origin_tag.OriginTagBuilder()
             origin_tag_builder.tag_id = tag_id
             origin_tag_builder.origin_name = origin
-            origin_tag_builder.tag_name = tag_data["tags"][0]["name"]
-            origin_tag_builder.tag_slug = tag_data["tags"][0]["slug"]
-            origin_tag_builder.description = tag_data["tags"][0]["description"]
-            origin_tag_builder.short_description = tag_data["tags"][0][
+            origin_tag_builder.tag_name = current_tag["name"]
+            origin_tag_builder.tag_slug = current_tag["slug"]
+            origin_tag_builder.description = current_tag["description"]
+            origin_tag_builder.short_description = current_tag[
                 "short_description"
             ]
-            origin_tag_builder.category = tag_data["tags"][0]["category"]
+            origin_tag_builder.category = current_tag["category"]
             origin_tag_data = origin_tag_builder.build()
             database.origin_tag.add_if_not_exists(connection, origin_tag_data)
-            result.append(origin_tag_data)
+            if origin_tag_data.tag_name == tag_name:
+                expected_tag = origin_tag_data
+        if expected_tag is None:
+            raise Exception(f"Not found tag: {expected_tag}")
+        return expected_tag
+
+    def parse_unknow_tags(
+        self, unknown_tags: list[str], parser, origin, connection
+    ) -> list[origin_tag.OriginTag]:
+        result: list[origin_tag.OriginTag] = []
+        for origin_tag_info in unknown_tags:
+            tag_data = parser.parseJSON(
+                url="tags", _type="search", q=origin_tag_info
+            )
+            result.append(
+                self.find_tag(
+                    tag_data, origin_tag_info, parser, origin, connection
+                )
+            )
         return result
 
 
