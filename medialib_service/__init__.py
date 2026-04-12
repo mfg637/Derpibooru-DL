@@ -3,6 +3,8 @@ import json
 import config
 from pathlib import Path
 
+API_ROUTE = "media_receiving"
+
 
 def send_result(payload: dict) -> tuple[str, bool]:
     """
@@ -12,7 +14,7 @@ def send_result(payload: dict) -> tuple[str, bool]:
     """
     if not config.use_medialib:
         raise ValueError("Need medialib parameters on config")
-    API_URL = f"http://{config.ml_host}:{config.ml_port}/image-processing/task/create/by_file"
+    API_URL = f"http://{config.ml_host}:{config.ml_port}/{API_ROUTE}/task/create/by_file"
 
     try:
         response = requests.post(API_URL, data=payload)
@@ -90,7 +92,7 @@ def check_exists(origin_name: str, origin_content_id: str) -> bool:
     if not config.use_medialib:
         raise ValueError("Need medialib parameters on config")
     API_URL = (
-        f"http://{config.ml_host}:{config.ml_port}/image-processing/origin/info"
+        f"http://{config.ml_host}:{config.ml_port}/{API_ROUTE}/origin/info"
     )
     payload = {
         "name": origin_name,
