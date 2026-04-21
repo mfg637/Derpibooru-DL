@@ -2,26 +2,48 @@ import requests
 import json
 import config
 from pathlib import Path
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from download_manager import DownloadManager
+
 
 API_ROUTE = "media_receiving"
 
 
-def send_result(payload: dict) -> tuple[str, bool]:
+def send_result(
+    payload: dict, file_to_upload: Optional[Path] = None
+) -> tuple[str, bool]:
     """
-    Send data to medialib servise and returns status info
-
-    Returns: status string, success status (boolean)
+    Sends data to medialib service.
+    If file_to_upload passed, using form upload (by_form).
+    Elsewhere, using by_file route.
     """
     if not config.use_medialib:
         raise ValueError("Need medialib parameters on config")
-    API_URL = f"http://{config.ml_host}:{config.ml_port}/{API_ROUTE}/task/create/by_file"
+
+    if file_to_upload and file_to_upload.exists():
+        endpoint = "task/create/by_form"
+        method_is_form = True
+    else:
+        endpoint = "task/create/by_file"
+        method_is_form = False
+
+    url = f"http://{config.ml_host}:{config.ml_port}/{API_ROUTE}/{endpoint}"
 
     try:
-        response = requests.post(API_URL, data=payload)
-        if response.status_code == 201:
+        if file_to_upload and method_is_form:
+            with open(file_to_upload, "rb") as f:
+                files = {"file": f}
+                form_data = {"metadata": json.dumps(payload)}
+                response = requests.post(url, data=form_data, files=files)
+        else:
+            response = requests.post(url, data=payload)
+
+        if response.status_code in [200, 201]:
             return "OK", True
         else:
-            print(f"Server error: ({response.status_code}):")
+            print(f"Server error: ({response.status_code}): {response.text}")
             return response.text, False
 
     except Exception as e:
@@ -31,7 +53,7 @@ def send_result(payload: dict) -> tuple[str, bool]:
 
 
 def prepare_and_send_result(
-    dm,
+    dm: "DownloadManager",
     parsed_tags: dict[str, set[str]],
     data: dict,
     outdir: Path,
@@ -43,23 +65,24 @@ def prepare_and_send_result(
         raw_data: dict = dm.parser.get_raw_content_data()
         content_title = raw_data.get("name", "")
         content_description = raw_data.get("description", "")
+        _, file_path = dm.parser.get_output_filename(data, outdir)
         payload = {
             "origin_name": dm.parser.get_origin_name(),
             "origin_id": dm.parser.get_content_id(),
             "tags": json.dumps(serializable_parsed_tags),
-            "file_path": str(dm.parser.get_output_filename(data, outdir)[1]),
             "title": content_title,
             "description": content_description,
             "mime_type": dm.parser.get_mime_type(),
         }
-        status_message, is_ok = send_result(payload)
+        # by file uploading
+        # payload["file_path"] = str(file_path)
+        status_message, is_ok = send_result(payload, file_path)
         if is_ok:
-            file_path = Path(payload["file_path"])
             file_path.unlink()
 
 
 def prepare_for_import(
-    dm: DownloadManager,
+    dm: "DownloadManager",
     parsed_tags: dict[str, set[str]],
     file_path: Path,
     remove_if_success: bool,
@@ -75,12 +98,13 @@ def prepare_for_import(
             "origin_name": dm.parser.get_origin_name(),
             "origin_id": dm.parser.get_content_id(),
             "tags": json.dumps(serializable_parsed_tags),
-            "file_path": file_path,
             "title": content_title,
             "description": content_description,
             "mime_type": dm.parser.get_mime_type(),
         }
-        status_message, is_ok = send_result(payload)
+        # by file uploading
+        # payload["file_path"] = str(file_path)
+        status_message, is_ok = send_result(payload, file_path)
         if is_ok and remove_if_success:
             file_path.unlink()
 
