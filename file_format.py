@@ -85,3 +85,21 @@ def is_png(file: str | Path | BytesIO) -> bool:
             return header == PNG_MAGIC
     except IOError, FileNotFoundError:
         return False
+
+
+class MediaTypes(enum.Enum):
+    IMAGE = enum.auto()
+    VECTOR_IMAGE = enum.auto()
+    ANIMATION = enum.auto()
+    VIDEO = enum.auto()
+
+
+FILE_EXTENSION_ASSOCIATION: dict[str, MediaTypes] = {
+    "jpg": MediaTypes.IMAGE,
+    "jpeg": MediaTypes.IMAGE,
+    "png": MediaTypes.IMAGE,
+    "gif": MediaTypes.ANIMATION,
+    "webm": MediaTypes.VIDEO,
+    "webp": MediaTypes.VIDEO,
+    "mp4": MediaTypes.VIDEO,
+}

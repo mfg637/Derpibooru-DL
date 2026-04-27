@@ -9,7 +9,7 @@ import urllib.parse
 
 import database
 import file_format
-from .Parser import FileTypes
+from file_format import MediaTypes, FILE_EXTENSION_ASSOCIATION
 
 import requests
 
@@ -27,23 +27,16 @@ class E621Parser(Parser.Parser):
         super().__init__(url, parsed_data)
         self.rate_limiter = Parser.OneRequestPerSecondRateLimiter()
 
-    def identify_filetype(self) -> FileTypes:
-        FILE_EXTENSION_ASSOCIATION: typing.Final[dict[str, FileTypes]] = {
-            "jpg": FileTypes.IMAGE,
-            "jpeg": FileTypes.IMAGE,
-            "png": FileTypes.IMAGE,
-            "gif": FileTypes.ANIMATION,
-            "webm": FileTypes.VIDEO,
-            "webp": FileTypes.VIDEO,
-        }
+    def identify_filetype(self) -> MediaTypes:
+
         filetype = FILE_EXTENSION_ASSOCIATION[
             self.get_data()["post"]["file"]["ext"].lower()
         ]
         if (
-            filetype == FileTypes.IMAGE
+            filetype == MediaTypes.IMAGE
             and "animated" in self.get_data()["post"]["tags"]["meta"]
         ):
-            filetype = FileTypes.ANIMATION
+            filetype = MediaTypes.ANIMATION
         return filetype
 
     def parsehtml_get_image_route_name(self) -> str:

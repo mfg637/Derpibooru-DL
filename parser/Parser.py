@@ -7,17 +7,11 @@ import time
 import enum
 import typing
 import pathvalidate
+from file_format import MediaTypes as FileTypes
 
 import config
 
 logger = logging.getLogger(__name__)
-
-
-class FileTypes(enum.Enum):
-    IMAGE = enum.auto()
-    VECTOR_IMAGE = enum.auto()
-    ANIMATION = enum.auto()
-    VIDEO = enum.auto()
 
 
 class RateLimiter(abc.ABC):
