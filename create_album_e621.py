@@ -20,7 +20,7 @@ cooldown_time = datetime.timedelta(minutes=5)
 
 
 def register_album(origin_name: str, album_title: str, post_ids: list[int]):
-    url = f"http://{config.ml_host}:{config.ml_port}/image-processing/api/album/register/"
+    url = f"http://{config.ml_host}:{config.ml_port}/media_receiving/api/album/register/"
     payload = {
         "origin_name": origin_name,
         "album_title": album_title,
