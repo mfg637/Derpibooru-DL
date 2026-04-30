@@ -1,7 +1,12 @@
 import abc
 import typing
+import shlex
 import collections.abc
 from . import types, exceptions
+from prompt_toolkit import PromptSession
+from prompt_toolkit.completion import Completer, CompleteEvent, Completion
+from prompt_toolkit.history import FileHistory
+from prompt_toolkit import document as ptk_document
 
 
 class Command(abc.ABC):
@@ -171,6 +176,88 @@ class ShowHelpCommand(Command):
             self.show_commands_list()
 
 
+class CommandLineCompleter(Completer):
+    def __init__(self, command_dictionary: dict[str, Command]) -> None:
+        super().__init__()
+        self.command_dictionary = command_dictionary
+
+    def parse_command_name(
+        self, parts: list[str]
+    ) -> typing.Iterable[Completion]:
+        prefix = parts[0] if parts else ""
+        for cmd_name in self.command_dictionary.keys():
+            if cmd_name.startswith(prefix):
+                yield Completion(cmd_name, start_position=-len(prefix))
+        return
+
+    @staticmethod
+    def get_used_optionals(parts: list[str]) -> set[str]:
+        used_optional = set()
+        for p in parts[1:]:
+            if "=" in p:
+                key = p.split("=", 1)[0]
+                used_optional.add(key)
+        return used_optional
+
+    @staticmethod
+    def optional_args_completions(
+        command_obj: Command, used_optional: set[str], current_token: str
+    ) -> typing.Iterable[Completion]:
+        for opt_name in command_obj.optional_arguments.keys():
+            if opt_name not in used_optional:
+                suggestion = f"{opt_name}="
+                if suggestion.startswith(current_token):
+                    yield Completion(
+                        suggestion, start_position=-len(current_token)
+                    )
+
+    @staticmethod
+    def argument_type_completions(
+        arg_type: types.ArgumentType, arg_prefix: str
+    ) -> typing.Iterable[Completion]:
+        if isinstance(arg_type, types.StringEnumType):
+            for enum_val in arg_type.enum_type:
+                if str(enum_val).startswith(arg_prefix):
+                    yield Completion(
+                        str(enum_val), start_position=-len(arg_prefix)
+                    )
+
+    def get_completions(
+        self, document: ptk_document.Document, complete_event: CompleteEvent
+    ) -> typing.Iterable[Completion]:
+        text = document.text_before_cursor
+
+        try:
+            parts: list[str] = shlex.split(text)
+        except ValueError:
+            return
+
+        is_new_token = text.endswith(" ")
+
+        if len(parts) == 0 or (len(parts) == 1 and not is_new_token):
+            yield from self.parse_command_name(parts)
+            return
+
+        command_name = parts[0]
+        if command_name not in self.command_dictionary:
+            return
+
+        command_obj = self.command_dictionary[command_name]
+        current_token = parts[-1] if not is_new_token else ""
+        used_optional = self.get_used_optionals(parts)
+
+        if "=" in current_token:
+            arg_name, arg_prefix = current_token.split("=", 1)
+            if arg_name in command_obj.optional_arguments:
+                arg_type = command_obj.optional_arguments[arg_name]
+                yield from self.argument_type_completions(arg_type, arg_prefix)
+            return
+
+        yield from self.optional_args_completions(
+            command_obj, used_optional, current_token
+        )
+
+
 class InteractiveEnvironment:
     def __init__(self, prompt: str = "> "):
         self.commands_list: list[Command] = []
@@ -249,6 +336,11 @@ class InteractiveEnvironment:
         command_by_name_or_alias: dict[str, Command] = (
             self.get_command_by_name_or_alias(commands_list)
         )
+        command_completer = CommandLineCompleter(command_by_name_or_alias)
+
+        session = PromptSession(
+            history=FileHistory(".cli_history"), completer=command_completer
+        )
 
         self.awaiting_commands = True
         print(
@@ -261,16 +353,25 @@ class InteractiveEnvironment:
             prompt = self.prompt
             if self.context is not None:
                 prompt = f"{str(self.context)}> "
-            user_input = input(prompt)
-            command_name, required_arguments, optional_arguments = (
-                self.parse_command(user_input)
-            )
             try:
-                command = command_by_name_or_alias[command_name]
-            except KeyError:
-                print("Error: Command not found")
+                user_input = session.prompt(prompt)
+                if not user_input:
+                    continue
+                command_name, required_arguments, optional_arguments = (
+                    self.parse_command(user_input)
+                )
+                try:
+                    command = command_by_name_or_alias[command_name]
+                except KeyError:
+                    print("Error: Command not found")
+                    continue
+                try:
+                    command.execute(*required_arguments, **optional_arguments)
+                except ValueError as e:
+                    print("Error:", e)
+                except exceptions.MissingRequiredArgument as e:
+                    print(f"MissingRequiredArgument: {e}")
+            except KeyboardInterrupt:
                 continue
-            try:
-                command.execute(*required_arguments, **optional_arguments)
-            except ValueError as e:
-                print("Error:", e)
+            except EOFError:
+                self.awaiting_commands = False

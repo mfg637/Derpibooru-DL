@@ -3,3 +3,4 @@ psycopg2-binary
 pathvalidate
 requests
 python-dotenv
+prompt-toolkit
