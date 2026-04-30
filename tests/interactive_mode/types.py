@@ -1,0 +1,153 @@
+import pathlib
+import unittest
+import enum
+from interactive_mode import types
+
+
+class TestUrlRegex(unittest.TestCase):
+    def test_url(self):
+        test_wikipedia = types.url_regex.fullmatch("https://www.wikipedia.org/")
+        self.assertIsNotNone(test_wikipedia)
+        test_local_ftp = types.url_regex.fullmatch(
+            "ftp://192.168.1.12/file.txt"
+        )
+        self.assertIsNotNone(test_local_ftp)
+        test_params = types.url_regex.fullmatch(
+            "http://example.com/?pi=3.14&sky=blue"
+        )
+        self.assertIsNotNone(test_params)
+        test_hashtag = types.url_regex.fullmatch(
+            "http://example.com/#chapter-2"
+        )
+        self.assertIsNotNone(test_hashtag)
+        test_path = types.url_regex.fullmatch("http://a.com/path/to/page.html")
+        self.assertIsNotNone(test_path)
+        test_path_2 = types.url_regex.fullmatch("http://a.com/path/to/page/")
+        self.assertIsNotNone(test_path_2)
+        test_string = types.url_regex.fullmatch("Lorem ipsum")
+        self.assertIsNone(test_string)
+        test_lowercase_string = types.url_regex.fullmatch("foo")
+        self.assertIsNone(test_lowercase_string)
+        test_natural_number = types.url_regex.fullmatch("128")
+        self.assertIsNone(test_natural_number)
+        test_real_number = types.url_regex.fullmatch("1.25")
+        self.assertIsNone(test_real_number)
+        test_poxis_path = types.url_regex.fullmatch("/usr/local/bin")
+        self.assertIsNone(test_poxis_path)
+        test_poxis_path_2 = types.url_regex.fullmatch("/usr/local/bin/")
+        self.assertIsNone(test_poxis_path_2)
+
+    def test_url_https(self):
+        test_wikipedia = types.https_url_regex.fullmatch(
+            "https://www.wikipedia.org/"
+        )
+        self.assertIsNotNone(test_wikipedia)
+        test_params = types.https_url_regex.fullmatch(
+            "https://example.com/?pi=3.14&sky=blue"
+        )
+        self.assertIsNotNone(test_params)
+        test_hashtag = types.https_url_regex.fullmatch(
+            "https://example.com/#chapter-2"
+        )
+        self.assertIsNotNone(test_hashtag)
+        test_path = types.https_url_regex.fullmatch(
+            "https://a.com/path/to/page.html"
+        )
+        self.assertIsNotNone(test_path)
+        test_path_2 = types.https_url_regex.fullmatch(
+            "https://a.com/path/to/page/"
+        )
+        self.assertIsNotNone(test_path_2)
+        test_string = types.https_url_regex.fullmatch("Lorem ipsum")
+        self.assertIsNone(test_string)
+        test_lowercase_string = types.https_url_regex.fullmatch("foo")
+        self.assertIsNone(test_lowercase_string)
+        test_natural_number = types.https_url_regex.fullmatch("128")
+        self.assertIsNone(test_natural_number)
+        test_real_number = types.https_url_regex.fullmatch("1.25")
+        self.assertIsNone(test_real_number)
+        test_poxis_path = types.https_url_regex.fullmatch("/usr/local/bin")
+        self.assertIsNone(test_poxis_path)
+        test_poxis_path_2 = types.https_url_regex.fullmatch("/usr/local/bin/")
+        self.assertIsNone(test_poxis_path_2)
+
+        test_image_id = types.https_url_regex.fullmatch(
+            "https://derpibooru.org/images/199890"
+        )
+        self.assertIsNotNone(test_image_id)
+        test_image_with_parameters = types.https_url_regex.fullmatch(
+            "https://derpibooru.org/images/252754?sort[]=0.9957869&sort[]=252754&sd=desc&sf=random%3A3923451479&q=sb+%26%26+ts"
+        )
+        self.assertIsNotNone(test_image_with_parameters)
+
+
+class TestIntParameter(unittest.TestCase):
+    def setUp(self):
+        self.int_type = types.IntegerArgument()
+
+    def test_positive(self):
+        self.assertEqual(self.int_type.parse_input("192"), 192)
+
+    def test_negative(self):
+        self.assertEqual(self.int_type.parse_input("-12"), -12)
+
+    def test_float(self):
+        with self.assertRaises(ValueError):
+            self.int_type.parse_input("1.2")
+
+    def test_NaN(self):
+        with self.assertRaises(ValueError):
+            self.int_type.parse_input("this is not a number")
+
+
+class TestStringParamerer(unittest.TestCase):
+    def setUp(self):
+        self.str_type = types.StringArgument()
+
+    def test_string(self):
+        test_string = "Lorem ipsum"
+        result_string = self.str_type.parse_input(test_string)
+        self.assertEqual(test_string, result_string)
+
+    def test_not_string(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input(True)
+
+
+class TestEnum(enum.StrEnum):
+    A = "a"
+    B = "b"
+    CD = "cd"
+
+
+class TestStringEnumParameter(unittest.TestCase):
+    def setUp(self):
+        self.str_type = types.StringEnumType(TestEnum)
+
+    def test_positive(self):
+        test_string = "a"
+        result_string = self.str_type.parse_input(test_string)
+        self.assertEqual(test_string, result_string)
+
+    def test_negative(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input("ab")
+
+    def test_not_string(self):
+        with self.assertRaises(ValueError):
+            self.str_type.parse_input(True)
+
+
+class TestExistingFilePath(unittest.TestCase):
+    def setUp(self):
+        self.path_type = types.ExistingFilePath()
+
+    def test_file_exists(self):
+        path = self.path_type.parse_input(
+            "tests/interactive_mode/file exists test.txt"
+        )
+        self.assertIsInstance(path, pathlib.Path)
+
+    def test_file_does_exists(self):
+        with self.assertRaises(ValueError):
+            self.path_type.parse_input("this file does not exists")

@@ -1,0 +1,3 @@
+delete from origin_tag;
+delete from tag;
+ALTER SEQUENCE tag_id_seq RESTART WITH 1;

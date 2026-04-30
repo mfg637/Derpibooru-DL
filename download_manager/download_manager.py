@@ -1,41 +1,15 @@
 import abc
-import dataclasses
-import io
-import json
 import logging
-import lzma
-import multiprocessing
 import os
 import pathlib
-import sys
-import threading
 
-import PIL.Image
-import pathvalidate
 import requests
 
-import config
-import medialib_db
 import parser
-import pyimglib
-import pyimglib.common
 
 ENABLE_REWRITING = False
 
-TEST_MEDIALIB = False
-
-downloader_thread = threading.Thread()
-download_queue = []
-
 logger = logging.getLogger(__name__)
-
-medialib_db_lock: multiprocessing.Lock = multiprocessing.Lock()
-
-
-@dataclasses.dataclass
-class ComfyUIWorkflow:
-    prompt: dict
-    workflow: dict
 
 
 class DownloadManager(abc.ABC):
@@ -51,379 +25,44 @@ class DownloadManager(abc.ABC):
     def enable_rewriting(self):
         self._enable_rewriting = True
 
-    @staticmethod
-    def extract_attachments(metadata):
-        plain_text_attachments: dict[str, str] = {}
-        json_attachments: dict[str, any] = {}
-        comfyUI_workflow: ComfyUIWorkflow | None = None
-        xmp_metadata: str | None = None
-        attachments = metadata
-        if attachments:
-            if "prompt" in attachments and "workflow" in attachments:
-                comfyUI_workflow = ComfyUIWorkflow(
-                    json.loads(attachments["prompt"]),
-                    json.loads(attachments["workflow"]),
-                )
-            for key in attachments:
-                if (
-                    key in {"prompt", "workflow"}
-                    and comfyUI_workflow is not None
-                ):
-                    continue
-                else:
-                    if "XML::XMP" in key:
-                        xmp_metadata = attachments[key]
-                    else:
-                        parse_result = None
-                        try:
-                            parse_result = json.loads(attachments[key])
-                        except json.decoder.JSONDecodeError:
-                            plain_text_attachments[key] = attachments[key]
-                        if parse_result is not None:
-                            json_attachments[key] = parse_result
-        return (
-            plain_text_attachments,
-            json_attachments,
-            comfyUI_workflow,
-            xmp_metadata
-        )
-
-    @staticmethod
-    def attachments_to_description(
-        description: str, plain_text_attachments: dict[str, str], update: bool
-    ) -> str:
-        _description = description
-        if _description is None:
-            _description = "Attachments:\n"
-        elif not update:
-            _description += "\n" + "="*16 + "\nAttachments:\n"
-        elif update:
-            return description
-        for key in plain_text_attachments:
-            _description += f"{key}: {plain_text_attachments[key]}\n"
-        return _description
-
-    @staticmethod
-    def detect_media_type(outname, file_type, srs_data=None) -> str:
-        media_type = None
-        if srs_data is not None:
-            media_type = medialib_db.srs_indexer.MEDIA_TYPE_CODES[
-                srs_data['content']['media-type']
-            ]
-        else:
-            if file_type in {
-                parser.Parser.FileTypes.IMAGE,
-                parser.Parser.FileTypes.VECTOR_IMAGE
-            }:
-                media_type = "image"
-            elif file_type == parser.Parser.FileTypes.ANIMATION:
-                media_type = "video-loop"
-            elif file_type == parser.Parser.FileTypes.VIDEO:
-                src_metadata = pyimglib.common.ffmpeg.probe(outname)
-                if pyimglib.common.ffmpeg.parser.test_videoloop(
-                    src_metadata
-                ):
-                    media_type = "video-loop"
-                else:
-                    media_type = "video"
-            else:
-                media_type = "image"
-        return media_type
-
-    @staticmethod
-    def add_file_attachments(
-        connection,
-        content_id,
-        outname,
-        comfyUI_workflow,
-        json_attachments,
-        xmp_metadata: str | None
-    ):
-        if comfyUI_workflow:
-            binary_encoded_json = json.dumps(
-                comfyUI_workflow.workflow
-            ).encode("utf-8")
-            comfy_workflow_filepath = outname.with_stem(
-                outname.stem + "_comfy"
-            ).with_suffix(".json.xz")
-            with lzma.open(comfy_workflow_filepath, "wb") as f:
-                f.write(binary_encoded_json)
-            medialib_db.attachment.add_attachment(
-                connection,
-                content_id,
-                "json+xz",
-                comfy_workflow_filepath,
-                "ComfyUI Workflow",
-            )
-        if json_attachments:
-            binary_encoded_json = json.dumps(json_attachments).encode(
-                "utf-8"
-            )
-            xmp_filepath = outname.with_suffix(".json.xz")
-            with lzma.open(xmp_filepath, "wb") as f:
-                f.write(binary_encoded_json)
-            medialib_db.attachment.add_attachment(
-                connection,
-                content_id,
-                "json+xz",
-                xmp_filepath,
-                "JSON file",
-            )
-        if xmp_metadata:
-            xmp_filepath = outname.with_suffix(".xmp.xz")
-            with lzma.open(xmp_filepath, "wb") as f:
-                f.write(xmp_metadata.encode())
-            medialib_db.attachment.add_attachment(
-                connection,
-                content_id,
-                "xmp+xz",
-                xmp_filepath,
-                "XMP metadata",
-            )
-
-    def medialib_db_register(
-            self,
-            data,
-            src_filename,
-            transcoding_result,
-            tags,
-            file_type: parser.Parser.FileTypes,
-            image_hash,
-            metadata: dict[str, str],
-            connection
-    ):
-        if config.simulate:
-            return
-        outname: pathlib.Path = src_filename
-        if transcoding_result is not None:
-            try:
-                outname = transcoding_result[4]
-                if type(outname) is io.TextIOWrapper:
-                    outname = pathlib.Path(outname.name)
-            except IndexError as e:
-                logger.exception(
-                    "Exception at content id={} from {}".format(data["id"], self.parser.get_origin_name())
-                )
-                raise e
-        elif not outname.exists():
-            logger.error("THE FILE IS MISSING")
-            raise FileNotFoundError()
-
-        _name = None
-        media_type = None
-        if 'name' in data:
-            _name = data['name']
-        if outname is not None:
-            _data = None
-            if outname.suffix == ".srs":
-                with open(outname, "r") as f:
-                    _data = json.load(f)
-            media_type = self.detect_media_type(outname, file_type, _data)
-            _description = None
-            content_id = None
-            if "description" in data and len(data['description']):
-                _description = data['description']
-            plain_text_attachments: dict[str, str] = {}
-            json_attachments: dict[str, any] = {}
-            comfyUI_workflow: ComfyUIWorkflow | None = None
-            xmp_metadata: str | None = None
-            if metadata:
-                plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
-                    self.extract_attachments(metadata)
-            elif _data is not None:
-                plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
-                    self.extract_attachments(_data["content"]["attachment"])
-            if plain_text_attachments:
-                _description = self.attachments_to_description(
-                    _description, plain_text_attachments, False
-                )
-            try:
-                content_id = medialib_db.srs_indexer.register(
-                    pathlib.Path(outname),
-                    _name,
-                    media_type,
-                    _description,
-                    self.parser.get_origin_name(),
-                    data["id"],
-                    tags,
-                    connection
-                )
-            except Exception as e:
-                logger.exception(
-                    "Exception at content id={} from {}".format(
-                        data["id"], self.parser.get_origin_name()
-                    )
-                )
-                raise e
-            if content_id is not None and image_hash is not None:
-                medialib_db.set_image_hash(content_id, image_hash, connection)
-            self.add_file_attachments(
-                connection,
-                content_id,
-                outname,
-                comfyUI_workflow,
-                json_attachments,
-                xmp_metadata
-            )
-
-    def medialib_db_update_tags(self, db_content_id, tags, connection):
-        for tag_category in tags:
-            _tag_category = tag_category
-            if tag_category == 'original character' or tag_category == "characters":
-                _tag_category = "character"
-            for tag in tags[tag_category]:
-                db_tag_id = medialib_db.tags_indexer.check_tag_exists(tag, _tag_category, connection)
-                if db_tag_id is None:
-                    db_tag_id = medialib_db.tags_indexer.insert_new_tag(tag, _tag_category, None, connection)
-                medialib_db.connect_tag_by_id(db_content_id, db_tag_id, connection)
-
-    def medialib_db_update_content(
-        self,
-        connection,
-        content_info,
-        transcoding_result,
-        image_hash,
-        file_type: parser.Parser.FileTypes,
-        metadata: dict[str, str]
-    ):
-        outname = transcoding_result[4]
-        _data = None
-        if outname.suffix == ".srs":
-            with open(outname, "r") as f:
-                _data = json.load(f)
-        media_type = self.detect_media_type(outname, file_type, _data)
-        plain_text_attachments: dict[str, str] = {}
-        json_attachments: dict[str, any] = {}
-        comfyUI_workflow: ComfyUIWorkflow | None = None
-        xmp_metadata: str | None = None
-        if metadata:
-            plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
-                self.extract_attachments(metadata)
-        elif _data is not None:
-            plain_text_attachments, json_attachments, comfyUI_workflow, xmp_metadata = \
-                self.extract_attachments(_data["content"]["attachment"])
-        content_id = content_info[0]
-        medialib_db.update_file_path(
-            content_id, outname, image_hash, media_type, connection
-        )
-        if plain_text_attachments:
-            content_metadata = medialib_db.content.get_content_metadata_by_id(
-                content_id, connection
-            )
-            description = self.attachments_to_description(
-                content_metadata.description,
-                plain_text_attachments,
-                True
-            )
-            if (
-                description is not None and
-                description != content_metadata.description
-            ):
-                medialib_db.content.content_update(
-                    content_id,
-                    content_metadata.title,
-                    content_metadata.hidden,
-                    description,
-                    connection
-                )
-        existing_attachments = \
-            medialib_db.attachment.get_attachments_for_content(
-                connection, content_id
-            )
-        if (
-            not existing_attachments and (
-                json_attachments or comfyUI_workflow
-            )
-        ):
-            self.add_file_attachments(
-                connection,
-                content_id,
-                outname,
-                comfyUI_workflow,
-                json_attachments,
-                xmp_metadata
-            )
-
     def download_file(self, filename: pathlib.Path, src_url: str) -> None:
         logger.debug("download_file() call")
         request_data = requests.get(src_url)
         self.source_file_data = request_data.content
-        file = open(filename, 'wb')
+        file = open(filename, "wb")
         file.write(self.source_file_data)
         file.close()
 
     @abc.abstractmethod
-    def _download_body(self, src_url, name, src_filename, output_directory: pathlib.Path, data: dict, tags):
+    def _download_body(
+        self,
+        src_url: str,
+        name: str,
+        src_filename: pathlib.Path,
+        output_directory: pathlib.Path,
+        data: dict,
+        tags: dict | None,
+    ) -> tuple[int, int, int, int, pathlib.Path] | None:
         pass
 
-    @staticmethod
-    def _init_pool(_lock):
-        global medialib_db_lock
-        medialib_db_lock = _lock
-
-    @staticmethod
-    def create_pool(workers: int):
-        global medialib_db_lock
-
-        medialib_db_lock = multiprocessing.Lock()
-        return multiprocessing.Pool(
-            processes=config.workers, initializer=DownloadManager._init_pool, initargs=(medialib_db_lock,)
-        )
-
-    @staticmethod
-    def fix_filename(filename):
-        name = pathvalidate.sanitize_filename(filename)
-        name = name.replace("&", "-amp-")
-        return name
-
-    def download(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
-        global medialib_db_lock
+    def download(
+        self,
+        output_directory: pathlib.Path,
+        data: dict,
+        tags: dict | None = None,
+    ):
         logger.debug("download method execution")
 
         if self.parser.check_is_takedowned(data):
             return self.parser.get_takedowned_content_info(data)
 
-        medialib_db_connection = None
-        content_info = None
-        if config.use_medialib_db:
-            if TEST_MEDIALIB:
-                medialib_db_connection = medialib_db.testing.make_connection()
-            else:
-                medialib_db_connection = medialib_db.common.make_connection()
-            content_info = medialib_db.find_content_from_source(
-                self.parser.get_origin_name(), self.parser.getID(), medialib_db_connection
-            )
-            if content_info is not None:
-                self.medialib_db_update_tags(content_info[0], tags, medialib_db_connection)
-                old_file_path = config.db_storage_dir.joinpath(content_info[1])
-                if self.is_rewriting_allowed() and old_file_path.exists():
-                    manifest_controller = None
-                    if old_file_path.suffix == ".srs":
-                        manifest_controller =\
-                            pyimglib.transcoding.encoders.srs_image_encoder.SrsLossyImageEncoder(1, 0, 1)
-                    elif old_file_path.suffix == ".mpd":
-                        manifest_controller = pyimglib.transcoding.encoders.dash_encoder.DashVideoEncoder(1)
-                    if manifest_controller is not None:
-                        manifest_controller.set_manifest_file(old_file_path)
-                        manifest_controller.delete_result()
-                    else:
-                        old_file_path.unlink(missing_ok=True)
-                elif self.is_rewriting_allowed():
-                    pass
-                else:
-                    medialib_db_connection.close()
-                    return 0, 0, 0, 0
-
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
 
         src_url = self.parser.get_content_source_url(data)
-        name, src_filename = self.parser.get_output_filename(data, output_directory)
-
-        if config.source_name_as_file_name:
-            name = DownloadManager.fix_filename(name)
-        else:
-            name = "{}{}".format(self.parser.get_filename_prefix(), self.parser.getID())
+        name, src_filename = self.parser.get_output_filename(
+            data, output_directory
+        )
 
         logger.info("filename: {}".format(src_filename))
         logger.debug("image_url: {}".format(src_url))
@@ -432,120 +71,20 @@ class DownloadManager(abc.ABC):
             src_url, name, src_filename, output_directory, data, tags
         )
 
-        image_hash = None
         file_type: parser.Parser.FileTypes = self.parser.identify_filetype()
-        if file_type == parser.Parser.FileTypes.IMAGE and self.source_file_data is not None:
-            buffer = io.BytesIO(self.source_file_data)
-            with PIL.Image.open(buffer) as img:
-                image_hash = pyimglib.calc_image_hash(img)
-        elif file_type == parser.Parser.FileTypes.IMAGE and \
-                self.source_file_data is None:
+        if (
+            file_type == parser.Parser.FileTypes.IMAGE
+            and self.source_file_data is None
+        ):
             if not self.skip_download:
                 logger.debug("result: {}".format(result.__repr__()))
                 self.parser.print_debug_info()
                 raise ValueError("self.source_file_data IS NONE")
-        image_format = self.parser.get_image_format(data)
-        metadata = {}
-        if (
-            self.source_file_data is None and
-            image_format in pyimglib.metadata.supported_formats
-        ):
-            source = self.do_binary_request(src_url)
-            metadata = pyimglib.metadata.get_metadata_from_source(
-                source, image_format
-            )
-        elif self.source_file_data is not None:
-            metadata = pyimglib.metadata.get_metadata_from_source(
-                self.source_file_data, image_format
-            )
-
-        if config.use_medialib_db:
-            logger.debug("medialib-db acquire lock")
-            medialib_db_lock.acquire(block=True)
-            if content_info is not None:
-                if result is not None:
-                    self.medialib_db_update_content(
-                        medialib_db_connection,
-                        content_info,
-                        result,
-                        image_hash,
-                        file_type,
-                        metadata
-                    )
-            else:
-                if result is not None:
-                    self.medialib_db_register(
-                        self.parser.get_raw_content_data(),
-                        src_filename,
-                        result,
-                        tags,
-                        file_type,
-                        image_hash,
-                        metadata,
-                        medialib_db_connection
-                    )
-            medialib_db_connection.close()
-            logger.debug("medialib-db release lock")
-            medialib_db_lock.release()
-
         logger.info(
-            "Done downloading: {}{}".format(self.parser.get_filename_prefix(), self.parser.getID())
-        )
-
-        if result is not None:
-            return result[:4]
-        else:
-            return 0, 0, 0, 0
-
-    def download_original_data(self, output_directory: pathlib.Path, data: dict, tags: dict = None):
-        src_url = self.parser.get_content_source_url(data)
-        name, src_filename = self.parser.get_output_filename(data, output_directory)
-
-        name = DownloadManager.fix_filename(name)
-
-        logger.info("filename: {}".format(src_filename))
-        logger.debug("image_url: {}".format(src_url))
-
-        request_data = requests.get(src_url)
-        result = {"mime": request_data.headers.get('content-type'), "data": request_data.content, "name": name}
-
-        return result
-
-    def save_image_old_interface(self, output_directory: pathlib.Path, data: dict, tags: dict = None, pipe=None) -> None:
-        result = self.download(output_directory, data, tags)
-        if pipe is not None:
-            pipe.send(
-                (
-                    pyimglib.transcoding.statistics.sumos + result[0],
-                    pyimglib.transcoding.statistics.sumsize + result[1],
-                    pyimglib.transcoding.statistics.avq + result[2],
-                    pyimglib.transcoding.statistics.items + result[3]
-                )
+            "Done downloading: {}{}".format(
+                self.parser.get_filename_prefix(), self.parser.getID()
             )
-            pipe.close()
-
-    def append2queue(self, **kwargs):
-        global downloader_thread
-        global download_queue
-        download_queue.append(kwargs)
-        if not downloader_thread.is_alive():
-            downloader_thread = threading.Thread(target=self.async_downloader)
-            downloader_thread.start()
-
-    def async_downloader(self):
-        global download_queue
-        while len(download_queue):
-            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
-            current_download = download_queue.pop()
-            pipe = multiprocessing.Pipe()
-            params = current_download
-            params['pipe'] = pipe[1]
-            process = multiprocessing.Process(target=self.save_image_old_interface, kwargs=params)
-            process.start()
-            import pyimglib.transcoding.statistics as stats
-            stats.sumos, stats.sumsize, stats.avq, stats.items = pipe[0].recv()
-            process.join()
-            print("Queue: lost {} images".format(len(download_queue)), file=sys.stderr)
+        )
 
     def do_binary_request(self, url):
         logger.debug("do_binary_request() call, url={}".format(url))
