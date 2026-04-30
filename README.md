@@ -1,66 +1,74 @@
-# derpibooru.org downloader tool
+# Derpibooru-DL
 
-derpibooru-dl automaticly download and save art in subfolders of download directory.
-You can set download directory in `config.py` file (see `config-example.py`)
-Change subfolder hierarchy in function `def find_folder(parsed_tags:dict):` at file `derpibooru_dl/tagResponse.py`
+Downloads media content from multiple booru-like sites.
+
+## Supported sites
+
+- derpibooru.org
+- tantabus.ai
+- ponybooru.org
+- twibooru.org
+- e621.net
+- furbooru.org
+
+## Core features
+
+- configurable saving path and name format
+- download server and userscript to add download button directly to the site page
+- interactive shell for downloading with CLI and config file editing
+- optional integration with medialib service
 
 ## Executable files
-* `derpibooru_dl.py` - a simple downloader. Can be run in console or GUI mode. Has a minimal system requirements in simple downloading mode:
-    * Windows or Linux OS
-    * Python version >= 3.5 with TkInter
-    * Internet conection
-* `autodownload_my_upvotes.py` - download new images from your upvotes collection. <b>Your API key required - set `key` string in file `config.py`.</b> It's a console script. 
-* `browser_main.py` - Browser. Show thumbnails in grid and checkbox up for every thumbnail. When you get another page - application add checked images to download queue. Search by tags supported.
-Addiional to minimal system requirements on `derpibooru_dl.py`, this application required [FFmpeg](http://ffmpeg.org/) and [Pillow (PIL fork)](https://pypi.org/project/Pillow/)
- 
- Faving and upvoting not supported.
 
-## Run applicatons
-### Run `derpibooru-dl.py`
+### main tools
 
-You can run `derpibooru_dl.py` without any commandline parameters, in this case you can see graphical interface. Add button copy url from clipboard and add it to a listbox. Download button force downloading. By default, downloading starts if you add item in empty list, and continue, until list is not empty.
+- `derpibooru_dl.py` - the main downloader. Runs in console mode by default,
+  or GUI mode if "enable gui" . Can download bunch of URLs or IDs with
+  `--append` argument Has a minimal system requirements
+  in simple downloading mode:
+  - Linux or Windows
+  - Python version >= 3.12
+  - TkInter for GUI mode
+  - Internet conection
 
-Also, if program runs with with commandline arguments, program to try to interpreted all arguments like URL of art and then download it. Example of commandline arguments:
-```
-./derpibooru_dl.py https://derpibooru.org/1777835?q=first_seen_at.gt%3A3+days+ago&sd=desc&sf=score https://derpibooru.org/1780123 https://derpibooru.org/1779010
-```
+- `interactive_config_generator.py` — interactive editor of `config.json`.
+  Allows to set up parameters in groups:
+  - server
+  - filesystem
+  - `api_keys`
+  - ui
+  - database
+  - medialib
 
-## Input for `derpibooru_dl.py`
-Input must be a link for page with this art. Link must be like this:
-```
-https://derpibooru.org/1780123
-```
-or like this:
-```
-https://derpibooru.org/1777969?q=first_seen_at.gt%3A3+days+ago&sd=desc&sf=score
-```
-You can get required link by selecting "Copy link address" in thumbnail context menu or from browser url string if art page is opened.
+Alternately, setting with environment parameters supported.
+Look at `config/__init__.py`
 
-### Run `autodownload_my_upvotes.py`
+### Automation & Bulk Loading
 
-```
-./autodownload_my_upvotes.py [int PERIOD_LEN=3 [string PERIOD_NAME=days]]
-```
+- `philomena_bulk_loader.py` — bulk downloading by search query. Supporting sites:
+  - derpibooru.org
+  - tantabus.ai
+  - ponybooru.org
+  - furbooru.org
+- `create_album_e621.py` — creates album in medialib service by e621 pool ID
 
-All parameters are optional. By default it will download images, posted by 3 days age and newer.
+### Service Integration
 
-Possible values for `PERIOD_LEN` is positive integer numbers.
+- `derpibooru_dl_userscript_server` — Local http server for accepting
+  requests from userscript (placed in `static/js/derpibooru_dl_client_script.js`
+- `import_content.py` — import already existing files into medialib service.
+- `reprocess_from_ids.py` — extracting ID from file names and redownloads it.
 
-Possible values for `PERIOD_NAME`:
-* `days`
-* `months`
-* `years`
+Scripts `import_content.py`, `reprocess_from_ids.py`, and `create_album_e621.py`
+require not None `ml_host` and `ml_port`.
 
-### Run `browser_main.py`
+## Install and set up
 
-Exists only one way to do this:
+1. Clone repository
+2. Install dependency (preferred in virtual environment): `pip install -r python-dependencies.txt`
+3. Set up configuration
+   `python interactive_config_generator.py`
 
-```
-./browser_main.py
-```
-on Linux or
+Use `set_group` command to make group current and `set_option <option_name>`
+to set option value.
 
-```
-browser_main.py
-```
-on Windows.
