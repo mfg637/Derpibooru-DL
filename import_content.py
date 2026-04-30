@@ -92,13 +92,13 @@ def process_folder(folder_path: pathlib.Path, remove_after: bool):
 
 if __name__ == "__main__":
     arg_parser = argparse.ArgumentParser(
-        description="Import exisitng files to the Medialib service"
+        description="Import existing files to the Medialib service"
     )
     arg_parser.add_argument("dir", help="Directory path", type=pathlib.Path)
     arg_parser.add_argument(
         "--remove",
         action="store_true",
-        help="Удалять файл после успешного импорта",
+        help="Delete file after successful import",
     )
     arg_parser.add_argument(
         "-log",

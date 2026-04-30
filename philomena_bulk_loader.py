@@ -120,9 +120,6 @@ def process_single_parser(_parser, data):
 
     dm = download_manager.make_download_manager(_parser)
 
-    # if download_manager.download_manager.ENABLE_REWRITING:
-    #     dm.enable_rewriting()
-
     dm.download(outdir, data, parsed_tags)
     medialib_service.prepare_and_send_result(dm, parsed_tags, data, outdir)
 

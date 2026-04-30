@@ -486,7 +486,7 @@ class SaveConfig(interactive_mode.Command):
             *required_arguments, **optional_arguments
         )
         write_defaults: bool | None = arguments.get("write_defaults", False)
-        serialisable_config = {}
+        serializable_config = {}
         for group_name in cm.entry_groups:
             group = cm.entry_groups[group_name]
             for entry_name in group.entries:
@@ -497,18 +497,18 @@ class SaveConfig(interactive_mode.Command):
                     value = entry.value
                     if isinstance(value, pathlib.Path):
                         value = str(value)
-                    serialisable_config[entry.name_in_config] = value
+                    serializable_config[entry.name_in_config] = value
 
-        if serialisable_config:
+        if serializable_config:
             try:
                 # avoid writing corrupted config
-                commit = json.dumps(serialisable_config)
+                commit = json.dumps(serializable_config)
                 with config_file_json.open("w") as f:
                     f.write(commit)
             except Exception as e:
                 raise e
             else:
-                print("Sucessfully written config.json")
+                print("Successfully written config.json")
         else:
             print("Nothing to save")
 

@@ -1,11 +1,11 @@
 [tool.black]
 line-length = 80
-target-version = ['py313']  # выбери версию python, можно py311
+target-version = ['py313']
 
 [tool.ruff]
 line-length = 80
 indent-width = 4
-extend-select = ["E", "W", "F"]  # базовые ошибки и предупреждения
+extend-select = ["E", "W", "F"]
 
 
 [tool.pyright]

@@ -60,7 +60,7 @@ max_name_length = config_data.get("max API provided name length", 128)
 
 response_cache_dir = None
 
-# TODO: what is this option for?
+# path to write textual info about deleted from booru content
 deleted_image_list_file_path = None
 
 # indicates that file downloading should be manually started by user

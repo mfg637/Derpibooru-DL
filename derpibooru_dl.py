@@ -104,7 +104,7 @@ class DownloadByUrl(interactive_mode.Command):
         super().__init__(
             command_name="url",
             command_aliases=[],
-            command_description="Donload by HTTPS URL",
+            command_description="Download by HTTPS URL",
             required_arguments={"url": interactive_mode.types.HttpsUrlString()},
             optional_arguments={},
             args_position=["url"],
@@ -123,7 +123,7 @@ class DownloadById(interactive_mode.Command):
         super().__init__(
             command_name="id",
             command_aliases=[],
-            command_description="Donload by content id",
+            command_description="Download by content id",
             required_arguments={"id": ContentIdString()},
             optional_arguments={},
             args_position=["id"],
