@@ -21,8 +21,12 @@ class FileDownloader(DownloadManager):
         data: dict,
         tags: dict | None,
     ):
-        if config.use_medialib and check_exists(
-            self.parser.get_origin_name(), str(self.parser.get_content_id())
+        if (
+            not self.is_rewriting_allowed()
+            and config.use_medialib
+            and check_exists(
+                self.parser.get_origin_name(), str(self.parser.get_content_id())
+            )
         ):
             self.skip_download = True
         elif self.is_rewriting_allowed() or not src_filename.is_file():

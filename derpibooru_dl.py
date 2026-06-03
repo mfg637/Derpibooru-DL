@@ -106,7 +106,9 @@ class DownloadByUrl(interactive_mode.Command):
             command_aliases=[],
             command_description="Download by HTTPS URL",
             required_arguments={"url": interactive_mode.types.HttpsUrlString()},
-            optional_arguments={},
+            optional_arguments={
+                "rewrite": interactive_mode.types.BooleanType()
+            },
             args_position=["url"],
         )
 
@@ -115,7 +117,8 @@ class DownloadByUrl(interactive_mode.Command):
             *required_arguments, **optional_arguments
         )
         url: str = arguments["url"]
-        download(url, rewrite)
+        rewrite_this_task: bool = arguments.get("rewrite", rewrite)
+        download(url, rewrite_this_task)
 
 
 class DownloadById(interactive_mode.Command):
@@ -125,7 +128,9 @@ class DownloadById(interactive_mode.Command):
             command_aliases=[],
             command_description="Download by content id",
             required_arguments={"id": ContentIdString()},
-            optional_arguments={},
+            optional_arguments={
+                "rewrite": interactive_mode.types.BooleanType()
+            },
             args_position=["id"],
         )
 
@@ -134,7 +139,29 @@ class DownloadById(interactive_mode.Command):
             *required_arguments, **optional_arguments
         )
         content_id: str = arguments["id"]
-        download(content_id, rewrite)
+        rewrite_this_task: bool = arguments.get("rewrite", rewrite)
+        download(content_id, rewrite_this_task)
+
+
+class SetRewrite(interactive_mode.Command):
+    def __init__(self):
+        super().__init__(
+            command_name="set_rewrite",
+            command_aliases=[],
+            command_description="set rewrite permission for current session",
+            required_arguments={
+                "rewrite": interactive_mode.types.BooleanType()
+            },
+            optional_arguments={},
+            args_position=["rewrite"],
+        )
+
+    def execute(self, *required_arguments, **optional_arguments):
+        global rewrite
+        arguments = self.arguments_processing(
+            *required_arguments, **optional_arguments
+        )
+        rewrite = arguments["rewrite"]
 
 
 if not config.gui or NO_GUI:
@@ -145,4 +172,5 @@ if not config.gui or NO_GUI:
         im = interactive_mode.InteractiveEnvironment("id || url> ")
         im.add_command(DownloadByUrl())
         im.add_command(DownloadById())
+        im.add_command(SetRewrite())
         im.start()

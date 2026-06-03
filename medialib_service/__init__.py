@@ -38,7 +38,7 @@ def send_result(
                 form_data = {"metadata": json.dumps(payload)}
                 response = requests.post(url, data=form_data, files=files)
         else:
-            response = requests.post(url, data=payload)
+            response = requests.post(url, json=payload)
 
         if response.status_code in [200, 201]:
             return "OK", True
@@ -57,6 +57,7 @@ def prepare_and_send_result(
     parsed_tags: dict[str, set[str]],
     data: dict,
     outdir: Path,
+    rewrite: bool = False,
 ):
     if config.use_medialib and not dm.skip_download:
         serializable_parsed_tags: dict[str, list[str]] = {
@@ -69,13 +70,13 @@ def prepare_and_send_result(
         payload = {
             "origin_name": dm.parser.get_origin_name(),
             "origin_id": dm.parser.get_content_id(),
-            "tags": json.dumps(serializable_parsed_tags),
+            "tags": serializable_parsed_tags,
             "title": content_title,
             "description": content_description,
             "mime_type": dm.parser.get_mime_type(),
+            "rewrite": rewrite,
         }
         # by file uploading
-        # payload["file_path"] = str(file_path)
         status_message, is_ok = send_result(payload, file_path)
         if is_ok:
             file_path.unlink()
@@ -101,6 +102,7 @@ def prepare_for_import(
             "title": content_title,
             "description": content_description,
             "mime_type": dm.parser.get_mime_type(),
+            "rewrite": False,
         }
         # by file uploading
         # payload["file_path"] = str(file_path)

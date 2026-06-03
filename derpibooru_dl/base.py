@@ -30,4 +30,6 @@ def download(url, rewrite=False):
     if rewrite:
         dm.enable_rewriting()
     dm.download(outdir, data, parsed_tags)
-    medialib_service.prepare_and_send_result(dm, parsed_tags, data, outdir)
+    medialib_service.prepare_and_send_result(
+        dm, parsed_tags, data, outdir, rewrite
+    )
