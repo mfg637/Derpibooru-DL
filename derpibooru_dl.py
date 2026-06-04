@@ -118,6 +118,8 @@ class DownloadByUrl(interactive_mode.Command):
         )
         url: str = arguments["url"]
         rewrite_this_task: bool = arguments.get("rewrite", rewrite)
+        if rewrite_this_task is None:
+            rewrite_this_task = rewrite
         download(url, rewrite_this_task)
 
 
@@ -140,6 +142,8 @@ class DownloadById(interactive_mode.Command):
         )
         content_id: str = arguments["id"]
         rewrite_this_task: bool = arguments.get("rewrite", rewrite)
+        if rewrite_this_task is None:
+            rewrite_this_task = rewrite
         download(content_id, rewrite_this_task)
 
 
