@@ -214,7 +214,7 @@ class Philomena(Parser):
                 if name.startswith("artist:"):
                     return name.removeprefix("artist:"), categories.ARTIST
                 elif name.startswith("creator:"):
-                    return name.removeprefix("creator:"), categories.ARTIST
+                    return name.removeprefix("creator:"), categories.CREATOR
                 elif name.startswith("prompter:"):
                     return name.removeprefix("prompter:"), categories.PROMPTER
                 elif name.startswith("generator:"):
