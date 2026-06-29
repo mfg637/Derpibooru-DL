@@ -353,7 +353,7 @@ medialib_settings.add_entry(
     OptionalEnvIntegerConfigEntry("port", "medialib port", "MEDIALIB_PORT")
 )
 medialib_settings.add_entry(
-    OptionalEnvStringConfigEntry("token", "medialib token", "MEDIALIB_TOKEN")
+    OptionalEnvPasswordConfigEntry("token", "medialib token", "MEDIALIB_TOKEN")
 )
 
 cm = ConfigManager()
