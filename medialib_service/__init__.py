@@ -78,7 +78,7 @@ def prepare_and_send_result(
         }
         # by file uploading
         status_message, is_ok = send_result(payload, file_path)
-        if is_ok:
+        if is_ok or file_path.is_relative_to("/tmp"):
             file_path.unlink()
 
 
@@ -107,7 +107,7 @@ def prepare_for_import(
         # by file uploading
         # payload["file_path"] = str(file_path)
         status_message, is_ok = send_result(payload, file_path)
-        if is_ok and remove_if_success:
+        if (is_ok and remove_if_success) or file_path.is_relative_to("/tmp"):
             file_path.unlink()
 
 
