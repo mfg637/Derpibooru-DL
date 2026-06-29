@@ -100,5 +100,8 @@ ml_host = os.getenv(
     "MEDIALIB_HOST", config_data.get("medialib host name", None)
 )
 ml_port = os.getenv("MEDIALIB_PORT", config_data.get("medialib port", None))
+ml_token = os.getenv("MEDIALIB_TOKEN", config_data.get("medialib token", None))
 
-use_medialib: bool = ml_host is not None and ml_port is not None
+use_medialib: bool = (
+    ml_host is not None and ml_port is not None and ml_token is not None
+)

@@ -32,7 +32,9 @@ def register_album(origin_name: str, album_title: str, post_ids: list[int]):
         f"Registering album '{album_title}' with {len(post_ids)} posts..."
     )
     try:
-        response = requests.post(url, json=payload)
+        response = requests.post(
+            url, json=payload, headers=medialib_service.HEADERS
+        )
         if response.status_code == 200:
             logger.info("Album successfully registered.")
             return True

@@ -352,6 +352,9 @@ medialib_settings.add_entry(
 medialib_settings.add_entry(
     OptionalEnvIntegerConfigEntry("port", "medialib port", "MEDIALIB_PORT")
 )
+medialib_settings.add_entry(
+    OptionalEnvStringConfigEntry("token", "medialib token", "MEDIALIB_TOKEN")
+)
 
 cm = ConfigManager()
 cm.add_group(server_settings)

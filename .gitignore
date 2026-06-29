@@ -12,5 +12,7 @@ yarn.lock
 Derpibooru-DL.code-workspace
 .python-version
 .env
+.env.dev
+.env.prod
 config.json
 .cli_history

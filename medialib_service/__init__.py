@@ -14,6 +14,12 @@ logger = logging.getLogger(__name__)
 API_ROUTE = "media_receiving"
 
 
+HEADERS = {
+    "User-Agent": "Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)",
+    "Authorization": f"Token {config.ml_token}",
+}
+
+
 def send_result(
     payload: dict, file_to_upload: Optional[Path] = None
 ) -> tuple[str, bool]:
@@ -39,9 +45,11 @@ def send_result(
             with open(file_to_upload, "rb") as f:
                 files = {"file": f}
                 form_data = {"metadata": json.dumps(payload)}
-                response = requests.post(url, data=form_data, files=files)
+                response = requests.post(
+                    url, data=form_data, files=files, headers=HEADERS
+                )
         else:
-            response = requests.post(url, json=payload)
+            response = requests.post(url, json=payload, headers=HEADERS)
 
         if response.status_code in [200, 201]:
             return "OK", True
@@ -127,7 +135,7 @@ def check_exists(origin_name: str, origin_content_id: str) -> bool:
         "name": origin_name,
         "id": origin_content_id,
     }
-    response = requests.get(API_URL, params=payload)
+    response = requests.get(API_URL, params=payload, headers=HEADERS)
     json_data = response.json()
     status = json_data.get("status", None)
     if status is None:
