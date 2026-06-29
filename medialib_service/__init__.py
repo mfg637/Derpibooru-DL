@@ -1,11 +1,14 @@
 import requests
 import json
 import config
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING, Optional
 
 if TYPE_CHECKING:
     from download_manager import DownloadManager
+
+logger = logging.getLogger(__name__)
 
 
 API_ROUTE = "media_receiving"
@@ -126,13 +129,27 @@ def check_exists(origin_name: str, origin_content_id: str) -> bool:
     }
     response = requests.get(API_URL, params=payload)
     json_data = response.json()
-    if json_data["status"] == "found":
+    status = json_data.get("status", None)
+    if status is None:
+        drf_response_detail = json_data.get("detail", None)
+        if drf_response_detail is not None:
+            raise Exception(
+                f"Got DRF error (status code: {response.status_code}): {drf_response_detail}"
+            )
+        else:
+            logger.info("status code: %d", response.status_code)
+            logger.info(
+                "content mime type: %s", response.headers["content-type"]
+            )
+            logger.info("Server raw response: %s", response.text)
+            raise ValueError("unexpected response format")
+    elif status == "found":
         url = json_data["url"]
         print(f"found content at http://{config.ml_host}:{config.ml_port}{url}")
         return True
-    elif json_data["status"] == "not found":
+    elif status == "not found":
         return False
-    elif json_data["status"] == "error":
+    elif status == "error":
         error_message = json_data["message"]
         raise Exception(f"got error from medialib service: {error_message}")
     else:
