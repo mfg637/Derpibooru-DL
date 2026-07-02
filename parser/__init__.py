@@ -6,6 +6,7 @@ from . import (
     ponybooru,
     twibooru,
     e621,
+    e6ai,
     furbooru,
     tantabus,
     exceptions,
@@ -19,6 +20,7 @@ class_by_prefix = {
     ponybooru.FILENAME_PREFIX: ponybooru.PonybooruParser,
     twibooru.FILENAME_PREFIX: twibooru.TwibooruParser,
     e621.FILENAME_PREFIX: e621.E621Parser,
+    e6ai.FILENAME_PREFIX: e6ai.E6AIParser,
     furbooru.FILENAME_PREFIX: furbooru.FurbooruParser,
     tantabus.FILENAME_PREFIX: tantabus.TantabusAIParser,
 }
@@ -28,6 +30,7 @@ name_by_prefix = {
     ponybooru.FILENAME_PREFIX: ponybooru.ORIGIN,
     twibooru.FILENAME_PREFIX: twibooru.ORIGIN,
     e621.FILENAME_PREFIX: e621.ORIGIN,
+    e6ai.FILENAME_PREFIX: e6ai.ORIGIN,
     furbooru.FILENAME_PREFIX: furbooru.ORIGIN,
     tantabus.FILENAME_PREFIX: tantabus.ORIGIN,
 }
@@ -37,6 +40,7 @@ class_by_domain_name = {
     ponybooru.PonybooruParser.get_domain_name_s(): ponybooru.PonybooruParser,
     twibooru.TwibooruParser.get_domain_name_s(): twibooru.TwibooruParser,
     e621.E621Parser.get_domain_name_s(): e621.E621Parser,
+    e6ai.E6AIParser.get_domain_name_s(): e6ai.E6AIParser,
     furbooru.FurbooruParser.get_domain_name_s(): furbooru.FurbooruParser,
     tantabus.TantabusAIParser.get_domain_name_s(): tantabus.TantabusAIParser,
 }

@@ -289,6 +289,12 @@ api_keys.add_entry(
 api_keys.add_entry(
     OptionalEnvPasswordConfigEntry("e621_key", "e621 API key", "E621_API_KEY")
 )
+api_keys.add_entry(
+    OptionalEnvStringConfigEntry("e6ai_login", "e6ai login", "E6AI_LOGIN")
+)
+api_keys.add_entry(
+    OptionalEnvPasswordConfigEntry("e6ai_key", "e6ai API key", "E6AI_API_KEY")
+)
 
 
 ui_settings = ConfigEntriesGroup("ui_settings")

@@ -48,6 +48,8 @@ ponybooru_key = os.getenv(
 )
 e621_login = os.getenv("E621_LOGIN", config_data.get("e621 login", None))
 e621_API_KEY = os.getenv("E621_API_KEY", config_data.get("e621 API key", None))
+e6ai_login = os.getenv("E6AI_LOGIN", config_data.get("e6ai login", None))
+e6ai_API_KEY = os.getenv("E6AI_API_KEY", config_data.get("e6ai API key", None))
 
 # derpibooru-dl.py gui on/off
 gui = config_data.get("enable gui", False)

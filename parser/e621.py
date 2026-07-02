@@ -2,7 +2,6 @@ import json
 import logging
 import pathlib
 import time
-import typing
 import urllib
 import base64
 import urllib.parse
@@ -61,12 +60,18 @@ class E621Parser(Parser.Parser):
     def get_origin_name(self):
         return ORIGIN
 
+    def get_api_login(self):
+        return config.e621_login
+
+    def get_api_key(self):
+        return config.e621_API_KEY
+
     def parseJSON(self, url=None, _type="posts", trial_count=2):
         headers = {
             "User-Agent": "Derpibooru-DL (by mfg637) (https://github.com/mfg637/Derpibooru-DL)"
         }
-        if config.e621_login is not None and config.e621_API_KEY is not None:
-            auth_string = f"{config.e621_login}:{config.e621_API_KEY}"
+        if self.get_api_login() is not None and self.get_api_key() is not None:
+            auth_string = f"{self.get_api_login()}:{self.get_api_key()}"
             auth_base64 = base64.b64encode(auth_string.encode("utf-8")).decode(
                 "utf-8"
             )
@@ -106,7 +111,9 @@ class E621Parser(Parser.Parser):
             self.rate_limiter.increment_requests_count()
         data = None
         if request_data.status_code == 404:
-            raise IndexError('not founded "{}"'.format(url))
+            raise IndexError('not found "{}"'.format(url))
+        elif 400 >= request_data.status_code > 600:
+            raise Exception(f"Request error! Code: {request_data.status_code}")
         logger.debug("STATUS CODE: {}".format(request_data.status_code))
         try:
             data = request_data.json()
@@ -191,10 +198,7 @@ class E621Parser(Parser.Parser):
     ) -> tuple[str, pathlib.Path]:
         data = data["post"]
         name = ""
-        print(data["id"], data["file"]["url"], data["file"]["ext"])
-        if data["file"]["url"] is None or data["file"]["ext"] is None:
-            print(data)
-        name = "{}{}".format(FILENAME_PREFIX, data["id"])
+        name = "{}{}".format(self.get_filename_prefix(), data["id"])
         return name, output_directory.joinpath(
             "{}.{}".format(name, data["file"]["ext"].lower())
         )
@@ -213,7 +217,12 @@ class E621Parser(Parser.Parser):
         return data["post"]["sample"]["url"]
 
     def get_raw_content_data(self) -> dict:
-        return self.get_data()["post"]
+        data = self.get_data().get("post", None)
+        if data is not None:
+            return data
+        else:
+            logger.info("parsed data: %s", data)
+            raise ValueError("Got unexpected parsed data")
 
     def tags_processing(self) -> dict[str, set[str]]:
         connection = database.make_connection(database.DatabaseEnum.APP_PROD)
@@ -232,6 +241,7 @@ class E621Parser(Parser.Parser):
             "meta": categories.META,
             "lore": categories.LORE,
             "contributor": categories.CREATOR,
+            "director": categories.CREATOR,
         }
         result: dict[str, set[str]] = dict()
         for origin_category in origin_tags_dict:
