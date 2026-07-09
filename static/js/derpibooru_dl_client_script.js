@@ -22,9 +22,13 @@
 // @match       https://e621.net/favorites
 // @match       https://e621.net/posts
 // @match       https://e621.net/posts/*
+// @match       https://e6ai.net/popular
+// @match       https://e6ai.net/favorites
+// @match       https://e6ai.net/posts
+// @match       https://e6ai.net/posts/*
 // @connect     localhost:5757
 // @grant       GM.xmlHttpRequest
-// @version     2.0.1
+// @version     2.1.0
 // @author      mfg637
 // @description Script parses page content and adds download button to it.
 // ==/UserScript==
@@ -47,6 +51,9 @@ function get_url() {
       break;
     case "e621.net":
       url = url_head + "/e621";
+      break;
+    case "e6ai.net":
+      url = url_head + "/e6ai";
       break;
     case "furbooru.org":
       url = url_head + "/furbooru";
@@ -83,7 +90,7 @@ function dl_button_click_handler(event) {
           console.log(response.responseText);
         } else {
           alert(
-            `Requset sent from $(hostname), but server processed request from $(server_response.origin_domain_name)`,
+            `Request sent from ${hostname}, but server processed request from ${server_response.origin_domain_name}`,
           );
           console.debug("raw server respone", response.responseText);
           console.debug("server response object", server_response);
@@ -98,31 +105,31 @@ function dl_button_click_handler(event) {
   return false;
 }
 
+const philomena_based_boorus_hostnames = new Set([
+  "derpibooru.org",
+  "tantabus.ai",
+  "ponybooru.org",
+  "furbooru.org",
+]);
+const e621ng_based_boorus_hostnames = new Set(["e621.net", "e6ai.net"]);
+
 function button_placer_default(dl_button, image_wrapper) {
   const hostname = window.location.hostname;
-  switch (hostname) {
-    case "ponybooru.org":
-    case "furbooru.org":
-    case "tantabus.ai":
-    case "derpibooru.org":
-      image_wrapper
-        .getElementsByClassName("media-box__header")[0]
-        .appendChild(dl_button);
-      break;
-    case "twibooru.org":
-      image_wrapper
-        .getElementsByClassName("media-box__header")[0]
-        .getElementsByTagName("form")[0]
-        .appendChild(dl_button);
-      break;
-    case "e621.net":
-      image_wrapper.appendChild(dl_button);
-      break;
-    default:
-      alert(
-        `Implementation error: site ${hostname} is not implemented! (line 102)`,
-      );
-      break;
+  if (philomena_based_boorus_hostnames.has(hostname)) {
+    image_wrapper
+      .getElementsByClassName("media-box__header")[0]
+      .appendChild(dl_button);
+  } else if (hostname === "twibooru.org") {
+    image_wrapper
+      .getElementsByClassName("media-box__header")[0]
+      .getElementsByTagName("form")[0]
+      .appendChild(dl_button);
+  } else if (e621ng_based_boorus_hostnames.has(hostname)) {
+    image_wrapper.appendChild(dl_button);
+  } else {
+    alert(
+      `Implementation error: site ${hostname} is not implemented! (line 130)`,
+    );
   }
 }
 
@@ -190,11 +197,8 @@ function e621_image_handler(data_wrapper, placer, place, styler) {
 
 const hostname = window.location.hostname;
 if (
-  hostname === "derpibooru.org" ||
   hostname === "twibooru.org" ||
-  hostname === "ponybooru.org" ||
-  hostname === "furbooru.org" ||
-  hostname === "tantabus.ai"
+  philomena_based_boorus_hostnames.has(hostname)
 ) {
   image_wrappers = document.getElementsByClassName("media-box");
   if (image_wrappers.length > 0)
@@ -213,7 +217,7 @@ if (
       image_handler(data_wrapper, button_placer_show_image);
     }
   }
-} else if (hostname === "e621.net") {
+} else if (e621ng_based_boorus_hostnames.has(hostname)) {
   image_wrappers = document.getElementsByClassName("thumbnail");
   if (image_wrappers.length > 0) {
     for (let i in image_wrappers) {
@@ -237,4 +241,6 @@ if (
       e621_post_view_styler,
     );
   }
+} else {
+  console.error("Site is not detected");
 }
