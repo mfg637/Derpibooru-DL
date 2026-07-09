@@ -41,12 +41,12 @@ class E621Parser(Parser.Parser):
     def parsehtml_get_image_route_name(self) -> str:
         raise NotImplementedError()
 
-    def get_domain_name(self) -> str:
-        return E621Parser.get_domain_name_s()
-
     @staticmethod
     def get_domain_name_s():
         return "e621.net"
+
+    def get_domain_name(self) -> str:
+        return self.get_domain_name_s()
 
     def getID(self) -> str:
         return str(self.get_data()["post"]["id"])

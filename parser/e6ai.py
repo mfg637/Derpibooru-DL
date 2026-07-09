@@ -6,9 +6,6 @@ ORIGIN = "e6ai"
 
 
 class E6AIParser(E621Parser):
-    def get_domain_name(self) -> str:
-        return E621Parser.get_domain_name_s()
-
     @staticmethod
     def get_domain_name_s():
         return "e6ai.net"
