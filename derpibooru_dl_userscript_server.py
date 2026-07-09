@@ -315,6 +315,12 @@ def e621_handler():
     return fabric.handle()
 
 
+@app.route("/e6ai", methods=["POST", "GET"])
+def e6ai_handler():
+    fabric = RouteFabric(parser.e6ai.E6AIParser)
+    return fabric.handle()
+
+
 @app.route("/tantabus", methods=["POST", "GET"])
 def tantabus_handler():
     fabric = RouteFabric(parser.tantabus.TantabusAIParser)
