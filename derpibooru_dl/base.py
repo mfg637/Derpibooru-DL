@@ -29,7 +29,8 @@ def download(url, rewrite=False):
     dm = download_manager.make_download_manager(_parser)
     if rewrite:
         dm.enable_rewriting()
-    dm.download(outdir, data, parsed_tags)
-    medialib_service.prepare_and_send_result(
-        dm, parsed_tags, data, outdir, rewrite
-    )
+    dl_status = dm.download(outdir, data, parsed_tags)
+    if dl_status:
+        medialib_service.prepare_and_send_result(
+            dm, parsed_tags, data, outdir, rewrite
+        )

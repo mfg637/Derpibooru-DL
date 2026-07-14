@@ -50,11 +50,11 @@ class DownloadManager(abc.ABC):
         output_directory: pathlib.Path,
         data: dict,
         tags: dict | None = None,
-    ):
+    ) -> bool:
         logger.debug("download method execution")
 
         if self.parser.check_is_takedowned(data):
-            return self.parser.get_takedowned_content_info(data)
+            return False
 
         if not os.path.isdir(output_directory):
             os.makedirs(output_directory)
@@ -85,6 +85,7 @@ class DownloadManager(abc.ABC):
                 self.parser.get_filename_prefix(), self.parser.getID()
             )
         )
+        return True
 
     def do_binary_request(self, url):
         logger.debug("do_binary_request() call, url={}".format(url))
