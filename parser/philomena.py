@@ -32,6 +32,9 @@ class HTML_TagParse(TagParsingStrategy):
     def parse_unknow_tags(
         self, unknown_tags: list[str], parser, origin, connection
     ) -> list[origin_tag.OriginTag]:
+        logger.warning(
+            "HTML tag parser is deprecated. Always use API TagSearch"
+        )
         result: list[origin_tag.OriginTag] = []
         derpibooru_connection = None
         if origin is database.origin_tag.OriginNameType.DERPIBOORU:
@@ -39,6 +42,7 @@ class HTML_TagParse(TagParsingStrategy):
                 database.DatabaseEnum.DERPIBOORU, none_if_error=True
             )
         tag_name_to_slug = parser.parseHTML(parser.getID())
+        logger.debug("tag_name_to_slug contents: %r", tag_name_to_slug)
         for origin_tag_info in unknown_tags:
             tag_data = None
             if derpibooru_connection is not None:

@@ -8,7 +8,6 @@ import database
 
 from . import Parser, philomena
 
-
 logger = logging.getLogger(__name__)
 
 FILENAME_PREFIX = "db"
@@ -124,4 +123,4 @@ class DerpibooruParser(philomena.Philomena):
         return data
 
     def enable_html_parsing(self) -> bool:
-        return True
+        return False

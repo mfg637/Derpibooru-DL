@@ -1,6 +1,5 @@
 from . import philomena, Parser
 
-
 FILENAME_PREFIX = "fb"
 ORIGIN = "furbooru"
 
@@ -34,4 +33,4 @@ class FurbooruParser(philomena.Philomena):
         return Parser.OneRequestPerSecondRateLimiter()
 
     def enable_html_parsing(self) -> bool:
-        return True
+        return False
