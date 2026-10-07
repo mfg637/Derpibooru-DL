@@ -4,3 +4,4 @@ pathvalidate
 requests
 python-dotenv
 prompt-toolkit
+python-dateutil

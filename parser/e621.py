@@ -242,6 +242,7 @@ class E621Parser(Parser.Parser):
             "lore": categories.LORE,
             "contributor": categories.CREATOR,
             "director": categories.CREATOR,
+            "franchise": categories.COPYRIGHT,
         }
         result: dict[str, set[str]] = dict()
         for origin_category in origin_tags_dict:
